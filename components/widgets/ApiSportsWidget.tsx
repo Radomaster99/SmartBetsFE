@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useWidgets } from '@/components/widgets/widget-runtime';
 
 interface Props {
   type: string;
@@ -17,10 +19,7 @@ interface Props {
 }
 
 /**
- * Renders an api-sports-widget element via native DOM.
- * Waits for the custom element to be defined before creating it,
- * so there's no race condition with the async module script.
- *
+ * Renders an API-Sports widget using the documented custom-element pattern.
  * Widget types: livescore | game | leagues | standings | h2h | topscorers
  */
 export function ApiSportsWidget({
@@ -34,45 +33,124 @@ export function ApiSportsWidget({
   date,
   className,
 }: Props) {
+  const { hasWidgetKey, scriptStatus } = useWidgets();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const wrapperClassName = ['widget-wrap', className].filter(Boolean).join(' ');
+  const isLeaguesWidget = type === 'leagues';
+  const containerStyle: CSSProperties = {
+    width: '100%',
+    minHeight: isLeaguesWidget ? '100%' : '220px',
+    height: isLeaguesWidget ? '100%' : undefined,
+  };
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const container = containerRef.current;
+    if (!container) return;
+    if (!hasWidgetKey) {
+      setStatus('error');
+      container.innerHTML = '';
+      return;
+    }
+    if (scriptStatus !== 'ready' || !customElements.get('api-sports-widget')) {
+      setStatus(scriptStatus === 'error' ? 'error' : 'loading');
+      return;
+    }
 
     let cancelled = false;
+    let initTimeoutId: number | undefined;
+    let observer: MutationObserver | undefined;
 
-    const mount = () => {
+    const cleanupWidget = () => {
+      if (observer) {
+        observer.disconnect();
+        observer = undefined;
+      }
+      if (initTimeoutId) {
+        window.clearTimeout(initTimeoutId);
+        initTimeoutId = undefined;
+      }
+      container.innerHTML = '';
+    };
+
+    const mountWidget = () => {
       if (cancelled || !containerRef.current) return;
+
+      cleanupWidget();
+      setStatus('loading');
+
       const widget = document.createElement('api-sports-widget');
       widget.setAttribute('data-type', type);
       if (refresh !== undefined) widget.setAttribute('data-refresh', String(refresh));
-      if (id      !== undefined) widget.setAttribute('data-id',      String(id));
-      if (league  !== undefined) widget.setAttribute('data-league',  String(league));
-      if (season  !== undefined) widget.setAttribute('data-season',  String(season));
-      if (home    !== undefined) widget.setAttribute('data-home',    String(home));
-      if (away    !== undefined) widget.setAttribute('data-away',    String(away));
-      if (date    !== undefined) widget.setAttribute('data-date',    date);
-      el.innerHTML = '';
-      el.appendChild(widget);
+      if (id !== undefined) widget.setAttribute('data-id', String(id));
+      if (league !== undefined) widget.setAttribute('data-league', String(league));
+      if (season !== undefined) widget.setAttribute('data-season', String(season));
+      if (home !== undefined) widget.setAttribute('data-home', String(home));
+      if (away !== undefined) widget.setAttribute('data-away', String(away));
+      if (date !== undefined) widget.setAttribute('data-date', date);
+      widget.style.display = 'block';
+      widget.style.width = '100%';
+      widget.style.minHeight = isLeaguesWidget ? '100%' : '220px';
+      containerRef.current.appendChild(widget);
+
+      const markReady = () => {
+        if (cancelled) return;
+        setStatus('ready');
+        if (observer) {
+          observer.disconnect();
+          observer = undefined;
+        }
+        if (initTimeoutId) {
+          window.clearTimeout(initTimeoutId);
+          initTimeoutId = undefined;
+        }
+      };
+
+      if (widget.classList.contains('initialized')) {
+        markReady();
+        return;
+      }
+
+      observer = new MutationObserver(() => {
+        if (widget.classList.contains('initialized')) {
+          markReady();
+        }
+      });
+      observer.observe(widget, { attributes: true, attributeFilter: ['class'] });
+
+      initTimeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        if (!widget.classList.contains('initialized')) {
+          setStatus('error');
+        }
+      }, 8000);
     };
 
-    // Wait for the custom element to be registered before creating instances.
-    // This handles the async module script load timing.
-    customElements.whenDefined('api-sports-widget').then(mount).catch(mount);
+    mountWidget();
 
     return () => {
       cancelled = true;
-      el.innerHTML = '';
+      cleanupWidget();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, refresh, id, league, season, home, away, date]);
+  }, [type, refresh, id, league, season, home, away, date, isLeaguesWidget, hasWidgetKey, scriptStatus]);
+
+  const errorCopy = !hasWidgetKey
+    ? 'Widget key is missing.'
+    : scriptStatus === 'error'
+      ? 'Leagues widget script failed to load.'
+      : 'Leagues widget failed to initialize.';
 
   return (
     <div
       ref={containerRef}
-      className={className}
-      style={{ width: '100%', minHeight: '220px' }}
-    />
+      className={wrapperClassName}
+      style={containerStyle}
+    >
+      {status === 'error' ? (
+        <div className="px-3 py-3 text-[11px]" style={{ color: 'var(--t-text-4)' }}>
+          {errorCopy}
+        </div>
+      ) : null}
+    </div>
   );
 }

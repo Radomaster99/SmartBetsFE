@@ -54,8 +54,7 @@ export function Sidebar() {
           {/* Page links */}
           <div className="px-2 py-2 mt-1 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>
             {[
-              { label: 'Today',     href: '/football',           exact: true },
-              { label: 'Fixtures',  href: '/football/fixtures' },
+              { label: 'Matches',   href: '/football',           exact: true },
               { label: 'Standings', href: '/football/standings' },
             ].map((item) => {
               const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
@@ -77,7 +76,7 @@ export function Sidebar() {
 
           {/* Leagues widget — browse & click leagues directly */}
           <div className="flex-1 overflow-y-auto" style={{ borderTop: '1px solid var(--t-border)' }}>
-            <ApiSportsWidget type="leagues" />
+            <ApiSportsWidget type="leagues" className="h-full" />
           </div>
 
           <div className="px-2 pb-3 pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>

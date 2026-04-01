@@ -21,7 +21,7 @@ export default function FixtureDetailPage({ params }: Props) {
   const [tab, setTab] = useState<Tab>('match');
 
   const { data: detail, isLoading, isError } = useFixtureDetail(fixtureId);
-  const { data: odds }     = useOdds(fixtureId);
+  const { data: odds } = useOdds(fixtureId);
   const { data: bestOdds } = useBestOdds(fixtureId);
 
   if (isLoading) return <LoadingSpinner />;
@@ -31,8 +31,16 @@ export default function FixtureDetailPage({ params }: Props) {
         title="Fixture not found"
         description="This fixture may not exist or the data is unavailable."
         action={
-          <Link href="/football" className="mt-2 inline-flex items-center px-4 py-2 rounded text-[12px] font-medium" style={{ background: 'rgba(0,230,118,0.15)', color: '#00e676', border: '1px solid rgba(0,230,118,0.3)' }}>
-            ← Back to fixtures
+          <Link
+            href="/football"
+            className="mt-2 inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
+            style={{
+              background: 'rgba(0,230,118,0.15)',
+              color: '#00e676',
+              border: '1px solid rgba(0,230,118,0.3)',
+            }}
+          >
+            ← Back to matches
           </Link>
         }
       />
@@ -43,22 +51,25 @@ export default function FixtureDetailPage({ params }: Props) {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'match', label: 'Match' },
-    { id: 'h2h',   label: 'Head to Head' },
-    { id: 'best',  label: 'Best Odds' },
-    { id: 'odds',  label: 'All Bookmakers' },
+    { id: 'h2h', label: 'Head to Head' },
+    { id: 'best', label: 'Best Odds' },
+    { id: 'odds', label: 'All Bookmakers' },
   ];
 
   return (
     <div className="flex flex-col">
       <div className="px-4 pt-3 pb-1">
-        <Link href="/football" className="flex items-center gap-1 text-[11px] transition-colors" style={{ color: 'var(--t-text-5)' }}>
-          ← Fixtures
+        <Link
+          href="/football"
+          className="flex items-center gap-1 text-[11px] transition-colors"
+          style={{ color: 'var(--t-text-5)' }}
+        >
+          ← Matches
         </Link>
       </div>
 
       <FixtureDetailHeader detail={detail} />
 
-      {/* Tabs */}
       <div className="flex" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-topbar-bg)' }}>
         {TABS.map((t) => (
           <button
@@ -78,7 +89,6 @@ export default function FixtureDetailPage({ params }: Props) {
 
       <div className="p-5">
         {tab === 'match' && (
-          /* game widget: refresh every 2 min if live, no refresh if finished */
           <ApiSportsWidget
             type="game"
             id={detail.fixture.apiFixtureId}
@@ -87,7 +97,6 @@ export default function FixtureDetailPage({ params }: Props) {
         )}
 
         {tab === 'h2h' && (
-          /* H2H is historical — no auto-refresh needed */
           <ApiSportsWidget
             type="h2h"
             home={detail.fixture.homeTeamApiId}
@@ -95,13 +104,12 @@ export default function FixtureDetailPage({ params }: Props) {
           />
         )}
 
-        {tab === 'best' && (
-          detail.bestOdds || bestOdds ? (
+        {tab === 'best' &&
+          (detail.bestOdds || bestOdds ? (
             <BestOddsBar bestOdds={(detail.bestOdds ?? bestOdds)!} />
           ) : (
             <EmptyState title="No odds available" description="Best odds data is not available for this fixture." />
-          )
-        )}
+          ))}
 
         {tab === 'odds' && <OddsTable odds={odds ?? []} />}
       </div>
