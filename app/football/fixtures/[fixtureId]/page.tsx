@@ -1,7 +1,6 @@
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
@@ -21,6 +20,8 @@ interface SelectedPlayer {
   apiPlayerId: number;
   label: string | null;
 }
+
+const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 
 function findScrollContainer(element: HTMLElement): HTMLElement | Window {
   let current = element.parentElement;
@@ -65,6 +66,7 @@ function resolveInitialTab(tab: string | null): Tab {
 
 export default function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = use(params);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = resolveInitialTab(searchParams.get('tab'));
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -83,6 +85,27 @@ export default function FixtureDetailPage({ params }: Props) {
       setTab(initialTab);
     }
   }, [initialTab]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY)) {
+      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, '/football');
+    }
+  }, []);
+
+  const handleBackToMatches = () => {
+    if (typeof window === 'undefined') {
+      router.push('/football');
+      return;
+    }
+
+    const savedHref = window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY);
+    if (savedHref?.startsWith('/football')) {
+      router.push(savedHref);
+      return;
+    }
+
+    router.push('/football');
+  };
 
   const handleTeamSelect = (team: SelectedFixtureTeam) => {
     setSelectedTeam((current) => {
@@ -261,17 +284,19 @@ export default function FixtureDetailPage({ params }: Props) {
         title="Fixture not found"
         description="This fixture may not exist or the data is unavailable."
         action={
-          <Link
-            href="/football"
+          <button
+            type="button"
+            onClick={handleBackToMatches}
             className="mt-2 inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
             style={{
               background: 'rgba(0,230,118,0.15)',
               color: '#00e676',
               border: '1px solid rgba(0,230,118,0.3)',
+              cursor: 'pointer',
             }}
           >
             Back to matches
-          </Link>
+          </button>
         }
       />
     );
@@ -291,13 +316,14 @@ export default function FixtureDetailPage({ params }: Props) {
   return (
     <div className="flex flex-col">
       <div className="px-4 pt-3 pb-1">
-        <Link
-          href="/football"
-          className="flex items-center gap-1 text-[11px] transition-colors"
+        <button
+          type="button"
+          onClick={handleBackToMatches}
+          className="flex items-center gap-1 text-[11px] transition-colors bg-transparent border-0 p-0 cursor-pointer"
           style={{ color: 'var(--t-text-5)' }}
         >
           Back to matches
-        </Link>
+        </button>
       </div>
 
       <FixtureDetailHeader

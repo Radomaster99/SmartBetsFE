@@ -9,6 +9,17 @@ interface Props {
   fixture: FixtureDto;
 }
 
+function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
+  const params = new URLSearchParams();
+
+  if (tab) {
+    params.set('tab', tab);
+  }
+
+  const query = params.toString();
+  return `/football/fixtures/${apiFixtureId}${query ? `?${query}` : ''}`;
+}
+
 function formatKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
@@ -30,14 +41,17 @@ export function FixtureRow({ fixture }: Props) {
   const isFinished = fixture.stateBucket === 'Finished';
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
   const statusLabel = formatFixtureStatusLabel(fixture.stateBucket, fixture.status);
+  const detailHref = buildFixtureHref(fixture.apiFixtureId);
+  const oddsHref = buildFixtureHref(fixture.apiFixtureId, 'odds');
+
   const openOddsTab = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    router.push(`/football/fixtures/${fixture.apiFixtureId}?tab=odds`);
+    router.push(oddsHref);
   };
 
   return (
     <tr
-      onClick={() => router.push(`/football/fixtures/${fixture.apiFixtureId}`)}
+      onClick={() => router.push(detailHref)}
       className="cursor-pointer transition-colors"
       style={{ borderBottom: '1px solid var(--t-border)' }}
       onMouseEnter={(e) => {

@@ -1,34 +1,116 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { SyncFreshnessBanner } from '@/components/shared/SyncFreshnessBanner';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import type { StateBucket } from '@/lib/types/api';
+
+const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+function isValidIsoDate(value: string | null): value is string {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function parseState(value: string | null): StateBucket | 'All' {
+  if (
+    value === 'All' ||
+    value === 'Upcoming' ||
+    value === 'Live' ||
+    value === 'Finished' ||
+    value === 'Postponed' ||
+    value === 'Cancelled' ||
+    value === 'Other' ||
+    value === 'Unknown'
+  ) {
+    return value;
+  }
+
+  return 'All';
+}
+
+function buildFootballHref(date: string, state: StateBucket | 'All'): string {
+  const params = new URLSearchParams();
+  const today = todayISO();
+
+  if (date !== today) {
+    params.set('date', date);
+  }
+
+  if (state !== 'All') {
+    params.set('state', state);
+  }
+
+  const query = params.toString();
+  return query ? `/football?${query}` : '/football';
+}
+
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
-export default function FootballPage() {
-  const [date, setDate] = useState(todayISO());
-  const [state, setState] = useState<StateBucket | 'All'>('All');
+function FootballPageClient() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const today = todayISO();
+  const rawDate = searchParams.get('date');
+  const parsedDate = isValidIsoDate(rawDate) ? rawDate : today;
+  const rawState = parseState(searchParams.get('state'));
+  const date = parsedDate;
+
   const isToday = date === today;
   const isFutureDate = date > today;
+  const state: StateBucket | 'All' =
+    isFutureDate ? 'Upcoming' : !isToday && rawState === 'Live' ? 'All' : rawState;
 
   useEffect(() => {
-    if (isFutureDate && state !== 'Upcoming') {
-      setState('Upcoming');
+    const canonicalHref = buildFootballHref(date, state);
+    const currentQuery = searchParams.toString();
+    const currentHref = currentQuery ? `${pathname}?${currentQuery}` : pathname;
+
+    if (canonicalHref !== currentHref) {
+      router.replace(canonicalHref, { scroll: false });
       return;
     }
 
-    if (!isToday && state === 'Live') {
-      setState('All');
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, canonicalHref);
     }
-  }, [isFutureDate, isToday, state]);
+  }, [date, state, pathname, router, searchParams]);
+
+  const handleDateChange = (nextDate: string) => {
+    const nextToday = todayISO();
+    const nextIsToday = nextDate === nextToday;
+    const nextIsFuture = nextDate > nextToday;
+    let nextState = state;
+
+    if (nextIsFuture) {
+      nextState = 'Upcoming';
+    } else if (!nextIsToday && nextState === 'Live') {
+      nextState = 'All';
+    }
+
+    router.replace(buildFootballHref(nextDate, nextState), { scroll: false });
+  };
+
+  const handleStateChange = (nextState: StateBucket | 'All') => {
+    if (isFutureDate) {
+      router.replace(buildFootballHref(date, 'Upcoming'), { scroll: false });
+      return;
+    }
+
+    if (!isToday && nextState === 'Live') {
+      router.replace(buildFootballHref(date, 'All'), { scroll: false });
+      return;
+    }
+
+    router.replace(buildFootballHref(date, nextState), { scroll: false });
+  };
 
   const filters = {
     date,
@@ -45,9 +127,9 @@ export default function FootballPage() {
 
       <FixtureFilters
         state={state}
-        onStateChange={setState}
+        onStateChange={handleStateChange}
         date={date}
-        onDateChange={setDate}
+        onDateChange={handleDateChange}
         showLiveFilter={isToday}
         showFinishedFilter={!isFutureDate}
         futureOnlyUpcoming={isFutureDate}
@@ -67,5 +149,13 @@ export default function FootballPage() {
         <FixtureTable fixtures={data?.items ?? []} isLoading={isLoading} />
       )}
     </div>
+  );
+}
+
+export default function FootballPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <FootballPageClient />
+    </Suspense>
   );
 }
