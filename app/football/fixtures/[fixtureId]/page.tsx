@@ -1,30 +1,243 @@
 'use client';
-import { use, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
-import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
+import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
 import { OddsTable } from '@/components/odds/OddsTable';
 import { BestOddsBar } from '@/components/odds/BestOddsBar';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 
-type Tab = 'best' | 'odds' | 'match' | 'h2h';
+type Tab = 'odds' | 'match' | 'h2h' | 'team';
 
 interface Props {
   params: Promise<{ fixtureId: string }>;
 }
 
+interface SelectedPlayer {
+  apiPlayerId: number;
+  label: string | null;
+}
+
+function findScrollContainer(element: HTMLElement): HTMLElement | Window {
+  let current = element.parentElement;
+
+  while (current) {
+    const styles = window.getComputedStyle(current);
+    const overflowY = styles.overflowY;
+    const isScrollable = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight;
+
+    if (isScrollable) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return window;
+}
+
+function resolvePlayerLabel(target: HTMLElement): string | null {
+  const directLabel =
+    target.getAttribute('data-player-name') ??
+    target.querySelector<HTMLElement>('[data-player-name]')?.getAttribute('data-player-name') ??
+    target.querySelector<HTMLElement>('.player-name')?.textContent ??
+    target.querySelector<HTMLElement>('strong')?.textContent;
+
+  if (directLabel?.trim()) {
+    return directLabel.trim();
+  }
+
+  const text = target.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  return text ? text : null;
+}
+
 export default function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = use(params);
   const [tab, setTab] = useState<Tab>('match');
+  const [selectedTeam, setSelectedTeam] = useState<SelectedFixtureTeam | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
+  const teamWidgetScopeRef = useRef<HTMLDivElement>(null);
+  const playerDetailsSectionRef = useRef<HTMLElement>(null);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
 
   const { data: detail, isLoading, isError } = useFixtureDetail(fixtureId);
   const { data: odds } = useOdds(fixtureId);
   const { data: bestOdds } = useBestOdds(fixtureId);
 
-  if (isLoading) return <LoadingSpinner />;
+  const handleTeamSelect = (team: SelectedFixtureTeam) => {
+    setSelectedTeam((current) => {
+      if (current?.side === team.side && current.apiTeamId === team.apiTeamId) {
+        setTab('match');
+        setSelectedPlayer(null);
+        return null;
+      }
+
+      setTab('team');
+      setSelectedPlayer(null);
+      return team;
+    });
+  };
+
+  useEffect(() => {
+    const scope = teamWidgetScopeRef.current;
+    if (!scope || tab !== 'team' || !selectedTeam) {
+      return;
+    }
+
+    const handlePlayerClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const playerTarget = target?.closest('.player-target[data-id]') as HTMLElement | null;
+
+      if (!playerTarget) {
+        return;
+      }
+
+      const rawPlayerId = playerTarget.getAttribute('data-id');
+      const apiPlayerId = Number(rawPlayerId);
+
+      if (!Number.isFinite(apiPlayerId)) {
+        return;
+      }
+
+      const nextPlayer: SelectedPlayer = {
+        apiPlayerId,
+        label: resolvePlayerLabel(playerTarget),
+      };
+
+      setSelectedPlayer((current) => {
+        if (current?.apiPlayerId === nextPlayer.apiPlayerId) {
+          return null;
+        }
+
+        return nextPlayer;
+      });
+    };
+
+    scope.addEventListener('click', handlePlayerClick);
+
+    return () => {
+      scope.removeEventListener('click', handlePlayerClick);
+    };
+  }, [selectedTeam, tab]);
+
+  useEffect(() => {
+    const scope = teamWidgetScopeRef.current;
+    if (!scope) {
+      return;
+    }
+
+    const applySelectedState = () => {
+      const playerTargets = scope.querySelectorAll<HTMLElement>('.player-target[data-id]');
+
+      playerTargets.forEach((playerTarget) => {
+        const isSelected = Number(playerTarget.getAttribute('data-id')) === selectedPlayer?.apiPlayerId;
+        const highlightTarget = playerTarget.closest('.player-card') as HTMLElement | null;
+
+        playerTarget.toggleAttribute('data-smartbets-selected', isSelected);
+        if (highlightTarget) {
+          highlightTarget.toggleAttribute('data-smartbets-selected', isSelected);
+        }
+      });
+    };
+
+    applySelectedState();
+
+    const observer = new MutationObserver(() => {
+      applySelectedState();
+    });
+
+    observer.observe(scope, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [selectedPlayer, selectedTeam, tab]);
+
+  useEffect(() => {
+    if (!selectedPlayer || tab !== 'team') {
+      return;
+    }
+
+    const section = playerDetailsSectionRef.current;
+    if (!section) {
+      return;
+    }
+
+    const scrollToDetails = window.setTimeout(() => {
+      const scrollContainer = findScrollContainer(section);
+      const sectionRect = section.getBoundingClientRect();
+      let startTop = 0;
+      let targetTop = 0;
+
+      if (scrollContainer === window) {
+        startTop = window.scrollY;
+        targetTop = Math.max(window.scrollY + sectionRect.top - 24, 0);
+      } else {
+        const scrollElement = scrollContainer as HTMLElement;
+        startTop = scrollElement.scrollTop;
+        targetTop = Math.max(
+          scrollElement.scrollTop +
+            sectionRect.top -
+            scrollElement.getBoundingClientRect().top -
+            24,
+          0,
+        );
+      }
+      const delta = targetTop - startTop;
+      const duration = 920;
+      const startedAt = performance.now();
+
+      if (scrollAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+        scrollAnimationFrameRef.current = null;
+      }
+
+      const step = (timestamp: number) => {
+        const progress = Math.min((timestamp - startedAt) / duration, 1);
+        const easedProgress = 1 - Math.pow(1 - progress, 4);
+
+        const nextTop = startTop + delta * easedProgress;
+
+        if (scrollContainer === window) {
+          window.scrollTo({ top: nextTop });
+        } else {
+          scrollContainer.scrollTo({ top: nextTop });
+        }
+
+        if (progress < 1) {
+          scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
+        } else {
+          scrollAnimationFrameRef.current = null;
+        }
+      };
+
+      scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
+    }, 120);
+
+    return () => {
+      window.clearTimeout(scrollToDetails);
+      if (scrollAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+        scrollAnimationFrameRef.current = null;
+      }
+    };
+  }, [selectedPlayer, tab]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+    };
+  }, []);
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   if (isError || !detail) {
     return (
       <EmptyState
@@ -40,7 +253,7 @@ export default function FixtureDetailPage({ params }: Props) {
               border: '1px solid rgba(0,230,118,0.3)',
             }}
           >
-            ← Back to matches
+            Back to matches
           </Link>
         }
       />
@@ -48,12 +261,14 @@ export default function FixtureDetailPage({ params }: Props) {
   }
 
   const isLive = detail.fixture.stateBucket === 'Live';
+  const resolvedBestOdds = detail.bestOdds ?? bestOdds ?? null;
+  const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(odds?.length);
 
-  const TABS: { id: Tab; label: string }[] = [
+  const tabs: { id: Tab; label: string }[] = [
     { id: 'match', label: 'Match' },
     { id: 'h2h', label: 'Head to Head' },
-    { id: 'best', label: 'Best Odds' },
-    { id: 'odds', label: 'All Bookmakers' },
+    { id: 'odds', label: 'Odds' },
+    ...(selectedTeam ? [{ id: 'team' as const, label: selectedTeam.name }] : []),
   ];
 
   return (
@@ -64,25 +279,29 @@ export default function FixtureDetailPage({ params }: Props) {
           className="flex items-center gap-1 text-[11px] transition-colors"
           style={{ color: 'var(--t-text-5)' }}
         >
-          ← Matches
+          Back to matches
         </Link>
       </div>
 
-      <FixtureDetailHeader detail={detail} />
+      <FixtureDetailHeader
+        detail={detail}
+        selectedTeamSide={selectedTeam?.side ?? null}
+        onTeamSelect={handleTeamSelect}
+      />
 
       <div className="flex" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-topbar-bg)' }}>
-        {TABS.map((t) => (
+        {tabs.map((currentTab) => (
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
+            key={currentTab.id}
+            onClick={() => setTab(currentTab.id)}
             className="px-5 py-3 text-[13px] font-medium transition-colors"
             style={{
-              color: tab === t.id ? 'var(--t-text-1)' : 'var(--t-text-4)',
-              borderBottom: tab === t.id ? '2px solid var(--t-accent)' : '2px solid transparent',
+              color: tab === currentTab.id ? 'var(--t-text-1)' : 'var(--t-text-4)',
+              borderBottom: tab === currentTab.id ? '2px solid var(--t-accent)' : '2px solid transparent',
               background: 'transparent',
             }}
           >
-            {t.label}
+            {currentTab.label}
           </button>
         ))}
       </div>
@@ -91,7 +310,8 @@ export default function FixtureDetailPage({ params }: Props) {
         {tab === 'match' && (
           <ApiSportsWidget
             type="game"
-            id={detail.fixture.apiFixtureId}
+            gameId={detail.fixture.apiFixtureId}
+            gameTab="events"
             refresh={isLive ? 120 : undefined}
           />
         )}
@@ -99,19 +319,127 @@ export default function FixtureDetailPage({ params }: Props) {
         {tab === 'h2h' && (
           <ApiSportsWidget
             type="h2h"
-            home={detail.fixture.homeTeamApiId}
-            away={detail.fixture.awayTeamApiId}
+            h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
           />
         )}
 
-        {tab === 'best' &&
-          (detail.bestOdds || bestOdds ? (
-            <BestOddsBar bestOdds={(detail.bestOdds ?? bestOdds)!} />
+        {tab === 'odds' &&
+          (hasAnyOdds ? (
+            <div className="flex flex-col gap-4">
+              {resolvedBestOdds ? (
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
+                      Best Odds
+                    </h2>
+                    <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+                      Best available 1X2 prices across bookmakers.
+                    </p>
+                  </div>
+                  <BestOddsBar bestOdds={resolvedBestOdds} />
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-3">
+                <div>
+                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
+                    All Bookmakers
+                  </h2>
+                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+                    Full bookmaker comparison for this fixture.
+                  </p>
+                </div>
+                <OddsTable odds={odds ?? []} />
+              </div>
+            </div>
           ) : (
-            <EmptyState title="No odds available" description="Best odds data is not available for this fixture." />
+            <EmptyState title="No odds available" description="No bookmaker odds are available for this fixture." />
           ))}
 
-        {tab === 'odds' && <OddsTable odds={odds ?? []} />}
+        {tab === 'team' &&
+          (selectedTeam ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
+                    {selectedTeam.name}
+                  </h2>
+                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+                    Squad and team statistics widget.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab('match')}
+                  className="px-3 py-1.5 rounded text-[11px] font-medium"
+                  style={{
+                    background: 'var(--t-surface)',
+                    border: '1px solid var(--t-border)',
+                    color: 'var(--t-text-3)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Back to match
+                </button>
+              </div>
+
+              <div ref={teamWidgetScopeRef}>
+                <ApiSportsWidget
+                  type="team"
+                  teamId={selectedTeam.apiTeamId}
+                  teamTab="squads"
+                  teamSquad
+                  teamStatistics
+                  league={detail.fixture.leagueApiId}
+                  season={detail.fixture.season}
+                />
+              </div>
+
+              <section
+                ref={playerDetailsSectionRef}
+                className="rounded-xl p-4"
+                style={{
+                  background: 'var(--t-surface)',
+                  border: '1px solid var(--t-border)',
+                }}
+              >
+                <div className="mb-3">
+                  <h3 className="text-[14px] font-bold" style={{ color: 'var(--t-text-1)' }}>
+                    {selectedPlayer?.label ? selectedPlayer.label : 'Player details'}
+                  </h3>
+                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+                    Click a player in the squad above to load statistics, trophies, and injuries here.
+                  </p>
+                </div>
+
+                {selectedPlayer ? (
+                  <ApiSportsWidget
+                    key={`${selectedPlayer.apiPlayerId}-${detail.fixture.season}`}
+                    type="player"
+                    playerId={selectedPlayer.apiPlayerId}
+                    season={detail.fixture.season}
+                    league={detail.fixture.leagueApiId}
+                    playerStatistics
+                    playerTrophies
+                    playerInjuries
+                  />
+                ) : (
+                  <div
+                    className="min-h-[120px] rounded-lg px-4 py-5 text-[12px]"
+                    style={{
+                      background: 'var(--t-page-bg)',
+                      border: '1px dashed var(--t-border)',
+                      color: 'var(--t-text-5)',
+                    }}
+                  >
+                    Select a player from the squad above to open the full player widget.
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : (
+            <EmptyState title="Select a team" description="Click one of the teams in the match header to open the team widget." />
+          ))}
       </div>
     </div>
   );

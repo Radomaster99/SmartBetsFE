@@ -5,27 +5,44 @@ import { useWidgets } from '@/components/widgets/widget-runtime';
 
 interface Props {
   type: string;
-  /** Refresh interval in seconds. Omit to save API quota. */
   refresh?: number;
-  /** data-id — used by: game, topscorers, injuries, predictions */
   id?: number;
+  gameId?: number;
+  gameTab?: string;
+  h2h?: string;
+  teamId?: number;
+  teamTab?: string;
+  teamSquad?: boolean;
+  teamStatistics?: boolean;
+  targetPlayer?: string;
+  playerId?: number;
+  playerStatistics?: boolean;
+  playerTrophies?: boolean;
+  playerInjuries?: boolean;
   league?: number;
   season?: number;
-  /** data-home / data-away — used by: h2h */
   home?: number;
   away?: number;
   date?: string;
   className?: string;
 }
 
-/**
- * Renders an API-Sports widget using the documented custom-element pattern.
- * Widget types: livescore | game | leagues | standings | h2h | topscorers
- */
 export function ApiSportsWidget({
   type,
   refresh,
   id,
+  gameId,
+  gameTab,
+  h2h,
+  teamId,
+  teamTab,
+  teamSquad,
+  teamStatistics,
+  targetPlayer,
+  playerId,
+  playerStatistics,
+  playerTrophies,
+  playerInjuries,
   league,
   season,
   home,
@@ -81,16 +98,65 @@ export function ApiSportsWidget({
 
       const widget = document.createElement('api-sports-widget');
       widget.setAttribute('data-type', type);
+
       if (refresh !== undefined) widget.setAttribute('data-refresh', String(refresh));
-      if (id !== undefined) widget.setAttribute('data-id', String(id));
+
+      if (type === 'game') {
+        const resolvedGameId = gameId ?? id;
+        if (resolvedGameId !== undefined) {
+          widget.setAttribute('data-game-id', String(resolvedGameId));
+        }
+        if (gameTab !== undefined) {
+          widget.setAttribute('data-game-tab', gameTab);
+        }
+      } else if (type === 'team') {
+        const resolvedTeamId = teamId ?? id;
+        if (resolvedTeamId !== undefined) {
+          widget.setAttribute('data-team-id', String(resolvedTeamId));
+        }
+        if (teamTab !== undefined) {
+          widget.setAttribute('data-team-tab', teamTab);
+        }
+        if (teamSquad !== undefined) {
+          widget.setAttribute('data-team-squad', String(teamSquad));
+        }
+        if (teamStatistics !== undefined) {
+          widget.setAttribute('data-team-statistics', String(teamStatistics));
+        }
+        if (targetPlayer !== undefined) {
+          widget.setAttribute('data-target-player', targetPlayer);
+        }
+      } else if (type === 'player') {
+        const resolvedPlayerId = playerId ?? id;
+        if (resolvedPlayerId !== undefined) {
+          widget.setAttribute('data-player-id', String(resolvedPlayerId));
+        }
+        if (playerStatistics !== undefined) {
+          widget.setAttribute('data-player-statistics', String(playerStatistics));
+        }
+        if (playerTrophies !== undefined) {
+          widget.setAttribute('data-player-trophies', String(playerTrophies));
+        }
+        if (playerInjuries !== undefined) {
+          widget.setAttribute('data-player-injuries', String(playerInjuries));
+        }
+      } else if (type === 'h2h') {
+        const resolvedH2h = h2h ?? (home !== undefined && away !== undefined ? `${home}-${away}` : undefined);
+        if (resolvedH2h !== undefined) {
+          widget.setAttribute('data-h2h', resolvedH2h);
+        }
+      } else if (id !== undefined) {
+        widget.setAttribute('data-id', String(id));
+      }
+
       if (league !== undefined) widget.setAttribute('data-league', String(league));
       if (season !== undefined) widget.setAttribute('data-season', String(season));
-      if (home !== undefined) widget.setAttribute('data-home', String(home));
-      if (away !== undefined) widget.setAttribute('data-away', String(away));
       if (date !== undefined) widget.setAttribute('data-date', date);
+
       widget.style.display = 'block';
       widget.style.width = '100%';
       widget.style.minHeight = isLeaguesWidget ? '100%' : '220px';
+
       containerRef.current.appendChild(widget);
 
       const markReady = () => {
@@ -132,20 +198,40 @@ export function ApiSportsWidget({
       cancelled = true;
       cleanupWidget();
     };
-  }, [type, refresh, id, league, season, home, away, date, isLeaguesWidget, hasWidgetKey, scriptStatus]);
+  }, [
+    type,
+    refresh,
+    id,
+    gameId,
+    gameTab,
+    h2h,
+    teamId,
+    teamTab,
+    teamSquad,
+    teamStatistics,
+    targetPlayer,
+    playerId,
+    playerStatistics,
+    playerTrophies,
+    playerInjuries,
+    league,
+    season,
+    home,
+    away,
+    date,
+    isLeaguesWidget,
+    hasWidgetKey,
+    scriptStatus,
+  ]);
 
   const errorCopy = !hasWidgetKey
     ? 'Widget key is missing.'
     : scriptStatus === 'error'
-      ? 'Leagues widget script failed to load.'
-      : 'Leagues widget failed to initialize.';
+      ? 'Widget script failed to load.'
+      : 'Widget failed to initialize.';
 
   return (
-    <div
-      ref={containerRef}
-      className={wrapperClassName}
-      style={containerStyle}
-    >
+    <div ref={containerRef} className={wrapperClassName} style={containerStyle}>
       {status === 'error' ? (
         <div className="px-3 py-3 text-[11px]" style={{ color: 'var(--t-text-4)' }}>
           {errorCopy}

@@ -179,3 +179,25 @@ body {
   display: block;
   width: 100%;
 }
+
+.widget-wrap .team-squads-container .player-card,
+.widget-wrap .team-squads-container .player-card *,
+.widget-wrap .team-squads-container .player-target[data-id] {
+  cursor: pointer;
+}
+
+.widget-wrap .player-target[data-smartbets-selected] {
+  color: var(--t-accent);
+}
+
+.widget-wrap .player-card[data-smartbets-selected] {
+  background: rgba(0, 230, 118, 0.08);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(0, 230, 118, 0.12);
+  border-radius: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.widget-wrap .player-card[data-smartbets-selected] .player-target {
+  color: var(--t-accent);
+}
