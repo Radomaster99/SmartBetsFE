@@ -23,7 +23,6 @@ export function WidgetConfig({ widgetKey }: Props) {
         data-lang="en"
         data-theme="dark"
         data-show-errors="true"
-        data-favorite="true"
       />
     </div>
   );

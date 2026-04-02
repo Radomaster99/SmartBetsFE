@@ -20,7 +20,7 @@ export function FixtureTable({ fixtures, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="flex-1 overflow-auto">
-        <table className="w-full"><tbody><TableSkeleton rows={12} cols={6} /></tbody></table>
+        <table className="w-full table-fixed"><tbody><TableSkeleton rows={12} cols={6} /></tbody></table>
       </div>
     );
   }
@@ -55,15 +55,24 @@ export function FixtureTable({ fixtures, isLoading }: Props) {
             </span>
           </div>
 
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--t-border)' }}>
-                <th className="pl-3 pr-2 py-1.5 w-12 text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Time</th>
+                <th className="pl-3 pr-2 py-1.5 w-[84px] text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Time</th>
                 <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Home</th>
                 <th className="px-1 py-1.5 w-16 text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Score</th>
                 <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Away</th>
-                <th className="px-2 py-1.5 w-12 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>St</th>
-                <th className="px-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-accent)', opacity: 0.8 }}>1 / X / 2</th>
+                <th className="px-2 py-1.5 w-[112px] text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Status</th>
+                <th className="pl-1 pr-4 py-1.5 w-[176px]" style={{ color: 'var(--t-accent)', opacity: 0.9 }}>
+                  <div
+                    className="grid grid-cols-3 gap-1 text-center text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ columnGap: '5px' }}
+                  >
+                    <span>1</span>
+                    <span>X</span>
+                    <span>2</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>

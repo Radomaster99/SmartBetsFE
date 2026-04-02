@@ -6,6 +6,9 @@ interface Props {
   onStateChange: (s: StateBucket | 'All') => void;
   date: string;
   onDateChange: (d: string) => void;
+  showLiveFilter: boolean;
+  showFinishedFilter: boolean;
+  futureOnlyUpcoming: boolean;
 }
 
 const STATES: { value: StateBucket | 'All'; label: string }[] = [
@@ -29,9 +32,32 @@ function labelDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-export function FixtureFilters({ state, onStateChange, date, onDateChange }: Props) {
+export function FixtureFilters({
+  state,
+  onStateChange,
+  date,
+  onDateChange,
+  showLiveFilter,
+  showFinishedFilter,
+  futureOnlyUpcoming,
+}: Props) {
   const today = fmt(new Date());
   const dates = [-2, -1, 0, 1, 2].map((n) => fmt(new Date(Date.now() + n * 86400000)));
+  const visibleStates = STATES.filter((currentState) => {
+    if (futureOnlyUpcoming) {
+      return currentState.value === 'Upcoming';
+    }
+
+    if (!showLiveFilter && currentState.value === 'Live') {
+      return false;
+    }
+
+    if (!showFinishedFilter && currentState.value === 'Finished') {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <div style={{ borderBottom: '1px solid var(--t-border)' }}>
@@ -78,7 +104,7 @@ export function FixtureFilters({ state, onStateChange, date, onDateChange }: Pro
 
       {/* State filter */}
       <div className="flex items-center gap-1 px-3 py-1.5" style={{ background: 'var(--t-surface)' }}>
-        {STATES.map((s) => {
+        {visibleStates.map((s) => {
           const active = s.value === state;
           return (
             <button

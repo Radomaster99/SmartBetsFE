@@ -1,6 +1,7 @@
 'use client';
 import { use, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
@@ -54,9 +55,19 @@ function resolvePlayerLabel(target: HTMLElement): string | null {
   return text ? text : null;
 }
 
+function resolveInitialTab(tab: string | null): Tab {
+  if (tab === 'odds' || tab === 'h2h') {
+    return tab;
+  }
+
+  return 'match';
+}
+
 export default function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = use(params);
-  const [tab, setTab] = useState<Tab>('match');
+  const searchParams = useSearchParams();
+  const initialTab = resolveInitialTab(searchParams.get('tab'));
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [selectedTeam, setSelectedTeam] = useState<SelectedFixtureTeam | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const teamWidgetScopeRef = useRef<HTMLDivElement>(null);
@@ -66,6 +77,12 @@ export default function FixtureDetailPage({ params }: Props) {
   const { data: detail, isLoading, isError } = useFixtureDetail(fixtureId);
   const { data: odds } = useOdds(fixtureId);
   const { data: bestOdds } = useBestOdds(fixtureId);
+
+  useEffect(() => {
+    if (initialTab !== 'team') {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
 
   const handleTeamSelect = (team: SelectedFixtureTeam) => {
     setSelectedTeam((current) => {

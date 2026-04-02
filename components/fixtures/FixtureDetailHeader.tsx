@@ -1,5 +1,5 @@
 import type { FixtureDetailDto } from '@/lib/types/api';
-import { StatusBadge } from '@/components/shared/StatusBadge';
+import { StatusBadge, formatFixtureStatusLabel } from '@/components/shared/StatusBadge';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 
 export interface SelectedFixtureTeam {
@@ -89,6 +89,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
   const isLive = f.stateBucket === 'Live';
   const isFinished = f.stateBucket === 'Finished';
   const hasScore = f.homeGoals !== null && f.awayGoals !== null;
+  const statusLabel = formatFixtureStatusLabel(f.stateBucket, f.status);
 
   return (
     <div style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
@@ -138,7 +139,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           )}
           {isLive ? (
             <span className="text-[11px] font-bold animate-pulse" style={{ color: '#fca5a5' }}>
-              {f.status}
+              {statusLabel}
             </span>
           ) : null}
           {isFinished ? (

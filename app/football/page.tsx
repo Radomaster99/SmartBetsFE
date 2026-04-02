@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
@@ -15,6 +15,20 @@ const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 export default function FootballPage() {
   const [date, setDate] = useState(todayISO());
   const [state, setState] = useState<StateBucket | 'All'>('All');
+  const today = todayISO();
+  const isToday = date === today;
+  const isFutureDate = date > today;
+
+  useEffect(() => {
+    if (isFutureDate && state !== 'Upcoming') {
+      setState('Upcoming');
+      return;
+    }
+
+    if (!isToday && state === 'Live') {
+      setState('All');
+    }
+  }, [isFutureDate, isToday, state]);
 
   const filters = {
     date,
@@ -34,6 +48,9 @@ export default function FootballPage() {
         onStateChange={setState}
         date={date}
         onDateChange={setDate}
+        showLiveFilter={isToday}
+        showFinishedFilter={!isFutureDate}
+        futureOnlyUpcoming={isFutureDate}
       />
 
       {isError ? (
