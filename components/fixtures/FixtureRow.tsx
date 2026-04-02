@@ -24,6 +24,37 @@ function formatKickoff(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatKickoffDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function isTodayKickoff(iso: string): boolean {
+  const kickoffDate = new Date(iso);
+  const today = new Date();
+
+  return kickoffDate.toDateString() === today.toDateString();
+}
+
+function renderKickoffLabel(iso: string) {
+  const todayKickoff = isTodayKickoff(iso);
+  const dayLabel = todayKickoff ? 'Today' : formatKickoffDate(iso);
+  const timeLabel = formatKickoff(iso);
+
+  return (
+    <div className="flex flex-col items-center gap-0.5 leading-tight">
+      <span className="text-[10px] font-medium" style={{ color: 'var(--t-text-5)' }}>
+        {dayLabel}
+      </span>
+      <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>
+        {timeLabel}
+      </span>
+    </div>
+  );
+}
+
 function OddsBtn({ label, value }: { label: string; value?: number }) {
   return (
     <div className="odds-btn odds-btn-grid" aria-label={`${label} odds`}>
@@ -61,7 +92,7 @@ export function FixtureRow({ fixture }: Props) {
         (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
       }}
     >
-      <td className="pl-3 pr-2 py-2.5 w-[84px] text-center">
+      <td className="pl-3 pr-2 py-2.5 w-[108px] text-center">
         {isLive ? (
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[9px] font-black px-1 py-0.5 rounded" style={{ background: '#7f1d1d', color: '#fca5a5' }}>
@@ -72,9 +103,7 @@ export function FixtureRow({ fixture }: Props) {
             </span>
           </div>
         ) : (
-          <span className="text-[12px]" style={{ color: isFinished ? 'var(--t-text-5)' : 'var(--t-text-3)' }}>
-            {formatKickoff(fixture.kickoffAt)}
-          </span>
+          renderKickoffLabel(fixture.kickoffAt)
         )}
       </td>
 

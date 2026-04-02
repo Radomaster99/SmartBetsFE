@@ -1,6 +1,6 @@
 'use client';
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -8,63 +8,166 @@ import { EmptyState } from '@/components/shared/EmptyState';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
+function parsePositiveInt(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function buildStandingsHref(leagueId: number | null, season: number) {
+  const params = new URLSearchParams();
+
+  if (leagueId) {
+    params.set('leagueId', String(leagueId));
+  }
+
+  if (leagueId || season !== DEFAULT_SEASON) {
+    params.set('season', String(season));
+  }
+
+  const query = params.toString();
+  return query ? `/football/standings?${query}` : '/football/standings';
+}
+
 function StandingsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialLeagueId = searchParams.get('leagueId') ? Number(searchParams.get('leagueId')) : null;
-  const initialSeason   = searchParams.get('season') ? Number(searchParams.get('season')) : DEFAULT_SEASON;
-
-  const [leagueId, setLeagueId] = useState<number | null>(initialLeagueId);
-  const [season, setSeason]     = useState(initialSeason);
-
+  const leagueId = parsePositiveInt(searchParams.get('leagueId'));
+  const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
   const { data: leagues, isLoading: leaguesLoading } = useLeagues(season);
-  const selectedLeague = leagues?.find(l => l.apiLeagueId === leagueId);
+  const selectedLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
+
+  const handleLeagueChange = (value: string) => {
+    const nextLeagueId = parsePositiveInt(value);
+    router.replace(buildStandingsHref(nextLeagueId, season), { scroll: false });
+  };
+
+  useEffect(() => {
+    const canonicalHref = buildStandingsHref(leagueId, season);
+    const currentQuery = searchParams.toString();
+    const currentHref = currentQuery ? `/football/standings?${currentQuery}` : '/football/standings';
+
+    if (canonicalHref !== currentHref) {
+      router.replace(canonicalHref, { scroll: false });
+    }
+  }, [leagueId, router, searchParams, season]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Controls */}
       <div
-        className="flex items-center gap-3 px-5 py-4 flex-wrap"
+        className="flex items-center justify-between gap-3 px-5 py-4 flex-wrap"
         style={{ borderBottom: '1px solid var(--t-border)' }}
       >
-        <h1 className="text-[17px] font-bold" style={{ color: 'var(--t-text-1)' }}>Standings</h1>
+        <div>
+          <h1 className="text-[17px] font-bold" style={{ color: 'var(--t-text-1)' }}>
+            Standings
+          </h1>
+          <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+            Choose a league from the sidebar or from the selector here.
+          </p>
+        </div>
 
-        <select
-          value={season}
-          onChange={(e) => setSeason(Number(e.target.value))}
-          className="text-[12px] rounded px-3 py-1.5 outline-none"
-          style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
-        >
-          {[2025, 2024, 2023].map((s) => <option key={s} value={s}>{s}/{s + 1}</option>)}
-        </select>
-
-        <select
-          value={leagueId ?? ''}
-          onChange={(e) => setLeagueId(e.target.value ? Number(e.target.value) : null)}
-          disabled={leaguesLoading}
-          className="text-[12px] rounded px-3 py-1.5 outline-none min-w-[240px]"
-          style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
-        >
-          <option value="">Select a league…</option>
-          {leagues?.map((l) => (
-            <option key={`${l.apiLeagueId}-${l.season}`} value={l.apiLeagueId}>
-              {l.countryName} — {l.name}
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={leagueId ? String(leagueId) : ''}
+            onChange={(event) => handleLeagueChange(event.target.value)}
+            disabled={leaguesLoading}
+            className="min-w-[220px] text-[12px] rounded px-3 py-1.5 outline-none"
+            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
+          >
+            <option value="">
+              {leaguesLoading ? 'Loading leagues...' : 'Choose a league'}
             </option>
-          ))}
-        </select>
+            {(leagues ?? []).map((league) => (
+              <option key={`${league.apiLeagueId}-${league.season}`} value={league.apiLeagueId}>
+                {league.countryName} - {league.name}
+              </option>
+            ))}
+          </select>
 
-        {selectedLeague && (
-          <span className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-            {selectedLeague.countryName} · {selectedLeague.name} · {selectedLeague.season}
-          </span>
-        )}
+          <select
+            value={season}
+            onChange={(event) => router.replace(buildStandingsHref(leagueId, Number(event.target.value)), { scroll: false })}
+            className="text-[12px] rounded px-3 py-1.5 outline-none"
+            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
+          >
+            {[2025, 2024, 2023].map((value) => (
+              <option key={value} value={value}>
+                {value}/{value + 1}
+              </option>
+            ))}
+          </select>
+
+          {leagueId ? (
+            <button
+              type="button"
+              onClick={() => router.replace(buildStandingsHref(null, season), { scroll: false })}
+              className="rounded px-2.5 py-1.5 text-[11px] font-medium"
+              style={{
+                background: 'var(--t-surface-2)',
+                border: '1px solid var(--t-border-2)',
+                color: 'var(--t-text-3)',
+                cursor: 'pointer',
+              }}
+            >
+              Clear league
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      {/* Widget area */}
+      {selectedLeague ? (
+        <div
+          className="px-5 py-2 text-[12px]"
+          style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+        >
+          <span style={{ color: 'var(--t-text-5)' }}>Selected league:</span>{' '}
+          <span className="font-semibold" style={{ color: 'var(--t-text-2)' }}>
+            {selectedLeague.countryName} - {selectedLeague.name}
+          </span>
+          <span style={{ color: 'var(--t-text-5)' }}> - {season}</span>
+        </div>
+      ) : null}
+
       <div className="flex-1 overflow-auto p-5">
         {!leagueId ? (
-          <EmptyState title="Select a league" description="Choose a league from the dropdown above to view standings." />
+          <div
+            className="mx-auto max-w-xl rounded-xl p-6"
+            style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}
+          >
+            <EmptyState
+              title="Select a league"
+              description="Pick a league from the dropdown below or use the left sidebar to open the standings table."
+            />
+
+            <div className="mt-5">
+              <label className="mb-2 block text-[12px] font-medium" style={{ color: 'var(--t-text-3)' }}>
+                League
+              </label>
+              <select
+                value=""
+                onChange={(event) => handleLeagueChange(event.target.value)}
+                disabled={leaguesLoading}
+                className="w-full rounded px-3 py-2 text-[13px] outline-none"
+                style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
+              >
+                <option value="">
+                  {leaguesLoading ? 'Loading leagues...' : 'Choose a league'}
+                </option>
+                {(leagues ?? []).map((league) => (
+                  <option key={`empty-${league.apiLeagueId}-${league.season}`} value={league.apiLeagueId}>
+                    {league.countryName} - {league.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : leaguesLoading && !selectedLeague ? (
+          <LoadingSpinner />
         ) : (
-          /* Standings are historical — no auto-refresh needed */
           <ApiSportsWidget
             key={`${leagueId}-${season}`}
             type="standings"

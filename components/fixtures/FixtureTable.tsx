@@ -58,7 +58,7 @@ export function FixtureTable({ fixtures, isLoading }: Props) {
           <table className="w-full table-fixed">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--t-border)' }}>
-                <th className="pl-3 pr-2 py-1.5 w-[84px] text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Time</th>
+                <th className="pl-3 pr-2 py-1.5 w-[108px] text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Time</th>
                 <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Home</th>
                 <th className="px-1 py-1.5 w-16 text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Score</th>
                 <th className="px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>Away</th>
