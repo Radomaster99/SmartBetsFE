@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     teamId: s.get('teamId') ? Number(s.get('teamId')) : undefined,
     season: s.get('season') ? Number(s.get('season')) : undefined,
     state: (s.get('state') as StateBucket) || undefined,
+    includeLiveOddsSummary: s.get('includeLiveOddsSummary') === 'true',
     date: s.get('date') || undefined,
     from: s.get('from') || undefined,
     to: s.get('to') || undefined,

@@ -1,9 +1,11 @@
 import type { BestOddsDto } from '@/lib/types/api';
+import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { buildBookmakerHref } from '@/lib/bookmakers';
 
 interface Props {
   bestOdds: BestOddsDto;
   fixtureId?: number;
+  movements?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
 }
 
 function minutesAgo(iso: string): string {
@@ -20,6 +22,7 @@ function OddsRow({
   outcomeKey,
   fixtureId,
   isLast,
+  movement,
 }: {
   outcome: string;
   odd: number;
@@ -27,6 +30,7 @@ function OddsRow({
   outcomeKey: 'home' | 'draw' | 'away';
   fixtureId?: number;
   isLast: boolean;
+  movement?: LiveOddsMovementDirection;
 }) {
   const href = buildBookmakerHref(bookmaker, {
     fixture: fixtureId,
@@ -37,8 +41,31 @@ function OddsRow({
   return (
     <div
       className="flex items-center gap-3 px-4 py-3"
-      style={{ borderBottom: isLast ? undefined : '1px solid var(--t-border)' }}
+      style={{
+        position: 'relative',
+        borderBottom: isLast ? undefined : '1px solid var(--t-border)',
+        ...(movement === 'up'
+          ? {
+              background: 'rgba(0,230,118,0.08)',
+              boxShadow: 'inset 0 0 0 1px rgba(0,230,118,0.16)',
+            }
+          : movement === 'down'
+            ? {
+                background: 'rgba(239,83,80,0.08)',
+                boxShadow: 'inset 0 0 0 1px rgba(239,83,80,0.12)',
+              }
+            : null),
+      }}
     >
+      {movement ? (
+        <span
+          aria-hidden="true"
+          className="absolute right-3 top-2 text-[11px] font-bold leading-none"
+          style={{ color: movement === 'up' ? 'var(--t-accent)' : '#f87171' }}
+        >
+          {movement === 'up' ? '\u2191' : '\u2193'}
+        </span>
+      ) : null}
       <span
         className="w-20 flex-shrink-0 text-[11px] font-bold uppercase tracking-wider"
         style={{ color: 'var(--t-text-5)' }}
@@ -80,7 +107,7 @@ function OddsRow({
   );
 }
 
-export function BestOddsBar({ bestOdds, fixtureId }: Props) {
+export function BestOddsBar({ bestOdds, fixtureId, movements }: Props) {
   // Filter out rows where the API returned null/0 for odd or bookmaker despite the DTO typing.
   // This guards against partial-data responses without crashing on .toFixed().
   const rows = [
@@ -102,6 +129,7 @@ export function BestOddsBar({ bestOdds, fixtureId }: Props) {
           outcomeKey={row.outcomeKey}
           fixtureId={fixtureId}
           isLast={i === rows.length - 1}
+          movement={movements?.[row.outcomeKey]}
         />
       ))}
       <div

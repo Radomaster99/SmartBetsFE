@@ -1,4 +1,16 @@
 export type StateBucket = 'Upcoming' | 'Live' | 'Finished' | 'Postponed' | 'Cancelled' | 'Other' | 'Unknown';
+export type LiveOddsSummarySource = 'live' | 'prematch' | 'none';
+
+export interface LiveOddsSummaryDto {
+  source: LiveOddsSummarySource;
+  collectedAtUtc: string | null;
+  bestHomeOdd: number | null;
+  bestHomeBookmaker: string | null;
+  bestDrawOdd: number | null;
+  bestDrawBookmaker: string | null;
+  bestAwayOdd: number | null;
+  bestAwayBookmaker: string | null;
+}
 
 export interface FixtureDto {
   id: number;
@@ -29,6 +41,7 @@ export interface FixtureDto {
   awayTeamLogoUrl: string;
   homeGoals: number | null;
   awayGoals: number | null;
+  liveOddsSummary?: LiveOddsSummaryDto | null;
 }
 
 export interface PagedResultDto<T> {
@@ -65,6 +78,42 @@ export interface BestOddsDto {
   bestDrawBookmaker: string;
   bestAwayOdd: number;
   bestAwayBookmaker: string;
+}
+
+export interface LiveOddsValueDto {
+  outcomeLabel: string;
+  line: string | null;
+  odd: number | null;
+  isMain: boolean;
+  stopped: boolean;
+  blocked: boolean;
+  finished: boolean;
+}
+
+export interface LiveOddsMarketDto {
+  fixtureId: number;
+  apiFixtureId: number;
+  bookmakerId: number;
+  apiBookmakerId: number;
+  bookmaker: string;
+  apiBetId: number;
+  betName: string;
+  collectedAtUtc?: string | null;
+  values: LiveOddsValueDto[];
+}
+
+export interface LiveOddsUpdatedDto {
+  fixtureId: number;
+  apiFixtureId: number;
+  leagueApiId: number;
+  collectedAtUtc: string;
+  markets: LiveOddsMarketDto[];
+}
+
+export interface LiveOddsSummaryUpdatedDto extends LiveOddsSummaryDto {
+  fixtureId: number;
+  apiFixtureId: number;
+  leagueApiId: number;
 }
 
 export interface FixtureDetailDto {

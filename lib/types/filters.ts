@@ -8,6 +8,7 @@ export interface FixtureFilters {
   teamId?: number;
   season?: number;
   state?: StateBucket;
+  includeLiveOddsSummary?: boolean;
   page?: number;
   pageSize?: number;
   direction?: 'asc' | 'desc';

@@ -9,26 +9,62 @@ import {
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import type { OddDto } from '@/lib/types/api';
+import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { buildBookmakerHref } from '@/lib/bookmakers';
 
 interface Props {
   odds: OddDto[];
   fixtureId?: number;
+  movements?: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
 }
 
 const BEST_BG = 'rgba(0,230,118,0.08)';
 const BEST_BORDER = '1px solid rgba(0,230,118,0.22)';
 
-function OddsCell({ value, isBest }: { value: number; isBest: boolean }) {
+function OddsCell({
+  value,
+  isBest,
+  movement,
+}: {
+  value: number;
+  isBest: boolean;
+  movement?: LiveOddsMovementDirection;
+}) {
+  const movementStyles =
+    movement === 'up'
+      ? {
+          background: 'rgba(0,230,118,0.14)',
+          borderColor: 'rgba(0,230,118,0.55)',
+          boxShadow: '0 0 0 1px rgba(0,230,118,0.18)',
+        }
+      : movement === 'down'
+        ? {
+            background: 'rgba(239,83,80,0.14)',
+            borderColor: 'rgba(239,83,80,0.5)',
+            boxShadow: '0 0 0 1px rgba(239,83,80,0.14)',
+          }
+        : undefined;
+
   return (
     <div
       className="odds-btn"
       style={{
+        position: 'relative',
         minWidth: 52,
         background: isBest ? BEST_BG : undefined,
         border: isBest ? BEST_BORDER : undefined,
+        ...movementStyles,
       }}
     >
+      {movement ? (
+        <span
+          aria-hidden="true"
+          className="absolute right-1 top-1 text-[10px] font-bold leading-none"
+          style={{ color: movement === 'up' ? 'var(--t-accent)' : '#f87171' }}
+        >
+          {movement === 'up' ? '\u2191' : '\u2193'}
+        </span>
+      ) : null}
       <span className="odds-value" style={{ color: isBest ? 'var(--t-accent)' : undefined }}>
         {value.toFixed(2)}
       </span>
@@ -36,7 +72,7 @@ function OddsCell({ value, isBest }: { value: number; isBest: boolean }) {
   );
 }
 
-export function OddsTable({ odds, fixtureId }: Props) {
+export function OddsTable({ odds, fixtureId, movements }: Props) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'homeOdd', desc: true }]);
 
   const maxHome = useMemo(() => (odds.length > 1 ? Math.max(...odds.map((o) => o.homeOdd)) : -1), [odds]);
@@ -57,17 +93,35 @@ export function OddsTable({ odds, fixtureId }: Props) {
       {
         accessorKey: 'homeOdd',
         header: 'Home',
-        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxHome} />,
+        cell: (info) => (
+          <OddsCell
+            value={info.getValue() as number}
+            isBest={(info.getValue() as number) === maxHome}
+            movement={movements?.[info.row.original.bookmaker]?.home}
+          />
+        ),
       },
       {
         accessorKey: 'drawOdd',
         header: 'Draw',
-        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxDraw} />,
+        cell: (info) => (
+          <OddsCell
+            value={info.getValue() as number}
+            isBest={(info.getValue() as number) === maxDraw}
+            movement={movements?.[info.row.original.bookmaker]?.draw}
+          />
+        ),
       },
       {
         accessorKey: 'awayOdd',
         header: 'Away',
-        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxAway} />,
+        cell: (info) => (
+          <OddsCell
+            value={info.getValue() as number}
+            isBest={(info.getValue() as number) === maxAway}
+            movement={movements?.[info.row.original.bookmaker]?.away}
+          />
+        ),
       },
       {
         id: 'action',
@@ -116,7 +170,7 @@ export function OddsTable({ odds, fixtureId }: Props) {
         },
       },
     ],
-    [fixtureId, maxAway, maxDraw, maxHome],
+    [fixtureId, maxAway, maxDraw, maxHome, movements],
   );
 
   const table = useReactTable({

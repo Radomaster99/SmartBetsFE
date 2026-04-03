@@ -1,5 +1,6 @@
 'use client';
 import type { FixtureDto } from '@/lib/types/api';
+import type { LiveOddsMovementByFixture } from '@/lib/hooks/useLiveOdds';
 import { FixtureRow } from './FixtureRow';
 import { TableSkeleton } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -7,9 +8,10 @@ import { EmptyState } from '@/components/shared/EmptyState';
 interface Props {
   fixtures: FixtureDto[];
   isLoading?: boolean;
+  oddsMovements?: LiveOddsMovementByFixture;
 }
 
-export function FixtureTable({ fixtures, isLoading }: Props) {
+export function FixtureTable({ fixtures, isLoading, oddsMovements }: Props) {
   const byLeague = fixtures.reduce<Record<string, { name: string; country: string; items: FixtureDto[] }>>((acc, f) => {
     const key = String(f.leagueApiId);
     if (!acc[key]) acc[key] = { name: f.leagueName, country: f.countryName, items: [] };
@@ -73,7 +75,11 @@ export function FixtureTable({ fixtures, isLoading }: Props) {
             </thead>
             <tbody>
               {items.map((f) => (
-                <FixtureRow key={String(f.apiFixtureId)} fixture={f} />
+                <FixtureRow
+                  key={String(f.apiFixtureId)}
+                  fixture={f}
+                  oddsMovement={oddsMovements?.[f.apiFixtureId]}
+                />
               ))}
             </tbody>
           </table>

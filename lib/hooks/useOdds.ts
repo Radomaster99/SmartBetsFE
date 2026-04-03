@@ -27,11 +27,15 @@ export function useOdds(fixtureId: string, marketName?: string) {
   });
 }
 
-export function useBestOdds(fixtureId: string, marketName?: string) {
+export function useBestOdds(
+  fixtureId: string,
+  marketName?: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: ['best-odds', fixtureId, marketName],
     queryFn: () => fetchBestOdds(fixtureId, marketName),
     staleTime: 60_000,
-    enabled: !!fixtureId,
+    enabled: (options?.enabled ?? true) && !!fixtureId,
   });
 }

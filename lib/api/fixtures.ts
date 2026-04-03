@@ -1,5 +1,12 @@
-import { apiFetch, buildQuery } from './client';
-import type { FixtureDto, PagedResultDto, FixtureDetailDto, OddDto, BestOddsDto } from '../types/api';
+import { apiFetch, apiFetchWithJwt, buildQuery } from './client';
+import type {
+  FixtureDto,
+  PagedResultDto,
+  FixtureDetailDto,
+  OddDto,
+  BestOddsDto,
+  LiveOddsMarketDto,
+} from '../types/api';
 import type { FixtureFilters } from '../types/filters';
 
 export async function getFixtures(filters: FixtureFilters): Promise<PagedResultDto<FixtureDto>> {
@@ -8,6 +15,7 @@ export async function getFixtures(filters: FixtureFilters): Promise<PagedResultD
     teamId: filters.teamId,
     season: filters.season,
     state: filters.state,
+    includeLiveOddsSummary: filters.includeLiveOddsSummary,
     date: filters.date,
     from: filters.from,
     to: filters.to,
@@ -30,4 +38,17 @@ export async function getFixtureOdds(apiFixtureId: number, marketName?: string):
 export async function getFixtureBestOdds(apiFixtureId: number, marketName?: string): Promise<BestOddsDto> {
   const q = buildQuery({ marketName });
   return apiFetch<BestOddsDto>(`/api/fixtures/${apiFixtureId}/best-odds${q}`);
+}
+
+export async function getFixtureLiveOdds(
+  apiFixtureId: number,
+  options?: { betId?: number; bookmakerId?: number; latestOnly?: boolean },
+): Promise<LiveOddsMarketDto[]> {
+  const q = buildQuery({
+    betId: options?.betId,
+    bookmakerId: options?.bookmakerId,
+    latestOnly: options?.latestOnly ?? true,
+  });
+
+  return apiFetchWithJwt<LiveOddsMarketDto[]>(`/api/fixtures/${apiFixtureId}/odds/live${q}`);
 }

@@ -2,6 +2,7 @@
 import { Suspense, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useFixtures } from '@/lib/hooks/useFixtures';
+import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
@@ -164,12 +165,15 @@ function FootballPageClient() {
     leagueId: leagueId ?? undefined,
     state: state === 'All' ? undefined : state,
     season,
+    includeLiveOddsSummary: state === 'Live',
     pageSize: 100,
     date: usesUpcomingRange ? undefined : date,
     from: usesUpcomingRange ? today : undefined,
   };
 
   const { data, isLoading, isError, refetch } = useFixtures(filters);
+  const liveFixtureIds = state === 'Live' ? (data?.items ?? []).map((fixture) => fixture.apiFixtureId) : [];
+  const liveOddsListRealtime = useLiveOddsListSignalR(liveFixtureIds, state === 'Live');
 
   return (
     <div className="flex flex-col h-full">
@@ -255,7 +259,11 @@ function FootballPageClient() {
           </button>
         </div>
       ) : (
-        <FixtureTable fixtures={data?.items ?? []} isLoading={isLoading} />
+        <FixtureTable
+          fixtures={data?.items ?? []}
+          isLoading={isLoading}
+          oddsMovements={liveOddsListRealtime.movements}
+        />
       )}
     </div>
   );

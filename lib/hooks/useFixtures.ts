@@ -9,6 +9,7 @@ async function fetchFixtures(filters: FixtureFilters): Promise<PagedResultDto<Fi
   if (filters.teamId) params.set('teamId', String(filters.teamId));
   if (filters.season) params.set('season', String(filters.season));
   if (filters.state) params.set('state', filters.state);
+  if (filters.includeLiveOddsSummary) params.set('includeLiveOddsSummary', 'true');
   if (filters.date) params.set('date', filters.date);
   if (filters.from) params.set('from', filters.from);
   if (filters.to) params.set('to', filters.to);
