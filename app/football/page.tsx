@@ -5,6 +5,7 @@ import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
+import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -13,6 +14,30 @@ import type { StateBucket } from '@/lib/types/api';
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 type UpcomingScope = 'today' | 'all';
+
+const PROMO_BANNERS = [
+  {
+    bookmaker: 'Bet365',
+    eyebrow: 'Sponsored',
+    headline: 'Fast football prices',
+    blurb: 'Open a major book right after you compare the board.',
+    cta: 'Open Bet365',
+  },
+  {
+    bookmaker: 'Pinnacle',
+    eyebrow: 'Sharp lines',
+    headline: 'Market reference spot',
+    blurb: 'Use the board, then jump into sharper pricing in one click.',
+    cta: 'Open Pinnacle',
+  },
+  {
+    bookmaker: 'Betano',
+    eyebrow: 'Matchday promo',
+    headline: 'Ready for today’s card',
+    blurb: 'Keep the scan here and move straight into the bookmaker flow.',
+    cta: 'Open Betano',
+  },
+] as const;
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
@@ -180,11 +205,100 @@ function FeedLegendPill({
   );
 }
 
-function MetricChip({ label, value }: { label: string; value: string }) {
+function PromoBannerStrip() {
+  const themes = [
+    {
+      background: 'linear-gradient(180deg, #050608 0%, #0d1016 100%)',
+      border: 'rgba(255,255,255,0.08)',
+      buttonBackground: '#ffffff',
+      buttonColor: '#0d1016',
+    },
+    {
+      background: 'linear-gradient(180deg, #0b5157 0%, #0d3f45 100%)',
+      border: 'rgba(255,255,255,0.08)',
+      buttonBackground: '#ffffff',
+      buttonColor: '#0d3f45',
+    },
+    {
+      background: 'linear-gradient(180deg, #ff8a00 0%, #ff6a00 100%)',
+      border: 'rgba(255,255,255,0.18)',
+      buttonBackground: '#ffffff',
+      buttonColor: '#ff6a00',
+    },
+  ] as const;
+
+  const offerLines = [
+    'Football prices and fast access.',
+    'Live and pre-match bonus flow.',
+    'Matchday offer and quick entry.',
+  ] as const;
+
   return (
-    <div className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--t-border)', color: 'var(--t-text-3)' }}>
-      <span style={{ color: 'var(--t-text-5)' }}>{label}</span>
-      <span style={{ color: 'var(--t-text-1)' }}> {value}</span>
+    <div className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]">
+      {PROMO_BANNERS.map((banner, index) => {
+        const meta = getBookmakerMeta(banner.bookmaker);
+        const theme = themes[index % themes.length];
+        const offer = offerLines[index % offerLines.length];
+        const href = buildBookmakerHref(banner.bookmaker, {
+          source: 'football-board-banner',
+        });
+
+        return (
+          <a
+            key={banner.bookmaker}
+            href={href}
+            aria-label={`Open ${meta.name}`}
+            title={`Open ${meta.name}`}
+            className="group relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 text-center transition-all md:h-[112px] md:px-3"
+            style={{
+              textDecoration: 'none',
+              background: theme.background,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <div className="flex items-start justify-between gap-1">
+              <div className="text-left text-[7px] font-bold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.64)' }}>
+                Sponsored
+              </div>
+              <svg
+                viewBox="0 0 24 24"
+                width="10"
+                height="10"
+                aria-hidden="true"
+                fill="none"
+                stroke="rgba(255,255,255,0.88)"
+                strokeWidth="2"
+                className="transition-transform duration-150 group-hover:-translate-y-0.5"
+              >
+                <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <div className="mt-0.5 text-[11px] font-black tracking-[-0.02em] md:text-[13px]" style={{ color: '#ffffff' }}>
+                {banner.bookmaker}
+              </div>
+
+              <div
+                className="mx-auto mt-1 max-w-[140px] min-h-[24px] text-[8px] font-medium leading-3 md:max-w-[180px] md:min-h-[28px] md:text-[9px]"
+                style={{ color: 'rgba(255,255,255,0.94)' }}
+              >
+                {offer}
+              </div>
+            </div>
+
+            <div
+              className="mt-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] transition-transform duration-150 group-hover:translate-y-[-1px] md:text-[9px]"
+              style={{
+                background: theme.buttonBackground,
+                color: theme.buttonColor,
+              }}
+            >
+              CLAIM
+            </div>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -307,55 +421,19 @@ function FootballPageClient() {
     state === 'Live'
       ? fixtures.filter((fixture) => fixture.liveOddsSummary?.source !== 'live').length
       : 0;
-  const fixturesWithOdds = fixtures.filter((fixture) => {
-    const summary = fixture.liveOddsSummary;
-    if (summary?.bestHomeOdd || summary?.bestDrawOdd || summary?.bestAwayOdd) return true;
-    return fixture.stateBucket !== 'Live';
-  }).length;
   const savedFixturesInView = fixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId));
   const savedOutsideViewCount = Math.max(savedFixtureIds.length - savedFixturesInView.length, 0);
-
-  const title =
-    state === 'Live'
-      ? 'Live market board'
-      : state === 'Upcoming'
-        ? 'Upcoming price board'
-        : 'Football market board';
-  const subtitle =
-    state === 'Live'
-      ? 'Track live fixtures, see where real live prices are flowing, and spot where the board is still using pre-match snapshots.'
-      : 'Scan the day, compare the best available prices fast, and jump into a bookmaker in one click.';
 
   return (
     <div className="flex flex-col h-full">
       <div
-        className="panel-shell mx-3 mt-3 rounded-2xl px-4 py-4 md:mx-4 md:px-5 md:py-5"
+        className="panel-shell mx-3 mt-3 rounded-2xl p-2 md:mx-4 md:p-2.5"
         style={{
           background:
             'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
         }}
       >
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--t-text-5)' }}>
-              SmartBets Football Desk
-            </div>
-            <h1 className="text-[22px] font-black tracking-[-0.03em] md:text-[28px]" style={{ color: 'var(--t-text-1)' }}>
-              {title}
-            </h1>
-            <p className="mt-1 max-w-xl text-[13px] md:text-[14px]" style={{ color: 'var(--t-text-3)' }}>
-              {subtitle}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <MetricChip label="Date" value={date === today ? 'Today' : date} />
-            <MetricChip label="Fixtures" value={String(fixtures.length)} />
-            <MetricChip label="Price cards" value={String(fixturesWithOdds)} />
-            <MetricChip label="Saved" value={String(savedFixtureIds.length)} />
-            {state === 'Live' ? <MetricChip label="Provider feed" value={String(liveProviderCount)} /> : null}
-          </div>
-        </div>
+        <PromoBannerStrip />
       </div>
 
       {savedFixtureIds.length > 0 ? (

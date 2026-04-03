@@ -98,7 +98,7 @@ export function TeamFixturesList({
             return (
               <Link
                 key={fixture.apiFixtureId}
-                href={`/football/fixtures/${fixture.apiFixtureId}`}
+                href={`/football/fixtures/${fixture.apiFixtureId}?tab=match`}
                 className="rounded-lg px-3 py-3 transition-colors"
                 style={{
                   background: 'var(--t-page-bg)',

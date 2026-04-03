@@ -1,7 +1,7 @@
 'use client';
-import { use, useEffect, useRef, useState, type ReactNode } from 'react';
+import { use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
+import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
 import { useLiveOdds, useLiveOddsSignalR, type LiveOddsMovementDirection, type LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
 import type { BestOddsDto, OddDto } from '@/lib/types/api';
@@ -13,15 +13,10 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { deriveBestOddsFromOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
 
-type Tab = 'odds' | 'match' | 'h2h' | 'team';
+type Tab = 'odds' | 'match' | 'h2h';
 
 interface Props {
   params: Promise<{ fixtureId: string }>;
-}
-
-interface SelectedPlayer {
-  apiPlayerId: number;
-  label: string | null;
 }
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
@@ -111,39 +106,6 @@ function LiveOddsStatusPill({
   );
 }
 
-function findScrollContainer(element: HTMLElement): HTMLElement | Window {
-  let current = element.parentElement;
-
-  while (current) {
-    const styles = window.getComputedStyle(current);
-    const overflowY = styles.overflowY;
-    const isScrollable = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight;
-
-    if (isScrollable) {
-      return current;
-    }
-
-    current = current.parentElement;
-  }
-
-  return window;
-}
-
-function resolvePlayerLabel(target: HTMLElement): string | null {
-  const directLabel =
-    target.getAttribute('data-player-name') ??
-    target.querySelector<HTMLElement>('[data-player-name]')?.getAttribute('data-player-name') ??
-    target.querySelector<HTMLElement>('.player-name')?.textContent ??
-    target.querySelector<HTMLElement>('strong')?.textContent;
-
-  if (directLabel?.trim()) {
-    return directLabel.trim();
-  }
-
-  const text = target.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-  return text ? text : null;
-}
-
 function resolveInitialTab(tab: string | null): Tab {
   if (tab === 'odds' || tab === 'h2h' || tab === 'match') {
     return tab;
@@ -161,33 +123,49 @@ function getMovementDirection(previousValue: number | null | undefined, nextValu
   return nextValue > previousValue ? 'up' : 'down';
 }
 
+function formatRelativeTimestamp(iso: string | null | undefined): string | null {
+  if (!iso) {
+    return null;
+  }
+
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) {
+    return null;
+  }
+
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) {
+    return mins % 60 === 0 ? `${hours}h ago` : `${hours}h ${mins % 60}m ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? `${days}d ago` : `${days}d ${hours % 24}h ago`;
+}
+
 export default function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = resolveInitialTab(searchParams.get('tab'));
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [selectedTeam, setSelectedTeam] = useState<SelectedFixtureTeam | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const [bestOddsMovements, setBestOddsMovements] = useState<Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>({});
   const [oddsTableMovements, setOddsTableMovements] = useState<Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>>({});
-  const teamWidgetScopeRef = useRef<HTMLDivElement>(null);
-  const playerDetailsSectionRef = useRef<HTMLElement>(null);
-  const scrollAnimationFrameRef = useRef<number | null>(null);
   const detailOddsMovementTimeoutsRef = useRef(new Map<string, number>());
   const previousDisplayOddsRef = useRef<OddDto[] | null>(null);
   const previousBestOddsRef = useRef<BestOddsDto | null>(null);
 
-  const { data: detail, isLoading, isError } = useFixtureDetail(fixtureId);
+  const { data: detail, isLoading, isError, error } = useFixtureDetail(fixtureId);
   const { data: odds } = useOdds(fixtureId);
   const { data: bestOdds } = useBestOdds(fixtureId);
   const liveOddsEnabled = Boolean(detail?.fixture.stateBucket === 'Live' && tab === 'odds');
   const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
-    if (initialTab !== 'team') {
-      setTab(initialTab);
-    }
+    setTab(initialTab);
   }, [initialTab]);
 
   const isLiveFixture = detail?.fixture.stateBucket === 'Live';
@@ -215,170 +193,17 @@ export default function FixtureDetailPage({ params }: Props) {
   };
 
   const handleTeamSelect = (team: SelectedFixtureTeam) => {
-    setSelectedTeam((current) => {
-      if (current?.side === team.side && current.apiTeamId === team.apiTeamId) {
-        setTab('match');
-        setSelectedPlayer(null);
-        return null;
-      }
-
-      setTab('team');
-      setSelectedPlayer(null);
-      return team;
+    const params = new URLSearchParams({
+      leagueId: String(detail?.fixture.leagueApiId ?? ''),
+      season: String(detail?.fixture.season ?? ''),
+      fromFixtureId: String(detail?.fixture.apiFixtureId ?? ''),
     });
+    const teamHref = `/football/teams/${team.apiTeamId}?${params.toString()}`;
+    router.push(teamHref);
   };
 
   useEffect(() => {
-    const scope = teamWidgetScopeRef.current;
-    if (!scope || tab !== 'team' || !selectedTeam) {
-      return;
-    }
-
-    const handlePlayerClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const playerTarget = target?.closest('.player-target[data-id]') as HTMLElement | null;
-
-      if (!playerTarget) {
-        return;
-      }
-
-      const rawPlayerId = playerTarget.getAttribute('data-id');
-      const apiPlayerId = Number(rawPlayerId);
-
-      if (!Number.isFinite(apiPlayerId)) {
-        return;
-      }
-
-      const nextPlayer: SelectedPlayer = {
-        apiPlayerId,
-        label: resolvePlayerLabel(playerTarget),
-      };
-
-      setSelectedPlayer((current) => {
-        if (current?.apiPlayerId === nextPlayer.apiPlayerId) {
-          return null;
-        }
-
-        return nextPlayer;
-      });
-    };
-
-    scope.addEventListener('click', handlePlayerClick);
-
     return () => {
-      scope.removeEventListener('click', handlePlayerClick);
-    };
-  }, [selectedTeam, tab]);
-
-  useEffect(() => {
-    const scope = teamWidgetScopeRef.current;
-    if (!scope) {
-      return;
-    }
-
-    const applySelectedState = () => {
-      const playerTargets = scope.querySelectorAll<HTMLElement>('.player-target[data-id]');
-
-      playerTargets.forEach((playerTarget) => {
-        const isSelected = Number(playerTarget.getAttribute('data-id')) === selectedPlayer?.apiPlayerId;
-        const highlightTarget = playerTarget.closest('.player-card') as HTMLElement | null;
-
-        playerTarget.toggleAttribute('data-smartbets-selected', isSelected);
-        if (highlightTarget) {
-          highlightTarget.toggleAttribute('data-smartbets-selected', isSelected);
-        }
-      });
-    };
-
-    applySelectedState();
-
-    const observer = new MutationObserver(() => {
-      applySelectedState();
-    });
-
-    observer.observe(scope, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [selectedPlayer, selectedTeam, tab]);
-
-  useEffect(() => {
-    if (!selectedPlayer || tab !== 'team') {
-      return;
-    }
-
-    const section = playerDetailsSectionRef.current;
-    if (!section) {
-      return;
-    }
-
-    const scrollToDetails = window.setTimeout(() => {
-      const scrollContainer = findScrollContainer(section);
-      const sectionRect = section.getBoundingClientRect();
-      let startTop = 0;
-      let targetTop = 0;
-
-      if (scrollContainer === window) {
-        startTop = window.scrollY;
-        targetTop = Math.max(window.scrollY + sectionRect.top - 24, 0);
-      } else {
-        const scrollElement = scrollContainer as HTMLElement;
-        startTop = scrollElement.scrollTop;
-        targetTop = Math.max(
-          scrollElement.scrollTop +
-            sectionRect.top -
-            scrollElement.getBoundingClientRect().top -
-            24,
-          0,
-        );
-      }
-      const delta = targetTop - startTop;
-      const duration = 920;
-      const startedAt = performance.now();
-
-      if (scrollAnimationFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
-        scrollAnimationFrameRef.current = null;
-      }
-
-      const step = (timestamp: number) => {
-        const progress = Math.min((timestamp - startedAt) / duration, 1);
-        const easedProgress = 1 - Math.pow(1 - progress, 4);
-
-        const nextTop = startTop + delta * easedProgress;
-
-        if (scrollContainer === window) {
-          window.scrollTo({ top: nextTop });
-        } else {
-          scrollContainer.scrollTo({ top: nextTop });
-        }
-
-        if (progress < 1) {
-          scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
-        } else {
-          scrollAnimationFrameRef.current = null;
-        }
-      };
-
-      scrollAnimationFrameRef.current = window.requestAnimationFrame(step);
-    }, 120);
-
-    return () => {
-      window.clearTimeout(scrollToDetails);
-      if (scrollAnimationFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
-        scrollAnimationFrameRef.current = null;
-      }
-    };
-  }, [selectedPlayer, tab]);
-
-  useEffect(() => {
-    return () => {
-      if (scrollAnimationFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
-      }
-
       for (const timeout of detailOddsMovementTimeoutsRef.current.values()) {
         window.clearTimeout(timeout);
       }
@@ -387,12 +212,21 @@ export default function FixtureDetailPage({ params }: Props) {
   }, []);
 
   const isLive = detail?.fixture.stateBucket === 'Live';
-  const mappedLiveOdds = isLive ? mapLiveOddsToOdds(liveOddsQuery.data ?? []) : [];
-  const derivedLiveBestOdds = isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null;
+  const mappedLiveOdds = useMemo(
+    () => (isLive ? mapLiveOddsToOdds(liveOddsQuery.data ?? []) : []),
+    [isLive, liveOddsQuery.data],
+  );
+  const derivedLiveBestOdds = useMemo(
+    () => (isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null),
+    [isLive, mappedLiveOdds],
+  );
   const hasLiveOdds = mappedLiveOdds.length > 0;
   const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || bestOdds);
   const usingPreMatchFallback = Boolean(isLive && !hasLiveOdds && hasPreMatchFallback);
-  const displayOdds = isLive ? (hasLiveOdds ? mappedLiveOdds : (odds ?? [])) : (odds ?? []);
+  const displayOdds = useMemo(
+    () => (isLive ? (hasLiveOdds ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
+    [hasLiveOdds, isLive, mappedLiveOdds, odds],
+  );
   const resolvedBestOdds = isLive
     ? derivedLiveBestOdds ?? detail?.bestOdds ?? bestOdds ?? null
     : detail?.bestOdds ?? bestOdds ?? null;
@@ -400,6 +234,54 @@ export default function FixtureDetailPage({ params }: Props) {
   const oddsFreshnessIso = isLive
     ? resolvedBestOdds?.collectedAtUtc ?? detail?.latestOddsCollectedAtUtc ?? detail?.oddsLastSyncedAtUtc ?? null
     : detail?.oddsLastSyncedAtUtc ?? null;
+  const liveOddsSyncedAtIso =
+    isLive && hasLiveOdds
+      ? (liveOddsQuery.data ?? []).reduce<string | null>((latest, market) => {
+          const marketTimestamp = market.lastSyncedAtUtc ?? market.collectedAtUtc ?? null;
+          if (!marketTimestamp) {
+            return latest;
+          }
+
+          if (!latest || new Date(marketTimestamp).getTime() > new Date(latest).getTime()) {
+            return marketTimestamp;
+          }
+
+          return latest;
+        }, null)
+      : null;
+  const liveOddsLastChangedAtIso =
+    isLive && hasLiveOdds
+      ? (liveOddsQuery.data ?? []).reduce<string | null>((latest, market) => {
+          const marketTimestamp = market.lastSnapshotCollectedAtUtc ?? market.collectedAtUtc ?? null;
+          if (!marketTimestamp) {
+            return latest;
+          }
+
+          if (!latest || new Date(marketTimestamp).getTime() > new Date(latest).getTime()) {
+            return marketTimestamp;
+          }
+
+          return latest;
+        }, null)
+      : null;
+  const liveOddsLastSyncedLabel = formatRelativeTimestamp(liveOddsSyncedAtIso);
+  const liveOddsLastChangedLabel = formatRelativeTimestamp(liveOddsLastChangedAtIso);
+  const headerOddsLabel = isLive
+    ? liveOddsLastSyncedLabel
+      ? `Live odds synced ${liveOddsLastSyncedLabel}${
+          liveOddsLastChangedLabel && liveOddsLastChangedLabel !== liveOddsLastSyncedLabel
+            ? ` · Last change ${liveOddsLastChangedLabel}`
+            : ''
+        }`
+      : usingPreMatchFallback && oddsFreshnessIso
+        ? `Pre-match odds updated ${formatRelativeTimestamp(oddsFreshnessIso) ?? 'recently'}`
+        : null
+    : oddsFreshnessIso
+      ? (() => {
+          const label = formatRelativeTimestamp(oddsFreshnessIso);
+          return label ? `Odds updated ${label}` : null;
+        })()
+      : null;
 
   useEffect(() => {
     if (!isLive || tab !== 'odds') {
@@ -550,10 +432,17 @@ export default function FixtureDetailPage({ params }: Props) {
   }
 
   if (isError || !detail) {
+    const detailError = error instanceof FixtureDetailError ? error : null;
+    const title = detailError?.status === 500 ? 'Live match detail is temporarily unavailable' : 'Fixture not found';
+    const description =
+      detailError?.status === 500
+        ? 'The backend fixture detail endpoint is currently failing for this match. The fixture exists, but its full detail screen cannot be loaded right now.'
+        : 'This fixture may not exist or the data is unavailable.';
+
     return (
       <EmptyState
-        title="Fixture not found"
-        description="This fixture may not exist or the data is unavailable."
+        title={title}
+        description={description}
         action={
           <button
             type="button"
@@ -577,7 +466,6 @@ export default function FixtureDetailPage({ params }: Props) {
     { id: 'odds', label: 'Odds' },
     { id: 'match', label: 'Match' },
     { id: 'h2h', label: 'H2H' },
-    ...(selectedTeam ? [{ id: 'team' as const, label: selectedTeam.name }] : []),
   ];
 
   return (
@@ -598,7 +486,6 @@ export default function FixtureDetailPage({ params }: Props) {
 
       <FixtureDetailHeader
         detail={detail}
-        selectedTeamSide={selectedTeam?.side ?? null}
         onTeamSelect={handleTeamSelect}
       />
 
@@ -620,12 +507,9 @@ export default function FixtureDetailPage({ params }: Props) {
             {currentTab.label}
           </button>
         ))}
-        {oddsFreshnessIso && (
+        {headerOddsLabel && (
           <span className="ml-auto pr-4 text-[11px] flex-shrink-0" style={{ color: 'var(--t-text-5)' }}>
-            {(() => {
-              const mins = Math.floor((Date.now() - new Date(oddsFreshnessIso).getTime()) / 60000);
-              return mins < 1 ? 'Odds: just now' : mins < 60 ? `Odds: ${mins}m ago` : `Odds: ${Math.floor(mins / 60)}h ago`;
-            })()}
+            {headerOddsLabel}
           </span>
         )}
       </div>
@@ -710,87 +594,6 @@ export default function FixtureDetailPage({ params }: Props) {
             </div>
           ) : (
             <EmptyState title="No odds available" description="No bookmaker odds are available for this fixture." />
-          ))}
-
-        {tab === 'team' &&
-          (selectedTeam ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                    {selectedTeam.name}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTab('match')}
-                  className="px-3 py-1.5 rounded text-[11px] font-medium"
-                  style={{
-                    background: 'var(--t-surface)',
-                    border: '1px solid var(--t-border)',
-                    color: 'var(--t-text-3)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Back to match
-                </button>
-              </div>
-
-              <WidgetCard>
-                <div ref={teamWidgetScopeRef}>
-                  <ApiSportsWidget
-                    type="team"
-                    teamId={selectedTeam.apiTeamId}
-                    teamTab="squads"
-                    teamSquad
-                    teamStatistics
-                    league={detail.fixture.leagueApiId}
-                    season={detail.fixture.season}
-                  />
-                </div>
-              </WidgetCard>
-
-              <section
-                ref={playerDetailsSectionRef}
-                className="rounded-xl p-4"
-                style={{
-                  background: 'var(--t-surface)',
-                  border: '1px solid var(--t-border)',
-                }}
-              >
-                <div className="mb-3">
-                  <SectionLabel>{selectedPlayer?.label ? selectedPlayer.label : 'Player Details'}</SectionLabel>
-                </div>
-
-                {selectedPlayer ? (
-                  <WidgetCard>
-                    <ApiSportsWidget
-                      key={`${selectedPlayer.apiPlayerId}-${detail.fixture.season}`}
-                      type="player"
-                      playerId={selectedPlayer.apiPlayerId}
-                      season={detail.fixture.season}
-                      league={detail.fixture.leagueApiId}
-                      playerStatistics
-                      playerTrophies
-                      playerInjuries
-                    />
-                  </WidgetCard>
-                ) : (
-                  <div
-                    className="min-h-[120px] rounded-lg px-4 py-5 text-[12px]"
-                    style={{
-                      background: 'var(--t-page-bg)',
-                      border: '1px dashed var(--t-border)',
-                      color: 'var(--t-text-5)',
-                    }}
-                  >
-                    Select a player from the squad above to open the full player widget.
-                  </div>
-                )}
-              </section>
-            </div>
-          ) : (
-            <EmptyState title="Select a team" description="Click one of the teams in the match header to open the team widget." />
           ))}
       </div>
     </div>

@@ -2,6 +2,8 @@ export type StateBucket = 'Upcoming' | 'Live' | 'Finished' | 'Postponed' | 'Canc
 export type LiveOddsSummarySource = 'live' | 'prematch' | 'none';
 
 export interface LiveOddsSummaryDto {
+  apiFixtureId?: number;
+  leagueApiId?: number;
   source: LiveOddsSummarySource;
   collectedAtUtc: string | null;
   bestHomeOdd: number | null;
@@ -99,6 +101,8 @@ export interface LiveOddsMarketDto {
   apiBetId: number;
   betName: string;
   collectedAtUtc?: string | null;
+  lastSnapshotCollectedAtUtc?: string | null;
+  lastSyncedAtUtc?: string | null;
   values: LiveOddsValueDto[];
 }
 
@@ -116,10 +120,22 @@ export interface LiveOddsSummaryUpdatedDto extends LiveOddsSummaryDto {
   leagueApiId: number;
 }
 
+export interface FixtureFreshnessDto {
+  lastLiveStatusSyncedAtUtc?: string | null;
+  lastEventSyncedAtUtc?: string | null;
+  lastStatisticsSyncedAtUtc?: string | null;
+  lastLineupsSyncedAtUtc?: string | null;
+  lastPlayerStatisticsSyncedAtUtc?: string | null;
+  lastPredictionSyncedAtUtc?: string | null;
+  lastInjuriesSyncedAtUtc?: string | null;
+}
+
 export interface FixtureDetailDto {
   fixture: FixtureDto;
   bestOdds: BestOddsDto | null;
   latestOddsCollectedAtUtc: string | null;
+  freshness?: FixtureFreshnessDto | null;
+  fixturesLiveLastSyncedAtUtc?: string | null;
   fixturesUpcomingLastSyncedAtUtc: string | null;
   fixturesFullLastSyncedAtUtc: string | null;
   oddsLastSyncedAtUtc: string | null;

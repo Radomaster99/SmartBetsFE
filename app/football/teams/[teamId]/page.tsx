@@ -64,14 +64,31 @@ function resolvePlayerLabel(target: HTMLElement): string | null {
   return text ? text : null;
 }
 
+function extractPlayerId(target: HTMLElement): number | null {
+  const directId =
+    target.getAttribute('data-player-id') ??
+    target.getAttribute('data-id') ??
+    target.querySelector<HTMLElement>('[data-player-id]')?.getAttribute('data-player-id') ??
+    target.querySelector<HTMLElement>('[data-id]')?.getAttribute('data-id');
+
+  if (!directId) {
+    return null;
+  }
+
+  const parsed = Number(directId);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 function TeamPageContent({ teamId }: { teamId: number }) {
   const searchParams = useSearchParams();
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const teamWidgetScopeRef = useRef<HTMLDivElement>(null);
   const playerDetailsSectionRef = useRef<HTMLElement>(null);
   const scrollAnimationFrameRef = useRef<number | null>(null);
+  const selectedPlayerRef = useRef<SelectedPlayer | null>(null);
   const leagueId = parsePositiveInt(searchParams.get('leagueId'));
   const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
+  const fromFixtureId = parsePositiveInt(searchParams.get('fromFixtureId'));
   const { data: team, isLoading: teamLoading, isError: teamError } = useTeam(teamId);
   const { data: leagues } = useLeagues(season);
   const selectedLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
@@ -96,9 +113,16 @@ function TeamPageContent({ teamId }: { teamId: number }) {
     direction: 'asc',
   });
 
-  const backHref = leagueId
-    ? `/football/standings?leagueId=${leagueId}&season=${season}`
-    : '/football/standings';
+  const backHref = fromFixtureId
+    ? `/football/fixtures/${fromFixtureId}?tab=match`
+    : leagueId
+      ? `/football/standings?leagueId=${leagueId}&season=${season}`
+      : '/football/standings';
+  const backLabel = fromFixtureId ? 'Back to match' : 'Back to standings';
+
+  useEffect(() => {
+    selectedPlayerRef.current = selectedPlayer;
+  }, [selectedPlayer]);
 
   useEffect(() => {
     const scope = teamWidgetScopeRef.current;
@@ -106,41 +130,76 @@ function TeamPageContent({ teamId }: { teamId: number }) {
       return;
     }
 
-    const handlePlayerClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const playerTarget = target?.closest('.player-target[data-id]') as HTMLElement | null;
+    const cleanups = new Set<() => void>();
 
-      if (!playerTarget) {
-        return;
-      }
+    const bindTeamDetailDelegates = () => {
+      const teamDetails = scope.querySelectorAll<HTMLElement>('team-detail');
 
-      const rawPlayerId = playerTarget.getAttribute('data-id');
-      const apiPlayerId = Number(rawPlayerId);
-
-      if (!Number.isFinite(apiPlayerId)) {
-        return;
-      }
-
-      const nextPlayer: SelectedPlayer = {
-        apiPlayerId,
-        label: resolvePlayerLabel(playerTarget),
-      };
-
-      setSelectedPlayer((current) => {
-        if (current?.apiPlayerId === nextPlayer.apiPlayerId) {
-          return null;
+      teamDetails.forEach((teamDetail) => {
+        if (teamDetail.dataset.smartbetsPlayerDelegate === 'true') {
+          return;
         }
 
-        return nextPlayer;
+        const handlePlayerClick = (event: Event) => {
+          if (!(event.target instanceof HTMLElement)) {
+            return;
+          }
+
+          const playerTarget = event.target.closest<HTMLElement>(
+            '.team-squads-container .player-target[data-id], .team-squads-container .player-card[data-id]',
+          );
+          if (!playerTarget || !teamDetail.contains(playerTarget)) {
+            return;
+          }
+
+          const apiPlayerId = extractPlayerId(playerTarget);
+          if (!apiPlayerId) {
+            return;
+          }
+
+          const nextPlayer: SelectedPlayer = {
+            apiPlayerId,
+            label: resolvePlayerLabel(playerTarget),
+          };
+
+          const currentPlayer = selectedPlayerRef.current;
+          if (currentPlayer?.apiPlayerId === nextPlayer.apiPlayerId) {
+            event.preventDefault();
+            event.stopPropagation();
+            if ('stopImmediatePropagation' in event) {
+              event.stopImmediatePropagation();
+            }
+            setSelectedPlayer(null);
+            return;
+          }
+
+          setSelectedPlayer(nextPlayer);
+        };
+
+        teamDetail.dataset.smartbetsPlayerDelegate = 'true';
+        teamDetail.addEventListener('click', handlePlayerClick, true);
+        cleanups.add(() => {
+          teamDetail.removeEventListener('click', handlePlayerClick, true);
+          delete teamDetail.dataset.smartbetsPlayerDelegate;
+        });
       });
     };
 
-    scope.addEventListener('click', handlePlayerClick);
+    bindTeamDetailDelegates();
+
+    const observer = new MutationObserver(() => {
+      bindTeamDetailDelegates();
+    });
+
+    observer.observe(scope, { childList: true, subtree: true });
 
     return () => {
-      scope.removeEventListener('click', handlePlayerClick);
+      observer.disconnect();
+      for (const cleanup of cleanups) {
+        cleanup();
+      }
     };
-  }, []);
+  }, [teamLoading, team?.apiTeamId]);
 
   useEffect(() => {
     const scope = teamWidgetScopeRef.current;
@@ -149,11 +208,17 @@ function TeamPageContent({ teamId }: { teamId: number }) {
     }
 
     const applySelectedState = () => {
-      const playerTargets = scope.querySelectorAll<HTMLElement>('.player-target[data-id]');
+      const playerTargets = scope.querySelectorAll<HTMLElement>(
+        '.team-squads-container .player-target, .team-squads-container .player-card',
+      );
 
       playerTargets.forEach((playerTarget) => {
-        const isSelected = Number(playerTarget.getAttribute('data-id')) === selectedPlayer?.apiPlayerId;
-        const highlightTarget = playerTarget.closest('.player-card') as HTMLElement | null;
+        const playerId = extractPlayerId(playerTarget);
+        const isSelected = playerId != null && playerId === selectedPlayer?.apiPlayerId;
+        const highlightTarget =
+          playerTarget.matches('.player-card')
+            ? playerTarget
+            : ((playerTarget.closest('.player-card') as HTMLElement | null));
 
         playerTarget.toggleAttribute('data-smartbets-selected', isSelected);
         if (highlightTarget) {
@@ -272,7 +337,7 @@ function TeamPageContent({ teamId }: { teamId: number }) {
               border: '1px solid rgba(0,230,118,0.3)',
             }}
           >
-            Back to standings
+            {backLabel}
           </Link>
         }
       />
@@ -287,7 +352,7 @@ function TeamPageContent({ teamId }: { teamId: number }) {
           className="flex items-center gap-1 text-[11px] transition-colors"
           style={{ color: 'var(--t-text-5)', textDecoration: 'none' }}
         >
-          Back to standings
+          {backLabel}
         </Link>
       </div>
 
@@ -365,7 +430,7 @@ function TeamPageContent({ teamId }: { teamId: number }) {
               </p>
             </div>
 
-            <div ref={teamWidgetScopeRef}>
+            <div ref={teamWidgetScopeRef} data-team-page-widget-scope="true">
               <ApiSportsWidget
                 type="team"
                 teamId={team.apiTeamId}
@@ -410,7 +475,7 @@ function TeamPageContent({ teamId }: { teamId: number }) {
         </div>
 
         <section ref={playerDetailsSectionRef} className="mt-5">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          <div className="grid gap-5">
             <section
               className="rounded-xl p-4"
               style={{
@@ -426,7 +491,6 @@ function TeamPageContent({ teamId }: { teamId: number }) {
                   Click a player in the squad above to load statistics, trophies, and injuries here.
                 </p>
               </div>
-
               {selectedPlayer ? (
                 <ApiSportsWidget
                   key={`${selectedPlayer.apiPlayerId}-${season}-${leagueId ?? 'all'}`}
@@ -440,7 +504,7 @@ function TeamPageContent({ teamId }: { teamId: number }) {
                 />
               ) : (
                 <div
-                  className="mb-3 rounded-lg px-4 py-5 text-[12px]"
+                  className="mt-3 rounded-lg px-4 py-5 text-[12px]"
                   style={{
                     background: 'var(--t-page-bg)',
                     border: '1px dashed var(--t-border)',
@@ -450,43 +514,6 @@ function TeamPageContent({ teamId }: { teamId: number }) {
                   Select a player from the squad above to open the full player widget.
                 </div>
               )}
-            </section>
-
-            <section
-              className="rounded-xl p-4"
-              style={{
-                background: 'var(--t-surface)',
-                border: '1px solid var(--t-border)',
-              }}
-            >
-              <div className="mb-2">
-                <h3 className="text-[14px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                  Player widget
-                </h3>
-                <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-                  The official player widget will appear on the left with statistics, trophies, and injuries.
-                </p>
-              </div>
-
-              <div
-                className="rounded-lg px-4 py-4"
-                style={{ background: 'var(--t-page-bg)', border: '1px solid var(--t-border)' }}
-              >
-                <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
-                  Team
-                </div>
-                <div className="mt-2 text-[18px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                  {team.name}
-                </div>
-                <div className="mt-2 text-[12px]" style={{ color: 'var(--t-text-4)' }}>
-                  Click a player in the squad above to open the widget below. Click the same player again to hide it.
-                </div>
-                {selectedLeague ? (
-                  <div className="mt-1 text-[12px]" style={{ color: 'var(--t-text-4)' }}>
-                    Context: {selectedLeague.name} {season}
-                  </div>
-                ) : null}
-              </div>
             </section>
           </div>
         </section>

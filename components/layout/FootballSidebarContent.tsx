@@ -250,9 +250,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
 
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const standingsHref = buildStandingsHref(activeLeagueId, season);
-  const clearLeagueHref = isStandingsPage
-    ? buildStandingsHref(null, DEFAULT_SEASON)
-    : buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
+  const clearLeagueHref = buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
+  const isAllLeaguesActive = isMatchesPage && !activeLeagueId;
 
   const togglePinnedLeague = (leagueId: number) => {
     setPinnedLeagueIds((current) =>
@@ -296,9 +295,9 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
           onClick={onNavigate}
           className="flex items-center justify-between rounded px-2 py-2 text-[12px] transition-colors"
           style={{
-            color: activeLeagueId ? 'var(--t-text-2)' : 'var(--t-text-1)',
-            background: activeLeagueId ? 'transparent' : 'rgba(255,255,255,0.06)',
-            borderLeft: activeLeagueId ? '2px solid transparent' : '2px solid rgba(255,255,255,0.2)',
+            color: isAllLeaguesActive ? 'var(--t-text-1)' : 'var(--t-text-2)',
+            background: isAllLeaguesActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+            borderLeft: isAllLeaguesActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
             textDecoration: 'none',
           }}
         >
@@ -339,7 +338,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                   aria-hidden="true"
                   className="inline-block h-2.5 w-2.5 rounded-sm"
                   style={{
-                    background: 'var(--t-text-5)',
+                    background: 'var(--t-accent)',
+                    boxShadow: '0 0 10px rgba(0, 230, 118, 0.55)',
                     transform: 'rotate(45deg)',
                   }}
                 />

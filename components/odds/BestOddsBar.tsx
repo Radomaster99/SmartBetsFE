@@ -45,19 +45,6 @@ function OddsRow({
       style={{
         position: 'relative',
         borderBottom: isLast ? undefined : '1px solid var(--t-border)',
-        ...(movement === 'up'
-          ? {
-              background: 'rgba(0,230,118,0.08)',
-              boxShadow: 'inset 0 0 0 1px rgba(0,230,118,0.16)',
-              animation: 'odds-flash-up 0.55s ease-out',
-            }
-          : movement === 'down'
-            ? {
-                background: 'rgba(239,83,80,0.08)',
-                boxShadow: 'inset 0 0 0 1px rgba(239,83,80,0.12)',
-                animation: 'odds-flash-down 0.55s ease-out',
-              }
-            : null),
       }}
     >
       {movement ? (

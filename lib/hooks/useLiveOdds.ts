@@ -189,7 +189,10 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
               }
               return tokenRef.current ?? '';
             },
-            transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
+            // WebSockets are unreliable behind the current hosting proxy in browsers,
+            // and SSE intermittently returns 502 via Cloudflare. LongPolling is the
+            // most stable transport for this deployment.
+            transport: HttpTransportType.LongPolling,
             withCredentials: false,
           })
           .withAutomaticReconnect()
@@ -307,7 +310,10 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
               }
               return tokenRef.current ?? '';
             },
-            transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
+            // WebSockets are unreliable behind the current hosting proxy in browsers,
+            // and SSE intermittently returns 502 via Cloudflare. LongPolling is the
+            // most stable transport for this deployment.
+            transport: HttpTransportType.LongPolling,
             withCredentials: false,
           })
           .withAutomaticReconnect()

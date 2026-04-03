@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { FixtureDetailDto } from '@/lib/types/api';
 import { StatusBadge, formatFixtureStatusLabel } from '@/components/shared/StatusBadge';
 import { TeamLogo } from '@/components/shared/TeamLogo';
@@ -11,7 +12,6 @@ export interface SelectedFixtureTeam {
 
 interface Props {
   detail: FixtureDetailDto;
-  selectedTeamSide?: SelectedFixtureTeam['side'] | null;
   onTeamSelect?: (team: SelectedFixtureTeam) => void;
 }
 
@@ -30,17 +30,16 @@ function TeamCard({
   logoUrl,
   side,
   apiTeamId,
-  isActive,
   onSelect,
 }: {
   name: string;
   logoUrl: string;
   side: 'home' | 'away';
   apiTeamId: number;
-  isActive: boolean;
   onSelect?: (team: SelectedFixtureTeam) => void;
 }) {
   const isInteractive = Boolean(onSelect);
+  const [isHovered, setIsHovered] = useState(false);
 
   const content = (
     <div className="flex min-w-0 flex-col items-center gap-2">
@@ -59,10 +58,14 @@ function TeamCard({
     <button
       type="button"
       onClick={() => onSelect?.({ side, apiTeamId, name, logoUrl })}
-      className="min-w-0 flex-1 rounded-xl px-3 py-3 transition-colors"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="min-w-0 flex-1 rounded-xl px-3 py-3 transition-all duration-150"
       style={{
-        background: isActive ? 'rgba(0,230,118,0.06)' : 'transparent',
-        border: `1px solid ${isActive ? 'rgba(0,230,118,0.35)' : 'transparent'}`,
+        background: isHovered ? 'rgba(0, 230, 118, 0.08)' : 'transparent',
+        border: isHovered ? '1px solid rgba(0, 230, 118, 0.28)' : '1px solid transparent',
+        boxShadow: isHovered ? '0 10px 22px rgba(0, 230, 118, 0.08)' : 'none',
+        transform: isHovered ? 'translateY(-1px)' : 'translateY(0)',
         cursor: 'pointer',
       }}
     >
@@ -71,7 +74,7 @@ function TeamCard({
   );
 }
 
-export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSelect }: Props) {
+export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
   const f = detail.fixture;
   const isLive = f.stateBucket === 'Live';
   const isFinished = f.stateBucket === 'Finished';
@@ -105,7 +108,6 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           logoUrl={f.homeTeamLogoUrl}
           side="home"
           apiTeamId={f.homeTeamApiId}
-          isActive={selectedTeamSide === 'home'}
           onSelect={onTeamSelect}
         />
 
@@ -138,7 +140,6 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           logoUrl={f.awayTeamLogoUrl}
           side="away"
           apiTeamId={f.awayTeamApiId}
-          isActive={selectedTeamSide === 'away'}
           onSelect={onTeamSelect}
         />
       </div>

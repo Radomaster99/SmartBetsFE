@@ -1,0 +1,5 @@
+2026/04/04-01:51:49.677 29f0 Creating DB c:\Users\Master\Desktop\SmartBetsFE\tmp\edge-profile\Default\EdgeCoupons/coupons_data.db since it was missing.
+2026/04/04-01:51:49.683 29f0 Reusing MANIFEST c:\Users\Master\Desktop\SmartBetsFE\tmp\edge-profile\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/04/04-01:51:53.909 491c Level-0 table #5: started
+2026/04/04-01:51:53.911 491c Level-0 table #5: 681988 bytes OK
+2026/04/04-01:51:53.913 491c Delete type=0 #3

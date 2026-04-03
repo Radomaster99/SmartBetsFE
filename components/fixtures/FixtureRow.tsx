@@ -157,28 +157,6 @@ function truncateBookmaker(name: string, max = 11): string {
   return name.length > max ? `${name.slice(0, max - 3)}...` : name;
 }
 
-function getMovementStyles(movement?: LiveOddsMovementDirection) {
-  if (movement === 'up') {
-    return {
-      background: 'rgba(0, 230, 118, 0.14)',
-      borderColor: 'rgba(0, 230, 118, 0.55)',
-      boxShadow: '0 0 0 1px rgba(0, 230, 118, 0.18)',
-      animation: 'odds-flash-up 0.55s ease-out',
-    };
-  }
-
-  if (movement === 'down') {
-    return {
-      background: 'rgba(239, 83, 80, 0.14)',
-      borderColor: 'rgba(239, 83, 80, 0.5)',
-      boxShadow: '0 0 0 1px rgba(239, 83, 80, 0.14)',
-      animation: 'odds-flash-down 0.55s ease-out',
-    };
-  }
-
-  return undefined;
-}
-
 function OddsCell({
   label,
   value,
@@ -196,10 +174,8 @@ function OddsCell({
   movement?: LiveOddsMovementDirection;
   onOddsClick: (event: React.MouseEvent) => void;
 }) {
-  const movementStyles = getMovementStyles(movement);
-
   const content = (
-    <div className="odds-btn odds-btn-grid" style={{ position: 'relative', ...movementStyles }}>
+    <div className="odds-btn odds-btn-grid" style={{ position: 'relative' }}>
       {movement ? (
         <span
           aria-hidden="true"

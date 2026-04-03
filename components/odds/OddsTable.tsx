@@ -54,30 +54,13 @@ function OddsCell({
   isBest: boolean;
   movement?: LiveOddsMovementDirection;
 }) {
-  const movementStyles =
-    movement === 'up'
-      ? {
-          background: 'rgba(0,230,118,0.14)',
-          border: '1px solid rgba(0,230,118,0.55)',
-          boxShadow: '0 0 0 1px rgba(0,230,118,0.18)',
-          animation: 'odds-flash-up 0.55s ease-out',
-        }
-      : movement === 'down'
-        ? {
-            background: 'rgba(239,83,80,0.14)',
-            border: '1px solid rgba(239,83,80,0.5)',
-            boxShadow: '0 0 0 1px rgba(239,83,80,0.14)',
-            animation: 'odds-flash-down 0.55s ease-out',
-          }
-        : null;
-
   return (
     <div
       className="odds-btn"
       style={{
         position: 'relative',
         minWidth: 52,
-        ...(movementStyles ?? (isBest ? { background: BEST_BG, border: BEST_BORDER } : {})),
+        ...(isBest ? { background: BEST_BG, border: BEST_BORDER } : {}),
       }}
     >
       {movement ? (
@@ -197,6 +180,7 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
     columns,
     state: { sorting },
     onSortingChange: setSorting,
+    autoResetPageIndex: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
