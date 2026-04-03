@@ -21,8 +21,13 @@ export function WidgetConfig({ widgetKey }: Props) {
         data-key={widgetKey}
         data-sport="football"
         data-lang="en"
-        data-theme="dark"
+        data-theme="SmartBets"
         data-show-errors="true"
+        data-team-squad="true"
+        data-team-statistics="true"
+        data-player-statistics="true"
+        data-player-trophies="true"
+        data-player-injuries="true"
       />
     </div>
   );

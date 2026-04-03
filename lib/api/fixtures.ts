@@ -5,6 +5,7 @@ import type { FixtureFilters } from '../types/filters';
 export async function getFixtures(filters: FixtureFilters): Promise<PagedResultDto<FixtureDto>> {
   const q = buildQuery({
     leagueId: filters.leagueId,
+    teamId: filters.teamId,
     season: filters.season,
     state: filters.state,
     date: filters.date,

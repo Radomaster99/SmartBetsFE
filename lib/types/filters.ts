@@ -5,6 +5,7 @@ export interface FixtureFilters {
   from?: string;
   to?: string;
   leagueId?: number;
+  teamId?: number;
   season?: number;
   state?: StateBucket;
   page?: number;

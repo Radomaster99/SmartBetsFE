@@ -1,0 +1,69 @@
+/* Centralized API-Sports widget theme.
+   Adjust widget colors here to keep them aligned with the SmartBets site theme. */
+
+:root {
+  --w-warning: #f59e0b;
+  --w-danger: #ef5350;
+  --w-away: #f59e0b;
+  --w-hover: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="light"] {
+  --w-warning: #d97706;
+  --w-danger: #dc2626;
+  --w-away: #d97706;
+  --w-hover: rgba(0, 0, 0, 0.04);
+}
+
+html body api-sports-widget[data-theme="SmartBets"] {
+  --primary-color: var(--t-accent);
+  --success-color: var(--t-accent);
+  --warning-color: var(--w-warning);
+  --danger-color: var(--w-danger);
+  --light-color: var(--t-text-4);
+
+  --home-color: var(--t-accent);
+  --away-color: var(--w-away);
+
+  --text-color: var(--t-text-2);
+  --text-color-info: var(--t-text-4);
+
+  --background-color: var(--t-surface);
+
+  --primary-font-size: 0.72rem;
+  --secondary-font-size: 0.7rem;
+  --button-font-size: 0.75rem;
+  --title-font-size: 0.8rem;
+
+  --header-text-transform: uppercase;
+  --button-text-transform: uppercase;
+  --title-text-transform: uppercase;
+
+  --border: 1px solid var(--t-border);
+  --game-height: 2.3rem;
+  --league-height: 2.35rem;
+
+  --score-size: 2.25rem;
+  --flag-size: 20px;
+  --teams-logo-size: 18px;
+  --teams-logo-size-xl: 5rem;
+  --hover: var(--w-hover);
+}
+
+html[data-theme="light"] body api-sports-widget[data-theme="SmartBets"] {
+  --primary-color: var(--t-accent);
+  --success-color: var(--t-accent);
+  --warning-color: var(--w-warning);
+  --danger-color: var(--w-danger);
+  --light-color: var(--t-text-4);
+
+  --home-color: var(--t-accent);
+  --away-color: var(--w-away);
+
+  --text-color: var(--t-text-2);
+  --text-color-info: var(--t-text-4);
+
+  --background-color: var(--t-surface);
+  --border: 1px solid var(--t-border);
+  --hover: var(--w-hover);
+}

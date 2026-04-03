@@ -95,6 +95,7 @@ function buildUpcomingLeagueHref(leagueId: number, season: number) {
   const next = new URLSearchParams();
   next.set('state', 'Upcoming');
   next.set('leagueId', String(leagueId));
+  next.set('upcomingScope', 'all');
 
   if (season !== DEFAULT_SEASON) {
     next.set('season', String(season));
@@ -165,7 +166,8 @@ export function FootballSidebarContent() {
   const isMatchesPage = pathname === '/football';
   const isStandingsPage = pathname.startsWith('/football/standings');
   const activeLeagueId = parsePositiveInt(searchParams.get('leagueId'));
-  const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
+  const requestedSeason = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
+  const season = activeLeagueId ? requestedSeason : DEFAULT_SEASON;
 
   const { data: leagues, isLoading: leaguesLoading, isError: leaguesError } = useLeagues(season);
   const { data: worldCupLeagues } = useLeagues(2026);
@@ -258,8 +260,8 @@ export function FootballSidebarContent() {
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const standingsHref = buildStandingsHref(activeLeagueId, season);
   const clearLeagueHref = isStandingsPage
-    ? buildStandingsHref(null, season)
-    : buildMatchesHref(searchParams, null, season, isMatchesPage);
+    ? buildStandingsHref(null, DEFAULT_SEASON)
+    : buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
 
   const togglePinnedLeague = (leagueId: number) => {
     setPinnedLeagueIds((current) =>
@@ -269,7 +271,10 @@ export function FootballSidebarContent() {
     );
   };
 
-  const getLeagueHref = (league: LeagueDto) => buildUpcomingLeagueHref(league.apiLeagueId, league.season);
+  const getLeagueHref = (league: LeagueDto) =>
+    isStandingsPage
+      ? buildStandingsHref(league.apiLeagueId, league.season)
+      : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -309,24 +314,41 @@ export function FootballSidebarContent() {
 
       <div className="flex-1 overflow-y-auto px-1 pb-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <div className="px-1 pt-1">
-          <div className="overflow-hidden rounded" style={{ background: 'var(--t-surface)' }}>
+          <div
+            className="overflow-hidden rounded"
+            style={{
+              background: 'var(--t-surface)',
+              border: '1px solid var(--t-border)',
+            }}
+          >
             <button
               type="button"
               onClick={() => setPopularExpanded((current) => !current)}
-              className="flex w-full items-center justify-between px-2 py-2 text-left"
+              className="flex w-full items-center justify-between px-2.5 py-2.5 text-left"
               style={{
-                background: 'transparent',
+                background: 'rgba(0,230,118,0.06)',
                 borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
                 cursor: 'pointer',
               }}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-5)' }}>
-                Popular
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 rounded-sm"
+                  style={{
+                    background: 'var(--t-accent)',
+                    boxShadow: '0 0 0 2px rgba(0,230,118,0.12)',
+                    transform: 'rotate(45deg)',
+                  }}
+                />
+                <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-2)' }}>
+                  Popular
+                </span>
               </span>
               <span
                 className="text-[10px]"
                 style={{
-                  color: 'var(--t-text-5)',
+                  color: 'var(--t-text-4)',
                   transform: popularExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                   transition: 'transform 0.15s ease',
                 }}
@@ -338,7 +360,9 @@ export function FootballSidebarContent() {
             {popularExpanded ? (
               <div className="px-1 pb-1">
                 {popularLeagues.map((item) => {
-                  const href = buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
+                  const href = isStandingsPage
+                    ? buildStandingsHref(item.leagueId, item.targetSeason)
+                    : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
                   const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
 
                   return (

@@ -1,117 +1,209 @@
 'use client';
+import Link from 'next/link';
+import { useMemo } from 'react';
 import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
 import type { StandingDto } from '@/lib/types/api';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 
-const col = createColumnHelper<StandingDto>();
+interface Props {
+  standings: StandingDto[];
+  resolveTeamHref?: (standing: StandingDto) => string | null;
+}
+
+const columnHelper = createColumnHelper<StandingDto>();
 
 function FormDots({ form }: { form: string }) {
-  if (!form) return null;
+  if (!form) {
+    return null;
+  }
+
   const results = form.replace(/[^WDL]/gi, '').split('').slice(-5);
+
   return (
     <div className="flex items-center gap-0.5">
-      {results.map((r, i) => (
+      {results.map((result, index) => (
         <span
-          key={i}
-          className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-black"
+          key={`${result}-${index}`}
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-black"
           style={{
-            background: r.toUpperCase() === 'W' ? '#00e676' : r.toUpperCase() === 'D' ? '#f59e0b' : '#ef5350',
+            background:
+              result.toUpperCase() === 'W'
+                ? '#00e676'
+                : result.toUpperCase() === 'D'
+                  ? '#f59e0b'
+                  : '#ef5350',
             color: '#000',
           }}
         >
-          {r.toUpperCase()}
+          {result.toUpperCase()}
         </span>
       ))}
     </div>
   );
 }
 
-const columns = [
-  col.accessor('rank', {
-    header: '#',
-    cell: (c) => <span className="text-[13px] font-bold w-5 inline-block text-center" style={{ color: 'var(--t-text-4)' }}>{c.getValue()}</span>,
-  }),
-  col.display({
-    id: 'team',
-    header: 'Team',
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <TeamLogo src={row.original.teamLogoUrl} alt={row.original.teamName} size={20} />
-        <span className="text-[13px] font-medium" style={{ color: 'var(--t-text-1)' }}>{row.original.teamName}</span>
-      </div>
-    ),
-  }),
-  col.accessor('played',  { header: 'P',  cell: (c) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{c.getValue()}</span> }),
-  col.accessor('win',     { header: 'W',  cell: (c) => <span className="text-[12px] font-semibold" style={{ color: '#00e676' }}>{c.getValue()}</span> }),
-  col.accessor('draw',    { header: 'D',  cell: (c) => <span className="text-[12px]" style={{ color: '#f59e0b' }}>{c.getValue()}</span> }),
-  col.accessor('lose',    { header: 'L',  cell: (c) => <span className="text-[12px]" style={{ color: '#ef5350' }}>{c.getValue()}</span> }),
-  col.accessor('goalsFor',     { header: 'GF', cell: (c) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{c.getValue()}</span> }),
-  col.accessor('goalsAgainst', { header: 'GA', cell: (c) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{c.getValue()}</span> }),
-  col.accessor('goalsDiff', {
-    header: 'GD',
-    cell: (c) => {
-      const v = c.getValue();
-      return <span className="text-[12px] font-medium" style={{ color: v > 0 ? '#00e676' : v < 0 ? '#ef5350' : 'var(--t-text-4)' }}>{v > 0 ? `+${v}` : v}</span>;
-    },
-  }),
-  col.accessor('points', {
-    header: 'Pts',
-    cell: (c) => <span className="text-[13px] font-black" style={{ color: 'var(--t-text-1)' }}>{c.getValue()}</span>,
-  }),
-  col.accessor('form', {
-    header: 'Form',
-    cell: (c) => <FormDots form={c.getValue()} />,
-  }),
-  col.accessor('description', {
-    header: '',
-    cell: (c) => {
-      const v = c.getValue();
-      if (!v) return null;
-      const isPromo = v.toLowerCase().includes('promot') || v.toLowerCase().includes('champi');
-      const isRele  = v.toLowerCase().includes('relega');
-      return (
-        <span
-          className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide"
-          style={{
-            background: isPromo ? 'rgba(0,230,118,0.15)' : isRele ? 'rgba(239,83,80,0.15)' : 'var(--t-surface-2)',
-            color:      isPromo ? '#00e676'              : isRele ? '#ef5350'               : 'var(--t-text-4)',
-          }}
-        >
-          {v.length > 12 ? v.slice(0, 12) + '…' : v}
-        </span>
-      );
-    },
-  }),
-];
+export function StandingsTable({ standings, resolveTeamHref }: Props) {
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('rank', {
+        header: '#',
+        cell: (context) => (
+          <span className="inline-block w-5 text-center text-[13px] font-bold" style={{ color: 'var(--t-text-4)' }}>
+            {context.getValue()}
+          </span>
+        ),
+      }),
+      columnHelper.display({
+        id: 'team',
+        header: 'Team',
+        cell: ({ row }) => {
+          const href = resolveTeamHref?.(row.original) ?? null;
 
-export function StandingsTable({ standings }: { standings: StandingDto[] }) {
-  const table = useReactTable({ data: standings, columns, getCoreRowModel: getCoreRowModel() });
+          const content = (
+            <div className="flex items-center gap-2">
+              <TeamLogo src={row.original.teamLogoUrl} alt={row.original.teamName} size={20} />
+              <span className="text-[13px] font-medium" style={{ color: href ? 'var(--t-text-1)' : 'var(--t-text-1)' }}>
+                {row.original.teamName}
+              </span>
+            </div>
+          );
+
+          if (!href) {
+            return content;
+          }
+
+          return (
+            <Link
+              href={href}
+              className="transition-colors hover:opacity-90"
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              {content}
+            </Link>
+          );
+        },
+      }),
+      columnHelper.accessor('played', {
+        header: 'P',
+        cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('win', {
+        header: 'W',
+        cell: (context) => <span className="text-[12px] font-semibold" style={{ color: '#00e676' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('draw', {
+        header: 'D',
+        cell: (context) => <span className="text-[12px]" style={{ color: '#f59e0b' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('lose', {
+        header: 'L',
+        cell: (context) => <span className="text-[12px]" style={{ color: '#ef5350' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('goalsFor', {
+        header: 'GF',
+        cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('goalsAgainst', {
+        header: 'GA',
+        cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('goalsDiff', {
+        header: 'GD',
+        cell: (context) => {
+          const value = context.getValue();
+
+          return (
+            <span
+              className="text-[12px] font-medium"
+              style={{ color: value > 0 ? '#00e676' : value < 0 ? '#ef5350' : 'var(--t-text-4)' }}
+            >
+              {value > 0 ? `+${value}` : value}
+            </span>
+          );
+        },
+      }),
+      columnHelper.accessor('points', {
+        header: 'Pts',
+        cell: (context) => <span className="text-[13px] font-black" style={{ color: 'var(--t-text-1)' }}>{context.getValue()}</span>,
+      }),
+      columnHelper.accessor('form', {
+        header: 'Form',
+        cell: (context) => <FormDots form={context.getValue()} />,
+      }),
+      columnHelper.accessor('description', {
+        header: '',
+        cell: (context) => {
+          const value = context.getValue();
+
+          if (!value) {
+            return null;
+          }
+
+          const normalizedValue = value.toLowerCase();
+          const isPromotion = normalizedValue.includes('promot') || normalizedValue.includes('champi');
+          const isRelegation = normalizedValue.includes('relega');
+
+          return (
+            <span
+              className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+              style={{
+                background: isPromotion
+                  ? 'rgba(0,230,118,0.15)'
+                  : isRelegation
+                    ? 'rgba(239,83,80,0.15)'
+                    : 'var(--t-surface-2)',
+                color: isPromotion ? '#00e676' : isRelegation ? '#ef5350' : 'var(--t-text-4)',
+              }}
+            >
+              {value.length > 12 ? `${value.slice(0, 12)}...` : value}
+            </span>
+          );
+        },
+      }),
+    ],
+    [resolveTeamHref],
+  );
+
+  const table = useReactTable({
+    data: standings,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
       <table className="w-full">
         <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
-              {hg.headers.map((h) => (
-                <th key={h.id} className="px-3 py-2.5 text-left text-[10px] uppercase font-bold tracking-wider whitespace-nowrap" style={{ color: 'var(--t-text-6)' }}>
-                  {flexRender(h.column.columnDef.header, h.getContext())}
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id} style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  key={header.id}
+                  className="whitespace-nowrap px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--t-text-6)' }}
+                >
+                  {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
+
         <tbody>
-          {table.getRowModel().rows.map((row, i) => (
+          {table.getRowModel().rows.map((row, index) => (
             <tr
               key={row.id}
               className="transition-colors"
               style={{
                 borderBottom: '1px solid var(--t-border)',
-                background: i % 2 === 0 ? 'transparent' : 'var(--t-surface)',
+                background: index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)',
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'var(--t-surface-2)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = i % 2 === 0 ? 'transparent' : 'var(--t-surface)'; }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.background = 'var(--t-surface-2)';
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)';
+              }}
             >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-3 py-2.5">

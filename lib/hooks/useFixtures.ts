@@ -6,6 +6,7 @@ import type { FixtureFilters } from '../types/filters';
 async function fetchFixtures(filters: FixtureFilters): Promise<PagedResultDto<FixtureDto>> {
   const params = new URLSearchParams();
   if (filters.leagueId) params.set('leagueId', String(filters.leagueId));
+  if (filters.teamId) params.set('teamId', String(filters.teamId));
   if (filters.season) params.set('season', String(filters.season));
   if (filters.state) params.set('state', filters.state);
   if (filters.date) params.set('date', filters.date);

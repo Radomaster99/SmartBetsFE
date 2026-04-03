@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
   const s = req.nextUrl.searchParams;
   const filters: FixtureFilters = {
     leagueId: s.get('leagueId') ? Number(s.get('leagueId')) : undefined,
+    teamId: s.get('teamId') ? Number(s.get('teamId')) : undefined,
     season: s.get('season') ? Number(s.get('season')) : undefined,
     state: (s.get('state') as StateBucket) || undefined,
     date: s.get('date') || undefined,

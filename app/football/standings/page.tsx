@@ -2,7 +2,8 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLeagues } from '@/lib/hooks/useLeagues';
-import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
+import { useStandings } from '@/lib/hooks/useStandings';
+import { StandingsTable } from '@/components/standings/StandingsTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 
@@ -32,12 +33,22 @@ function buildStandingsHref(leagueId: number | null, season: number) {
   return query ? `/football/standings?${query}` : '/football/standings';
 }
 
+function buildTeamHref(apiTeamId: number, leagueId: number, season: number) {
+  const params = new URLSearchParams({
+    leagueId: String(leagueId),
+    season: String(season),
+  });
+
+  return `/football/teams/${apiTeamId}?${params.toString()}`;
+}
+
 function StandingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const leagueId = parsePositiveInt(searchParams.get('leagueId'));
   const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
   const { data: leagues, isLoading: leaguesLoading } = useLeagues(season);
+  const { data: standings, isLoading: standingsLoading, isError: standingsError } = useStandings(leagueId, season);
   const selectedLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
 
   const handleLeagueChange = (value: string) => {
@@ -56,9 +67,9 @@ function StandingsContent() {
   }, [leagueId, router, searchParams, season]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <div
-        className="flex items-center justify-between gap-3 px-5 py-4 flex-wrap"
+        className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
         style={{ borderBottom: '1px solid var(--t-border)' }}
       >
         <div>
@@ -66,16 +77,16 @@ function StandingsContent() {
             Standings
           </h1>
           <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-            Choose a league from the sidebar or from the selector here.
+            Choose a league and click any team to open its detail page.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={leagueId ? String(leagueId) : ''}
             onChange={(event) => handleLeagueChange(event.target.value)}
             disabled={leaguesLoading}
-            className="min-w-[220px] text-[12px] rounded px-3 py-1.5 outline-none"
+            className="min-w-[220px] rounded px-3 py-1.5 text-[12px] outline-none"
             style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
           >
             <option value="">
@@ -91,10 +102,10 @@ function StandingsContent() {
           <select
             value={season}
             onChange={(event) => router.replace(buildStandingsHref(leagueId, Number(event.target.value)), { scroll: false })}
-            className="text-[12px] rounded px-3 py-1.5 outline-none"
+            className="rounded px-3 py-1.5 text-[12px] outline-none"
             style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
           >
-            {[2025, 2024, 2023].map((value) => (
+            {[2026, 2025, 2024, 2023].map((value) => (
               <option key={value} value={value}>
                 {value}/{value + 1}
               </option>
@@ -165,14 +176,20 @@ function StandingsContent() {
               </select>
             </div>
           </div>
-        ) : leaguesLoading && !selectedLeague ? (
+        ) : standingsLoading ? (
           <LoadingSpinner />
+        ) : standingsError ? (
+          <EmptyState title="Failed to load standings" description="Try again or choose another league." />
+        ) : !standings?.length ? (
+          <EmptyState title="No standings available" description="There is no standings data for this league yet." />
         ) : (
-          <ApiSportsWidget
-            key={`${leagueId}-${season}`}
-            type="standings"
-            league={leagueId}
-            season={season}
+          <StandingsTable
+            standings={standings}
+            resolveTeamHref={(standing) =>
+              leagueId && standing.apiTeamId
+                ? buildTeamHref(standing.apiTeamId, leagueId, season)
+                : null
+            }
           />
         )}
       </div>

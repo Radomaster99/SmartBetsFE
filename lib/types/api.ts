@@ -6,7 +6,15 @@ export interface FixtureDto {
   season: number;
   kickoffAt: string;
   status: string;
+  statusLong?: string;
+  elapsed?: number | null;
+  statusExtra?: number | null;
   stateBucket: StateBucket;
+  referee?: string | null;
+  timezone?: string | null;
+  venueName?: string | null;
+  venueCity?: string | null;
+  round?: string | null;
   leagueId: number;
   leagueApiId: number;
   leagueName: string;
@@ -69,6 +77,8 @@ export interface FixtureDetailDto {
 }
 
 export interface StandingDto {
+  teamId: number | null;
+  apiTeamId: number;
   rank: number;
   teamName: string;
   teamLogoUrl: string;
@@ -84,6 +94,24 @@ export interface StandingDto {
   lose: number;
   goalsFor: number;
   goalsAgainst: number;
+}
+
+export interface TeamDto {
+  id: number;
+  apiTeamId: number;
+  name: string;
+  code: string | null;
+  logoUrl: string;
+  founded: number | null;
+  isNational: boolean;
+  venueName: string | null;
+  venueAddress: string | null;
+  venueCity: string | null;
+  venueCapacity: number | null;
+  venueSurface: string | null;
+  venueImageUrl: string | null;
+  countryId: number | null;
+  countryName: string | null;
 }
 
 export interface CountryDto {

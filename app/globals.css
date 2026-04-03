@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./widget-theme.css";
 
 @theme {
   --color-accent: #00e676;
@@ -192,11 +193,14 @@ body {
 
 .widget-wrap .team-squads-container .player-card,
 .widget-wrap .team-squads-container .player-card *,
+.widget-wrap .team-squads-container .player-card[data-id],
 .widget-wrap .team-squads-container .player-target[data-id] {
   cursor: pointer;
 }
 
-.widget-wrap .player-target[data-smartbets-selected] {
+.widget-wrap .player-target[data-smartbets-selected],
+.widget-wrap .player-card[data-smartbets-selected] .player-name,
+.widget-wrap .player-card[data-smartbets-selected] strong {
   color: var(--t-accent);
 }
 
