@@ -590,7 +590,7 @@ export default function FixtureDetailPage({ params }: Props) {
           style={{ color: 'var(--t-text-3)' }}
         >
           <span aria-hidden="true" style={{ fontSize: '13px', lineHeight: 1 }}>
-            &lt;
+            {'<'}
           </span>
           <span>Matches</span>
         </button>
@@ -655,11 +655,37 @@ export default function FixtureDetailPage({ params }: Props) {
           (hasAnyOdds ? (
             <div className="flex flex-col gap-5">
               {isLive ? (
-                <LiveOddsStatusPill
-                  status={liveOddsRealtimeStatus}
-                  hasLiveOdds={hasLiveOdds}
-                  usingPreMatchFallback={usingPreMatchFallback}
-                />
+                <div className="flex flex-col gap-2">
+                  <LiveOddsStatusPill
+                    status={liveOddsRealtimeStatus}
+                    hasLiveOdds={hasLiveOdds}
+                    usingPreMatchFallback={usingPreMatchFallback}
+                  />
+                  {usingPreMatchFallback ? (
+                    <div
+                      className="rounded-md px-3 py-2 text-[11px]"
+                      style={{
+                        background: 'rgba(245,158,11,0.1)',
+                        border: '1px solid rgba(245,158,11,0.24)',
+                        color: '#fbbf24',
+                      }}
+                    >
+                      Provider live markets are missing for this fixture right now, so SmartBets is showing the latest pre-match prices instead.
+                    </div>
+                  ) : null}
+                  {liveOddsRealtimeStatus === 'connected' && hasLiveOdds ? (
+                    <div
+                      className="rounded-md px-3 py-2 text-[11px]"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid var(--t-border)',
+                        color: 'var(--t-text-4)',
+                      }}
+                    >
+                      Live price movements flash in the table below as the provider updates the market.
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
 
               {resolvedBestOdds ? (

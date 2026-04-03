@@ -58,11 +58,11 @@ function ActionButton({ btn, loading }: { btn: ActionBtn; loading: string | null
       title={isDisabled && btn.disabledReason && !loading ? btn.disabledReason : undefined}
       onClick={btn.onClick}
       disabled={isDisabled}
-      className="rounded px-3 py-1.5 text-[12px] font-bold transition-all disabled:opacity-40"
+      className={`${btn.accent ? 'cta-btn' : 'chrome-btn'} rounded px-3 py-1.5 text-[12px] font-bold transition-all disabled:opacity-40`}
       style={
         btn.accent
-          ? { background: 'rgba(0,230,118,0.13)', color: '#00e676', border: '1px solid rgba(0,230,118,0.28)' }
-          : { background: 'var(--t-surface-2)', color: 'var(--t-text-2)', border: '1px solid var(--t-border-2)' }
+          ? {}
+          : { color: 'var(--t-text-2)' }
       }
     >
       {isRunning ? btn.runningLabel : btn.label}
@@ -71,8 +71,9 @@ function ActionButton({ btn, loading }: { btn: ActionBtn; loading: string | null
 }
 
 export default function AdminSyncPage() {
+  const ALL_LEAGUES_VALUE = '__all__';
   const [season, setSeason] = useState(DEFAULT_SEASON);
-  const [syncLeagueId, setSyncLeagueId] = useState('');
+  const [syncLeagueId, setSyncLeagueId] = useState(ALL_LEAGUES_VALUE);
   const [syncSeason, setSyncSeason] = useState(String(DEFAULT_SEASON));
   const [includeOdds, setIncludeOdds] = useState(false);
   const [forceSync, setForceSync] = useState(false);
@@ -103,11 +104,54 @@ export default function AdminSyncPage() {
     }
   }
 
+  async function runSequence(action: string, steps: Array<{ label: string; url: string }>) {
+    setLoading(action);
+    setResult(null);
+
+    const messages: string[] = [];
+
+    try {
+      for (const step of steps) {
+        const res = await fetch(step.url, { method: 'POST' });
+        const json = await res.json().catch(() => ({}));
+        messages.push(`${step.label}: ${res.ok ? 'OK' : `ERR ${res.status}`}`);
+        messages.push(JSON.stringify(json, null, 2));
+
+        if (!res.ok) {
+          setResult({
+            action,
+            ok: false,
+            message: messages.join('\n\n'),
+          });
+          return;
+        }
+      }
+
+      setResult({
+        action,
+        ok: true,
+        message: messages.join('\n\n'),
+      });
+      refetch();
+    } catch (e) {
+      setResult({ action, ok: false, message: `${messages.join('\n\n')}\n\n${String(e)}`.trim() });
+    } finally {
+      setLoading(null);
+    }
+  }
+
   const syncLeagues = Array.isArray(status?.leagues) ? status.leagues : [];
   const globalStates = Array.isArray(status?.global) ? status.global : [];
   const countriesState = globalStates.find((g) => g.entityType === 'countries');
   const leaguesState = globalStates.find((g) => g.entityType === 'leagues');
   const liveBetTypesState = globalStates.find((g) => g.entityType === 'live_bet_types');
+  const leagueNameById = new Map(syncLeagues.map((league) => [String(league.leagueApiId), `${league.countryName} - ${league.leagueName}`]));
+  const selectedLeagueIds =
+    syncLeagueId === ALL_LEAGUES_VALUE
+      ? Array.from(new Set(syncLeagues.map((league) => String(league.leagueApiId))))
+      : syncLeagueId
+        ? [syncLeagueId]
+        : [];
 
   function buildCoreDataUrl() {
     const params = new URLSearchParams();
@@ -117,42 +161,60 @@ export default function AdminSyncPage() {
     return `/api/preload/run${query ? `?${query}` : ''}`;
   }
 
-  const hasLeague = Boolean(syncLeagueId);
-  const hasLeagueAndSeason = Boolean(syncLeagueId && syncSeason);
+  const hasLeague = selectedLeagueIds.length > 0;
+  const hasLeagueAndSeason = Boolean(selectedLeagueIds.length > 0 && syncSeason);
+
+  function runLeagueAction(action: string, buildUrl: (leagueId: string) => string) {
+    if (syncLeagueId === ALL_LEAGUES_VALUE) {
+      return runSequence(
+        action,
+        selectedLeagueIds.map((leagueId) => ({
+          label: `${action} - ${leagueNameById.get(leagueId) ?? leagueId}`,
+          url: buildUrl(leagueId),
+        })),
+      );
+    }
+
+    if (!syncLeagueId) {
+      return;
+    }
+
+    return runAction(action, buildUrl(syncLeagueId));
+  }
 
   const perLeagueButtons: ActionBtn[] = [
     {
       id: 'upcoming',
       label: 'Sync Upcoming Fixtures',
       runningLabel: 'Syncing...',
-      onClick: () => runAction('upcoming', `/api/fixtures/sync-upcoming?leagueId=${syncLeagueId}&season=${syncSeason}`),
+      onClick: () => runLeagueAction('upcoming', (leagueId) => `/api/fixtures/sync-upcoming?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
-      disabledReason: 'Select a league and season',
+      disabledReason: 'Select a league group and season',
     },
     {
       id: 'fixtures-full',
       label: 'Sync Full Fixtures',
       runningLabel: 'Syncing...',
-      onClick: () => runAction('fixtures-full', `/api/fixtures/sync?leagueId=${syncLeagueId}&season=${syncSeason}`),
+      onClick: () => runLeagueAction('fixtures-full', (leagueId) => `/api/fixtures/sync?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
-      disabledReason: 'Select a league and season',
+      disabledReason: 'Select a league group and season',
     },
     {
       id: 'odds',
       label: 'Sync Pre-match Odds',
       runningLabel: 'Syncing...',
-      onClick: () => runAction('odds', `/api/odds/sync?leagueId=${syncLeagueId}&season=${syncSeason}`),
+      onClick: () => runLeagueAction('odds', (leagueId) => `/api/odds/sync?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
-      disabledReason: 'Select a league and season',
+      disabledReason: 'Select a league group and season',
     },
     {
       id: 'live-odds',
       label: 'Sync Live Odds',
       runningLabel: 'Syncing...',
       accent: true,
-      onClick: () => runAction('live-odds', `/api/odds/live/sync?leagueId=${syncLeagueId}`),
+      onClick: () => runLeagueAction('live-odds', (leagueId) => `/api/odds/live/sync?leagueId=${leagueId}`),
       disabled: !hasLeague,
-      disabledReason: 'Select a league',
+      disabledReason: 'Select a league group',
     },
   ];
 
@@ -167,7 +229,22 @@ export default function AdminSyncPage() {
         </p>
       </div>
 
-      <div className="mb-4 rounded-lg p-4" style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
+        <div className="panel-shell rounded-lg p-3">
+          <SectionTitle>What Sync Core Data Really Does</SectionTitle>
+          <SectionDesc>
+            Countries, leagues, bookmaker catalog, teams, and full fixtures. It is not a literal sync-all and does not pull live odds.
+          </SectionDesc>
+        </div>
+        <div className="panel-shell rounded-lg p-3">
+          <SectionTitle>Live Odds Requirements</SectionTitle>
+          <SectionDesc>
+            Live odds still depend on backend automation, valid live bet IDs, JWT config, and provider availability for the selected league.
+          </SectionDesc>
+        </div>
+      </div>
+
+      <div className="panel-shell mb-4 rounded-lg p-4">
         <SectionTitle>Core Data</SectionTitle>
         <SectionDesc>
           Bootstraps active league-seasons: countries, leagues, bookmaker catalog, teams, and full fixtures. Pre-match odds
@@ -180,7 +257,7 @@ export default function AdminSyncPage() {
               type="checkbox"
               checked={includeOdds}
               onChange={(e) => setIncludeOdds(e.target.checked)}
-              className="accent-green-400"
+            className="accent-green-400"
             />
             Include pre-match odds
           </label>
@@ -189,28 +266,44 @@ export default function AdminSyncPage() {
               type="checkbox"
               checked={forceSync}
               onChange={(e) => setForceSync(e.target.checked)}
-              className="accent-green-400"
+            className="accent-green-400"
             />
             Force refresh
           </label>
         </div>
 
-        <button
-          type="button"
-          onClick={() => runAction('core-data', buildCoreDataUrl())}
-          disabled={Boolean(loading)}
-          className="rounded px-4 py-2 text-[12px] font-bold transition-all disabled:opacity-40"
-          style={{ background: 'rgba(0,230,118,0.15)', color: '#00e676', border: '1px solid rgba(0,230,118,0.3)' }}
-        >
-          {loading === 'core-data' ? 'Running...' : 'Sync Core Data'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => runAction('core-data', buildCoreDataUrl())}
+            disabled={Boolean(loading)}
+            className="cta-btn rounded px-4 py-2 text-[12px] font-bold transition-all disabled:opacity-40"
+            style={{}}
+          >
+            {loading === 'core-data' ? 'Running...' : 'Sync Core Data'}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              runSequence('startup-pack', [
+                { label: 'Core data', url: buildCoreDataUrl() },
+                { label: 'Live bet types', url: '/api/odds/live-bets/sync' },
+              ])
+            }
+            disabled={Boolean(loading)}
+            className="chrome-btn rounded px-4 py-2 text-[12px] font-bold transition-all disabled:opacity-40"
+            style={{}}
+          >
+            {loading === 'startup-pack' ? 'Running...' : 'Startup Pack'}
+          </button>
+        </div>
       </div>
 
-      <div className="mb-4 rounded-lg p-4" style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
+      <div className="panel-shell mb-4 rounded-lg p-4">
         <SectionTitle>Per-League</SectionTitle>
         <SectionDesc>
-          Target a specific league and season. Upcoming fixtures, full fixtures, and pre-match odds require both. Live odds
-          only requires a league.
+          Target a specific league and season, or choose all active leagues to run a bulk pass from the admin panel. Live odds
+          only requires league selection.
         </SectionDesc>
 
         <div className="mb-3 flex flex-wrap items-end gap-3">
@@ -221,10 +314,10 @@ export default function AdminSyncPage() {
             <select
               value={syncLeagueId}
               onChange={(e) => setSyncLeagueId(e.target.value)}
-              className="min-w-[220px] rounded px-3 py-1.5 text-[12px] outline-none"
-              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
+              className="input-shell min-w-[220px] px-3 py-1.5 text-[12px]"
+              style={{}}
             >
-              <option value="">- select a league -</option>
+              <option value={ALL_LEAGUES_VALUE}>All active leagues ({selectedLeagueIds.length})</option>
               {syncLeagues.map((league) => (
                 <option key={league.leagueApiId} value={String(league.leagueApiId)}>
                   {league.countryName} - {league.leagueName}
@@ -240,10 +333,16 @@ export default function AdminSyncPage() {
               type="number"
               value={syncSeason}
               onChange={(e) => setSyncSeason(e.target.value)}
-              className="w-24 rounded px-3 py-1.5 text-[12px] outline-none"
-              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
+              className="input-shell w-24 px-3 py-1.5 text-[12px]"
+              style={{}}
             />
           </div>
+        </div>
+
+        <div className="mb-3 rounded-md px-3 py-2 text-[11px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--t-border)', color: 'var(--t-text-4)' }}>
+          {syncLeagueId === ALL_LEAGUES_VALUE
+            ? `Bulk mode is armed for ${selectedLeagueIds.length} active leagues. Per-league actions will run sequentially.`
+            : `Targeting ${leagueNameById.get(syncLeagueId) ?? 'one league'} for manual operations.`}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -253,18 +352,21 @@ export default function AdminSyncPage() {
         </div>
       </div>
 
-      <div className="mb-5 rounded-lg p-4" style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
+      <div className="panel-shell mb-5 rounded-lg p-4">
         <SectionTitle>Reference Data</SectionTitle>
         <SectionDesc>
           Live bet type IDs from the provider. Required before filtering live odds by bet type. Use this if live-odds sync is
           enabled but bet IDs have not been populated yet.
         </SectionDesc>
+        <div className="mb-3 rounded-md px-3 py-2 text-[11px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--t-border)', color: 'var(--t-text-4)' }}>
+          Practical flow: sync live bet types first, then run Sync Live Odds for a league with active live fixtures, then check whether the backend returned provider data.
+        </div>
         <button
           type="button"
           onClick={() => runAction('live-bets', '/api/odds/live-bets/sync')}
           disabled={Boolean(loading)}
-          className="rounded px-3 py-1.5 text-[12px] font-bold transition-all disabled:opacity-40"
-          style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)', border: '1px solid var(--t-border-2)' }}
+          className="chrome-btn rounded px-3 py-1.5 text-[12px] font-bold transition-all disabled:opacity-40"
+          style={{}}
         >
           {loading === 'live-bets' ? 'Syncing...' : 'Sync Live Bet Types'}
         </button>
@@ -287,14 +389,14 @@ export default function AdminSyncPage() {
       )}
 
       {status && (
-        <div className="mb-5 grid grid-cols-4 gap-3">
+        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-4">
           {[
             { label: 'Countries', ts: countriesState?.lastSyncedAtUtc ?? null },
             { label: 'Leagues', ts: leaguesState?.lastSyncedAtUtc ?? null },
             { label: 'Live Bet Types', ts: liveBetTypesState?.lastSyncedAtUtc ?? null },
             { label: 'Status At', ts: status.generatedAtUtc },
           ].map(({ label, ts }) => (
-            <div key={label} className="rounded p-3" style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}>
+            <div key={label} className="panel-shell rounded p-3">
               <div className="mb-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
                 {label}
               </div>

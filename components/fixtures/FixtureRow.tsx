@@ -1,15 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { FixtureDto } from '@/lib/types/api';
-import { useBestOdds } from '@/lib/hooks/useOdds';
+import type { BestOddsDto, FixtureDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import { buildBookmakerHref } from '@/lib/bookmakers';
 
 interface Props {
   fixture: FixtureDto;
+  bestOddsFallback?: BestOddsDto | null;
   oddsMovement?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
+  isSaved?: boolean;
+  onToggleSave?: (fixtureId: number) => void;
 }
 
 function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
@@ -46,22 +48,65 @@ function formatLiveMinute(status: string, elapsed?: number | null, statusExtra?:
   return normalizedStatus;
 }
 
+function getLiveSourceMeta(source?: 'live' | 'prematch' | 'none' | null) {
+  if (source === 'live') {
+    return {
+      label: 'Live prices',
+      color: 'var(--t-accent)',
+      background: 'rgba(0,230,118,0.14)',
+      borderColor: 'rgba(0,230,118,0.28)',
+    };
+  }
+
+  if (source === 'prematch') {
+    return {
+      label: 'Pre-match',
+      color: '#fbbf24',
+      background: 'rgba(245,158,11,0.14)',
+      borderColor: 'rgba(245,158,11,0.28)',
+    };
+  }
+
+  return {
+    label: 'Waiting',
+    color: 'var(--t-text-4)',
+    background: 'rgba(148,163,184,0.12)',
+    borderColor: 'rgba(148,163,184,0.2)',
+  };
+}
+
 function renderTimeCell(
   iso: string,
   stateBucket: string,
   status: string,
   elapsed?: number | null,
   statusExtra?: number | null,
+  liveSource?: 'live' | 'prematch' | 'none' | null,
+  liveSaveControl?: React.ReactNode,
 ) {
   if (stateBucket === 'Live') {
     const liveLabel = formatLiveMinute(status, elapsed, statusExtra);
+    const sourceMeta = getLiveSourceMeta(liveSource);
     return (
       <div className="flex flex-col items-center gap-0.5">
-        <span className="rounded px-1 py-0.5 text-[10px] font-black" style={{ background: '#7f1d1d', color: '#fca5a5' }}>
-          LIVE
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="rounded px-1 py-0.5 text-[10px] font-black" style={{ background: '#7f1d1d', color: '#fca5a5' }}>
+            LIVE
+          </span>
+          {liveSaveControl}
+        </div>
         <span className="max-w-[68px] text-center text-[10px] font-bold leading-tight" style={{ color: '#fca5a5' }}>
           {liveLabel}
+        </span>
+        <span
+          className="rounded-full border px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-[0.08em]"
+          style={{
+            color: sourceMeta.color,
+            background: sourceMeta.background,
+            borderColor: sourceMeta.borderColor,
+          }}
+        >
+          {sourceMeta.label}
         </span>
       </div>
     );
@@ -220,44 +265,60 @@ function OddsCell({
   );
 }
 
-export function FixtureRow({ fixture, oddsMovement }: Props) {
+function SaveButton({
+  saved,
+  onClick,
+}: {
+  saved: boolean;
+  onClick: (event: React.MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black transition-colors"
+      style={{
+        background: saved ? 'rgba(0,230,118,0.12)' : 'var(--t-surface-2)',
+        borderColor: saved ? 'rgba(0,230,118,0.28)' : 'var(--t-border-2)',
+        color: saved ? 'var(--t-accent)' : 'var(--t-text-5)',
+        cursor: 'pointer',
+      }}
+      aria-label={saved ? 'Remove fixture from watchlist' : 'Save fixture to watchlist'}
+      title={saved ? 'Saved to watchlist' : 'Save to watchlist'}
+    >
+      {saved ? '\u2605' : '\u2606'}
+    </button>
+  );
+}
+
+export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = false, onToggleSave }: Props) {
   const router = useRouter();
   const isLive = fixture.stateBucket === 'Live';
   const liveSummary = fixture.liveOddsSummary ?? null;
+  const liveSource = liveSummary?.source ?? 'none';
   const needsPreMatchFallback =
     isLive &&
-    (!liveSummary ||
-      (liveSummary.source !== 'live' &&
-        liveSummary.source !== 'prematch'));
-  const { data: bestOdds } = useBestOdds(String(fixture.apiFixtureId), undefined, {
-    enabled: !isLive || needsPreMatchFallback,
-  });
+    (!liveSummary || (liveSummary.source !== 'live' && liveSummary.source !== 'prematch'));
+  const bestOdds = !isLive || needsPreMatchFallback ? bestOddsFallback ?? null : null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  const homeOdd = isLive
-    ? liveSummary?.bestHomeOdd ?? bestOdds?.bestHomeOdd ?? null
-    : bestOdds?.bestHomeOdd ?? null;
-  const homeBookmaker = isLive
-    ? liveSummary?.bestHomeBookmaker ?? bestOdds?.bestHomeBookmaker ?? null
-    : bestOdds?.bestHomeBookmaker ?? null;
-  const drawOdd = isLive
-    ? liveSummary?.bestDrawOdd ?? bestOdds?.bestDrawOdd ?? null
-    : bestOdds?.bestDrawOdd ?? null;
-  const drawBookmaker = isLive
-    ? liveSummary?.bestDrawBookmaker ?? bestOdds?.bestDrawBookmaker ?? null
-    : bestOdds?.bestDrawBookmaker ?? null;
-  const awayOdd = isLive
-    ? liveSummary?.bestAwayOdd ?? bestOdds?.bestAwayOdd ?? null
-    : bestOdds?.bestAwayOdd ?? null;
-  const awayBookmaker = isLive
-    ? liveSummary?.bestAwayBookmaker ?? bestOdds?.bestAwayBookmaker ?? null
-    : bestOdds?.bestAwayBookmaker ?? null;
+  const homeOdd = isLive ? liveSummary?.bestHomeOdd ?? bestOdds?.bestHomeOdd ?? null : bestOdds?.bestHomeOdd ?? null;
+  const homeBookmaker = isLive ? liveSummary?.bestHomeBookmaker ?? bestOdds?.bestHomeBookmaker ?? null : bestOdds?.bestHomeBookmaker ?? null;
+  const drawOdd = isLive ? liveSummary?.bestDrawOdd ?? bestOdds?.bestDrawOdd ?? null : bestOdds?.bestDrawOdd ?? null;
+  const drawBookmaker = isLive ? liveSummary?.bestDrawBookmaker ?? bestOdds?.bestDrawBookmaker ?? null : bestOdds?.bestDrawBookmaker ?? null;
+  const awayOdd = isLive ? liveSummary?.bestAwayOdd ?? bestOdds?.bestAwayOdd ?? null : bestOdds?.bestAwayOdd ?? null;
+  const awayBookmaker = isLive ? liveSummary?.bestAwayBookmaker ?? bestOdds?.bestAwayBookmaker ?? null : bestOdds?.bestAwayBookmaker ?? null;
 
   const detailHref = buildFixtureHref(fixture.apiFixtureId);
 
   const openOddsTab = (event: React.MouseEvent) => {
     event.stopPropagation();
     router.push(buildFixtureHref(fixture.apiFixtureId, 'odds'));
+  };
+
+  const toggleSave = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onToggleSave?.(fixture.apiFixtureId);
   };
 
   return (
@@ -276,7 +337,18 @@ export function FixtureRow({ fixture, oddsMovement }: Props) {
       }}
     >
       <td className="w-[80px] px-2 py-2 pl-3 text-center">
-        {renderTimeCell(fixture.kickoffAt, fixture.stateBucket, fixture.status ?? '', fixture.elapsed, fixture.statusExtra)}
+        <div className="flex flex-col items-center gap-1">
+          {renderTimeCell(
+            fixture.kickoffAt,
+            fixture.stateBucket,
+            fixture.status ?? '',
+            fixture.elapsed,
+            fixture.statusExtra,
+            liveSource,
+            isLive ? <SaveButton saved={isSaved} onClick={toggleSave} /> : undefined,
+          )}
+          {!isLive ? <SaveButton saved={isSaved} onClick={toggleSave} /> : null}
+        </div>
       </td>
 
       <td className="px-2 py-2">

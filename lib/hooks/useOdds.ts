@@ -5,15 +5,17 @@ import type { OddDto, BestOddsDto } from '../types/api';
 async function fetchOdds(fixtureId: string, marketName?: string): Promise<OddDto[]> {
   const params = new URLSearchParams();
   if (marketName) params.set('marketName', marketName);
-  const res = await fetch(`/api/fixtures/${fixtureId}/odds?${params}`);
+  const query = params.toString();
+  const res = await fetch(`/api/fixtures/${fixtureId}/odds${query ? `?${query}` : ''}`);
   if (!res.ok) return [];
   return res.json();
 }
 
-async function fetchBestOdds(fixtureId: string, marketName?: string): Promise<BestOddsDto | null> {
+export async function fetchBestOdds(fixtureId: string, marketName?: string): Promise<BestOddsDto | null> {
   const params = new URLSearchParams();
   if (marketName) params.set('marketName', marketName);
-  const res = await fetch(`/api/fixtures/${fixtureId}/best-odds?${params}`);
+  const query = params.toString();
+  const res = await fetch(`/api/fixtures/${fixtureId}/best-odds${query ? `?${query}` : ''}`);
   if (!res.ok) return null;
   return res.json();
 }

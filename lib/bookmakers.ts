@@ -68,6 +68,57 @@ const BOOKMAKER_REGISTRY: Record<string, string> = {
   'super-bet':             'https://www.superbet.com',
 };
 
+type BookmakerMetaSeed = {
+  order: number;
+  short: string;
+  accent: string;
+};
+
+export type BookmakerMeta = BookmakerMetaSeed & {
+  slug: string;
+  name: string;
+  logoText: string;
+};
+
+const BOOKMAKER_META_REGISTRY: Record<string, BookmakerMetaSeed> = {
+  'bet365': { order: 1, short: 'B365', accent: '#1db954' },
+  'pinnacle': { order: 2, short: 'PIN', accent: '#ef4444' },
+  'pinnacle-sports': { order: 2, short: 'PIN', accent: '#ef4444' },
+  'betfair': { order: 3, short: 'BF', accent: '#f59e0b' },
+  'betfair-exchange': { order: 3, short: 'BFX', accent: '#f59e0b' },
+  'betfair-sportsbook': { order: 4, short: 'BF', accent: '#f59e0b' },
+  'william-hill': { order: 5, short: 'WH', accent: '#1d4ed8' },
+  'williamhill': { order: 5, short: 'WH', accent: '#1d4ed8' },
+  'unibet': { order: 6, short: 'UNI', accent: '#16a34a' },
+  'betano': { order: 7, short: 'BTN', accent: '#f97316' },
+  'bwin': { order: 8, short: 'BWN', accent: '#facc15' },
+  'betway': { order: 9, short: 'BTW', accent: '#22c55e' },
+  '1xbet': { order: 10, short: '1X', accent: '#2563eb' },
+  '1x-bet': { order: 10, short: '1X', accent: '#2563eb' },
+  'marathonbet': { order: 11, short: 'MAR', accent: '#0ea5e9' },
+  'marathon-bet': { order: 11, short: 'MAR', accent: '#0ea5e9' },
+  'betclic': { order: 12, short: 'BC', accent: '#ef4444' },
+  'interwetten': { order: 13, short: 'IW', accent: '#e11d48' },
+  '888sport': { order: 14, short: '888', accent: '#0ea5e9' },
+  '888-sport': { order: 14, short: '888', accent: '#0ea5e9' },
+  'ladbrokes': { order: 15, short: 'LAD', accent: '#ef4444' },
+  'coral': { order: 16, short: 'COR', accent: '#06b6d4' },
+  'paddy-power': { order: 17, short: 'PP', accent: '#16a34a' },
+  'paddypower': { order: 17, short: 'PP', accent: '#16a34a' },
+  'skybet': { order: 18, short: 'SKY', accent: '#2563eb' },
+  'sky-bet': { order: 18, short: 'SKY', accent: '#2563eb' },
+  'sportingbet': { order: 19, short: 'SPB', accent: '#22c55e' },
+  'sporting-bet': { order: 19, short: 'SPB', accent: '#22c55e' },
+  'betsson': { order: 20, short: 'BTS', accent: '#2563eb' },
+  'nordicbet': { order: 21, short: 'NB', accent: '#06b6d4' },
+  'nordic-bet': { order: 21, short: 'NB', accent: '#06b6d4' },
+  'betsafe': { order: 22, short: 'SAFE', accent: '#2563eb' },
+  'coolbet': { order: 23, short: 'COOL', accent: '#7c3aed' },
+  'fortuna': { order: 24, short: 'FOR', accent: '#eab308' },
+  'superbet': { order: 25, short: 'SB', accent: '#ef4444' },
+  'super-bet': { order: 25, short: 'SB', accent: '#ef4444' },
+};
+
 /**
  * Converts a bookmaker display name (as returned by the backend API)
  * into a URL-safe slug.
@@ -79,6 +130,37 @@ export function bookmakerNameToSlug(name: string): string {
     .trim()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
+}
+
+function fallbackShort(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9 ]/g, ' ').trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return cleaned.slice(0, 3).toUpperCase() || 'BK';
+}
+
+function resolveMetaSeed(slug: string): BookmakerMetaSeed | null {
+  return BOOKMAKER_META_REGISTRY[slug] ?? BOOKMAKER_META_REGISTRY[slug.replace(/-/g, '')] ?? null;
+}
+
+export function getBookmakerMeta(name: string): BookmakerMeta {
+  const slug = bookmakerNameToSlug(name);
+  const seed = resolveMetaSeed(slug);
+
+  return {
+    slug,
+    name,
+    logoText: seed?.short ?? fallbackShort(name),
+    short: seed?.short ?? fallbackShort(name),
+    order: seed?.order ?? 999,
+    accent: seed?.accent ?? '#64748b',
+  };
+}
+
+export function getBookmakerOrder(name: string): number {
+  return getBookmakerMeta(name).order;
 }
 
 /**

@@ -1,4 +1,5 @@
 'use client';
+
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -31,10 +32,7 @@ interface SearchParamsLike {
 }
 
 function parsePositiveInt(value: string | null): number | null {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
@@ -43,34 +41,19 @@ function normalizeCountryName(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function buildMatchesHref(
-  currentParams: SearchParamsLike,
-  leagueId: number | null,
-  season: number,
-  preserveCurrentFilters: boolean,
-) {
+function buildMatchesHref(currentParams: SearchParamsLike, leagueId: number | null, season: number, preserveCurrentFilters: boolean) {
   const next = new URLSearchParams();
 
   if (preserveCurrentFilters) {
     const date = currentParams.get('date');
     const state = currentParams.get('state');
 
-    if (date) {
-      next.set('date', date);
-    }
-
-    if (state) {
-      next.set('state', state);
-    }
+    if (date) next.set('date', date);
+    if (state) next.set('state', state);
   }
 
-  if (leagueId) {
-    next.set('leagueId', String(leagueId));
-  }
-
-  if (leagueId || season !== DEFAULT_SEASON) {
-    next.set('season', String(season));
-  }
+  if (leagueId) next.set('leagueId', String(leagueId));
+  if (leagueId || season !== DEFAULT_SEASON) next.set('season', String(season));
 
   const query = next.toString();
   return query ? `/football?${query}` : '/football';
@@ -78,15 +61,8 @@ function buildMatchesHref(
 
 function buildStandingsHref(leagueId: number | null, season: number) {
   const next = new URLSearchParams();
-
-  if (leagueId) {
-    next.set('leagueId', String(leagueId));
-  }
-
-  if (leagueId || season !== DEFAULT_SEASON) {
-    next.set('season', String(season));
-  }
-
+  if (leagueId) next.set('leagueId', String(leagueId));
+  if (leagueId || season !== DEFAULT_SEASON) next.set('season', String(season));
   const query = next.toString();
   return query ? `/football/standings?${query}` : '/football/standings';
 }
@@ -105,9 +81,7 @@ function buildUpcomingLeagueHref(leagueId: number, season: number) {
 }
 
 function buildCountryGroups(leagues: LeagueDto[] | undefined, countries: CountryDto[] | undefined): CountryGroup[] {
-  if (!leagues?.length) {
-    return [];
-  }
+  if (!leagues?.length) return [];
 
   const countriesByName = new Map<string, CountryDto>();
   countries?.forEach((country) => {
@@ -147,18 +121,16 @@ function sortPinnedLeagues(leagues: LeagueDto[], pinnedLeagueIds: number[]) {
   return [...leagues].sort((a, b) => {
     const rankA = rank.get(a.apiLeagueId) ?? Number.MAX_SAFE_INTEGER;
     const rankB = rank.get(b.apiLeagueId) ?? Number.MAX_SAFE_INTEGER;
-
-    if (rankA !== rankB) {
-      return rankA - rankB;
-    }
-
+    if (rankA !== rankB) return rankA - rankB;
     return a.name.localeCompare(b.name);
   });
 }
 
-export function FootballSidebarContent() {
+export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [search, setSearch] = useState('');
+  const normalizedSearch = search.trim().toLowerCase();
   const [popularExpanded, setPopularExpanded] = useState(true);
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
   const [pinnedLeagueIds, setPinnedLeagueIds] = useState<number[]>([]);
@@ -179,18 +151,39 @@ export function FootballSidebarContent() {
     [allCountryGroups],
   );
 
-  const countryGroups = allCountryGroups;
+  const countryGroups = useMemo(() => {
+    if (!normalizedSearch) return allCountryGroups;
+
+    return allCountryGroups
+      .map((group) => ({
+        ...group,
+        leagues: group.leagues.filter(
+          (league) =>
+            league.name.toLowerCase().includes(normalizedSearch) ||
+            group.countryName.toLowerCase().includes(normalizedSearch),
+        ),
+      }))
+      .filter((group) => group.leagues.length > 0 || group.countryName.toLowerCase().includes(normalizedSearch));
+  }, [allCountryGroups, normalizedSearch]);
 
   const pinnedLeagues = useMemo(() => {
     if (!leagues?.length || !pinnedLeagueIds.length) {
       return [];
     }
 
-    return sortPinnedLeagues(
+    const sorted = sortPinnedLeagues(
       leagues.filter((league) => pinnedLeagueIds.includes(league.apiLeagueId)),
       pinnedLeagueIds,
     );
-  }, [leagues, pinnedLeagueIds]);
+
+    if (!normalizedSearch) return sorted;
+
+    return sorted.filter(
+      (league) =>
+        league.name.toLowerCase().includes(normalizedSearch) ||
+        league.countryName.toLowerCase().includes(normalizedSearch),
+    );
+  }, [leagues, normalizedSearch, pinnedLeagueIds]);
 
   const popularLeagues = useMemo(
     () =>
@@ -203,8 +196,8 @@ export function FootballSidebarContent() {
           league,
           targetSeason: item.season ?? season,
         };
-      }),
-    [leagues, season, worldCupLeagues],
+      }).filter((item) => !normalizedSearch || item.displayName.toLowerCase().includes(normalizedSearch)),
+    [leagues, normalizedSearch, season, worldCupLeagues],
   );
 
   useEffect(() => {
@@ -214,9 +207,7 @@ export function FootballSidebarContent() {
 
     try {
       const rawValue = window.localStorage.getItem(PINNED_LEAGUES_STORAGE_KEY);
-      if (!rawValue) {
-        return;
-      }
+      if (!rawValue) return;
 
       const parsed = JSON.parse(rawValue);
       if (Array.isArray(parsed)) {
@@ -247,15 +238,15 @@ export function FootballSidebarContent() {
         const hasActiveLeague = group.leagues.some((league) => league.apiLeagueId === activeLeagueId);
 
         if (typeof next[group.countryName] === 'undefined') {
-          next[group.countryName] = hasActiveLeague;
-        } else if (hasActiveLeague) {
+          next[group.countryName] = hasActiveLeague || Boolean(normalizedSearch);
+        } else if (hasActiveLeague || normalizedSearch) {
           next[group.countryName] = true;
         }
       });
 
       return next;
     });
-  }, [activeLeagueId, allCountryGroups]);
+  }, [activeLeagueId, allCountryGroups, normalizedSearch]);
 
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const standingsHref = buildStandingsHref(activeLeagueId, season);
@@ -277,8 +268,8 @@ export function FootballSidebarContent() {
       : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="px-2 py-2 mt-1 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="mt-1 flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         {[
           { label: 'Matches', href: matchesHref, active: pathname === '/football' },
           { label: 'Standings', href: standingsHref, active: pathname.startsWith('/football/standings') },
@@ -286,10 +277,12 @@ export function FootballSidebarContent() {
           <Link
             key={item.label}
             href={item.href}
-            className="flex items-center px-2 py-2 rounded text-[12px] transition-colors"
+            onClick={onNavigate}
+            className="flex items-center rounded px-2 py-2 text-[12px] transition-colors"
             style={{
               color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
               background: item.active ? 'rgba(255,255,255,0.06)' : 'transparent',
+              textDecoration: 'none',
             }}
           >
             {item.label}
@@ -297,14 +290,16 @@ export function FootballSidebarContent() {
         ))}
       </div>
 
-      <div className="px-2 py-2 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>
+      <div className="flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <Link
           href={clearLeagueHref}
+          onClick={onNavigate}
           className="flex items-center justify-between rounded px-2 py-2 text-[12px] transition-colors"
           style={{
             color: activeLeagueId ? 'var(--t-text-2)' : 'var(--t-text-1)',
             background: activeLeagueId ? 'transparent' : 'rgba(255,255,255,0.06)',
             borderLeft: activeLeagueId ? '2px solid transparent' : '2px solid rgba(255,255,255,0.2)',
+            textDecoration: 'none',
           }}
         >
           <span>All leagues</span>
@@ -313,12 +308,20 @@ export function FootballSidebarContent() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-1 pb-2" style={{ borderTop: '1px solid var(--t-border)' }}>
+        <div className="px-2 pt-2">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Filter leagues..."
+            className="input-shell w-full px-2.5 py-2 text-[12px]"
+          />
+        </div>
+
         <div className="px-1 pt-1">
           <div
-            className="overflow-hidden rounded"
+            className="panel-shell overflow-hidden rounded-lg"
             style={{
-              background: 'var(--t-surface)',
-              border: '1px solid var(--t-border)',
             }}
           >
             <button
@@ -352,7 +355,7 @@ export function FootballSidebarContent() {
                   transition: 'transform 0.15s ease',
                 }}
               >
-                &gt;
+                {'>'}
               </span>
             </button>
 
@@ -368,11 +371,13 @@ export function FootballSidebarContent() {
                     <Link
                       key={`popular-${item.leagueId}-${item.targetSeason}`}
                       href={href}
+                      onClick={onNavigate}
                       className="mt-1 flex items-center rounded px-2 py-1.5 text-[12px] transition-colors"
                       style={{
                         background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
                         borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
                         color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
+                        textDecoration: 'none',
                       }}
                     >
                       <span className="truncate">{item.displayName}</span>
@@ -403,8 +408,9 @@ export function FootballSidebarContent() {
                 >
                   <Link
                     href={getLeagueHref(league)}
+                    onClick={onNavigate}
                     className="min-w-0 flex-1 px-2 py-1.5 text-[12px]"
-                    style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)' }}
+                    style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)', textDecoration: 'none' }}
                   >
                     <span className="block truncate">{league.name}</span>
                     <span className="block truncate text-[10px]" style={{ color: 'var(--t-text-5)' }}>
@@ -414,16 +420,14 @@ export function FootballSidebarContent() {
                   <button
                     type="button"
                     onClick={() => togglePinnedLeague(league.apiLeagueId)}
-                    className="rounded px-1.5 py-1 text-[10px]"
+                    className="chrome-btn rounded px-1.5 py-1 text-[10px]"
                     style={{
-                      background: 'transparent',
-                      border: '1px solid var(--t-border)',
                       color: 'var(--t-text-3)',
                       cursor: 'pointer',
                     }}
                     aria-label={`Unpin ${league.name}`}
                   >
-                    ★
+                    -
                   </button>
                 </div>
               );
@@ -441,7 +445,7 @@ export function FootballSidebarContent() {
           </div>
         ) : countryGroups.length === 0 ? (
           <div className="px-3 py-3 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-            No leagues found.
+            No leagues match this filter.
           </div>
         ) : null}
 
@@ -475,7 +479,9 @@ export function FootballSidebarContent() {
                     style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
                   />
                 ) : (
-                  <span className="text-[10px]" style={{ color: 'var(--t-text-5)' }}>o</span>
+                  <span className="text-[10px]" style={{ color: 'var(--t-text-5)' }}>
+                    O
+                  </span>
                 )}
                 <span className="min-w-0 flex-1 truncate text-[12px] font-medium" style={{ color: 'var(--t-text-2)' }}>
                   {group.countryName}
@@ -491,7 +497,7 @@ export function FootballSidebarContent() {
                     transition: 'transform 0.15s ease',
                   }}
                 >
-                  &gt;
+                  {'>'}
                 </span>
               </button>
 
@@ -512,24 +518,23 @@ export function FootballSidebarContent() {
                       >
                         <Link
                           href={getLeagueHref(league)}
+                          onClick={onNavigate}
                           className="min-w-0 flex-1 px-2 py-1.5 text-[12px] transition-colors"
-                          style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)' }}
+                          style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)', textDecoration: 'none' }}
                         >
                           <span className="block truncate">{league.name}</span>
                         </Link>
                         <button
                           type="button"
                           onClick={() => togglePinnedLeague(league.apiLeagueId)}
-                          className="rounded px-1.5 py-1 text-[10px]"
+                          className={`rounded px-1.5 py-1 text-[10px] ${isPinned ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}
                           style={{
-                            background: isPinned ? 'rgba(255,255,255,0.08)' : 'transparent',
-                            border: '1px solid var(--t-border)',
-                            color: isPinned ? 'var(--t-text-2)' : 'var(--t-text-5)',
+                            color: isPinned ? 'var(--t-text-1)' : 'var(--t-text-5)',
                             cursor: 'pointer',
                           }}
                           aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${league.name}`}
                         >
-                          ★
+                          {isPinned ? '-' : '+'}
                         </button>
                       </div>
                     );
@@ -540,7 +545,6 @@ export function FootballSidebarContent() {
           );
         })}
       </div>
-
     </div>
   );
 }

@@ -12,7 +12,7 @@ export async function GET(
     return NextResponse.json(data);
   } catch (e) {
     const msg = String(e);
-    if (msg.includes('404')) return NextResponse.json(null, { status: 404 });
+    if (msg.includes('404')) return NextResponse.json(null);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

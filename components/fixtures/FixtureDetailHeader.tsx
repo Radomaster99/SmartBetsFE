@@ -25,7 +25,6 @@ function formatDateTime(iso: string): string {
   });
 }
 
-
 function TeamCard({
   name,
   logoUrl,
@@ -44,23 +43,23 @@ function TeamCard({
   const isInteractive = Boolean(onSelect);
 
   const content = (
-    <div className="flex flex-col items-center gap-2 min-w-0">
+    <div className="flex min-w-0 flex-col items-center gap-2">
       <TeamLogo src={logoUrl} alt={name} size={32} />
-      <span className="text-[14px] font-bold text-center leading-tight" style={{ color: 'var(--t-text-1)' }}>
+      <span className="text-center text-[14px] font-bold leading-tight" style={{ color: 'var(--t-text-1)' }}>
         {name}
       </span>
     </div>
   );
 
   if (!isInteractive) {
-    return <div className="flex-1 min-w-0">{content}</div>;
+    return <div className="min-w-0 flex-1">{content}</div>;
   }
 
   return (
     <button
       type="button"
       onClick={() => onSelect?.({ side, apiTeamId, name, logoUrl })}
-      className="flex-1 min-w-0 rounded-xl px-3 py-3 transition-colors"
+      className="min-w-0 flex-1 rounded-xl px-3 py-3 transition-colors"
       style={{
         background: isActive ? 'rgba(0,230,118,0.06)' : 'transparent',
         border: `1px solid ${isActive ? 'rgba(0,230,118,0.35)' : 'transparent'}`,
@@ -88,7 +87,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
         <span className="text-[11px]" style={{ color: 'var(--t-text-5)' }}>
           {f.countryName}
         </span>
-        <span style={{ color: 'var(--t-border-2)' }}>›</span>
+        <span style={{ color: 'var(--t-border-2)' }}>/</span>
         <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-4)' }}>
           {f.leagueName}
         </span>
@@ -100,7 +99,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
         </div>
       </div>
 
-      <div className="flex items-center px-4 py-3 gap-4">
+      <div className="flex items-center gap-4 px-4 py-3">
         <TeamCard
           name={f.homeTeamName}
           logoUrl={f.homeTeamLogoUrl}
@@ -110,12 +109,9 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           onSelect={onTeamSelect}
         />
 
-        <div className="flex-shrink-0 flex flex-col items-center gap-1 px-4">
+        <div className="flex flex-shrink-0 flex-col items-center gap-1 px-4">
           {hasScore ? (
-            <div
-              className="flex items-center gap-2 odds-cell text-[2.5rem] font-black"
-              style={{ color: isLive ? '#fca5a5' : 'var(--t-text-1)' }}
-            >
+            <div className="odds-cell flex items-center gap-2 text-[2.5rem] font-black" style={{ color: isLive ? '#fca5a5' : 'var(--t-text-1)' }}>
               <span>{f.homeGoals}</span>
               <span style={{ color: 'var(--t-text-6)', fontSize: '1.5rem' }}>-</span>
               <span>{f.awayGoals}</span>
@@ -126,7 +122,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
             </div>
           )}
           {isLive ? (
-            <span className="text-[11px] font-bold animate-pulse" style={{ color: '#fca5a5' }}>
+            <span className="animate-pulse text-[11px] font-bold" style={{ color: '#fca5a5' }}>
               {statusLabel}
             </span>
           ) : null}

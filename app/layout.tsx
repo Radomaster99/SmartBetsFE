@@ -3,13 +3,12 @@ import Script from 'next/script';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/lib/contexts/ThemeContext';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Topbar } from '@/components/layout/Topbar';
 import { WidgetsProvider } from '@/components/widgets/WidgetsProvider';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'SmartBets — Odds Monitor',
-  description: 'Football odds monitoring dashboard',
+  title: 'SmartBets - Football Odds Monitor',
+  description: 'Football odds comparison and live market tracking for serious bettors.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -31,15 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <ThemeProvider>
             <WidgetsProvider widgetKey={widgetKey}>
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-                <Topbar />
-                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                  <Sidebar />
-                  <main style={{ flex: 1, overflowY: 'auto' }}>
-                    {children}
-                  </main>
-                </div>
-              </div>
+              <AppShell>{children}</AppShell>
             </WidgetsProvider>
           </ThemeProvider>
         </QueryProvider>

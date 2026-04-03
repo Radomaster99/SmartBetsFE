@@ -1,4 +1,5 @@
 'use client';
+
 import { useRef } from 'react';
 import type { StateBucket } from '@/lib/types/api';
 
@@ -13,8 +14,8 @@ interface Props {
 }
 
 const STATES: { value: StateBucket | 'All'; label: string }[] = [
-  { value: 'All',      label: 'All' },
-  { value: 'Live',     label: 'Live' },
+  { value: 'All', label: 'All' },
+  { value: 'Live', label: 'Live' },
   { value: 'Upcoming', label: 'Upcoming' },
   { value: 'Finished', label: 'Finished' },
 ];
@@ -26,11 +27,11 @@ function fmt(date: Date): string {
 function labelDate(iso: string): string {
   const today = fmt(new Date());
   const yesterday = fmt(new Date(Date.now() - 86400000));
-  const tomorrow  = fmt(new Date(Date.now() + 86400000));
-  if (iso === today)     return 'Today';
+  const tomorrow = fmt(new Date(Date.now() + 86400000));
+  if (iso === today) return 'Today';
   if (iso === yesterday) return 'Yesterday';
-  if (iso === tomorrow)  return 'Tomorrow';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (iso === tomorrow) return 'Tomorrow';
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 export function FixtureFilters({
@@ -43,99 +44,121 @@ export function FixtureFilters({
   futureOnlyUpcoming,
 }: Props) {
   const dateInputRef = useRef<HTMLInputElement>(null);
+  const selectedDate = new Date(`${date}T12:00:00`);
   const today = fmt(new Date());
-  const dates = [-2, -1, 0, 1, 2].map((offset) => fmt(new Date(Date.now() + offset * 86400000)));
+  const yesterday = fmt(new Date(Date.now() - 86400000));
+  const tomorrow = fmt(new Date(Date.now() + 86400000));
+  const leftDefault = fmt(new Date(Date.now() - 2 * 86400000));
+  const rightDefault = fmt(new Date(Date.now() + 2 * 86400000));
 
-  const visibleStates = STATES.filter((s) => {
-    if (futureOnlyUpcoming)               return s.value === 'Upcoming';
-    if (!showLiveFilter     && s.value === 'Live')     return false;
-    if (!showFinishedFilter && s.value === 'Finished') return false;
+  const dates = [
+    date < yesterday ? date : leftDefault,
+    yesterday,
+    today,
+    tomorrow,
+    date > tomorrow ? date : rightDefault,
+  ];
+
+  const visibleStates = STATES.filter((item) => {
+    if (futureOnlyUpcoming) return item.value === 'Upcoming';
+    if (!showLiveFilter && item.value === 'Live') return false;
+    if (!showFinishedFilter && item.value === 'Finished') return false;
     return true;
   });
 
+  const openDatePicker = () => {
+    const input = dateInputRef.current;
+    if (!input) return;
+
+    try {
+      input.showPicker?.();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  };
+
   return (
     <div
-      className="flex items-center gap-0.5 px-3 overflow-x-auto flex-shrink-0"
+      className="flex flex-shrink-0 items-center gap-0.5 overflow-x-auto px-3"
       style={{
         height: '44px',
         background: 'var(--t-page-bg)',
         borderBottom: '1px solid var(--t-border)',
       }}
     >
-      {/* Date navigation */}
       <button
         type="button"
-        onClick={() => onDateChange(fmt(new Date(new Date(date).getTime() - 86400000)))}
-        className="px-2 py-1 rounded text-[12px] flex-shrink-0 transition-colors"
+        onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() - 86400000)))}
+        className="flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
         style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
         aria-label="Previous day"
       >
-        ‹
+        {'<'}
       </button>
 
-      {dates.map((d) => {
-        const active = d === date;
+      {dates.map((day) => {
+        const active = day === date;
         return (
           <button
-            key={d}
+            key={day}
             type="button"
-            onClick={() => onDateChange(d)}
-            className="px-2.5 py-1 rounded text-[12px] font-medium flex-shrink-0 transition-all"
+            onClick={() => onDateChange(day)}
+            className="flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
             style={{
-              color:      active ? 'var(--t-text-1)' : d === today ? 'var(--t-text-2)' : 'var(--t-text-4)',
+              color: active ? 'var(--t-text-1)' : day === today ? 'var(--t-text-2)' : 'var(--t-text-4)',
               background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
               fontWeight: active ? 700 : 500,
             }}
           >
-            {labelDate(d)}
+            {labelDate(day)}
           </button>
         );
       })}
 
       <button
         type="button"
-        onClick={() => onDateChange(fmt(new Date(new Date(date).getTime() + 86400000)))}
-        className="px-2 py-1 rounded text-[12px] flex-shrink-0 transition-colors"
+        onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() + 86400000)))}
+        className="flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
         style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
         aria-label="Next day"
       >
-        ›
+        {'>'}
       </button>
 
-      {/* Separator */}
-      <span className="mx-1.5 flex-shrink-0" style={{ color: 'var(--t-border-2)', userSelect: 'none' }}>|</span>
+      <span className="mx-1.5 flex-shrink-0" style={{ color: 'var(--t-border-2)', userSelect: 'none' }}>
+        |
+      </span>
 
-      {/* State filters */}
-      {visibleStates.map((s) => {
-        const active = s.value === state;
+      {visibleStates.map((item) => {
+        const active = item.value === state;
         return (
           <button
-            key={s.value}
+            key={item.value}
             type="button"
-            onClick={() => onStateChange(s.value)}
-            className="px-2.5 py-1 rounded text-[12px] font-medium flex-shrink-0 transition-all"
+            onClick={() => onStateChange(item.value)}
+            className="flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
             style={{
-              color:      active ? (s.value === 'Live' ? '#fff' : 'var(--t-text-1)') : 'var(--t-text-4)',
-              background: active ? (s.value === 'Live' ? '#ef5350' : 'rgba(255,255,255,0.1)') : 'transparent',
+              color: active ? (item.value === 'Live' ? '#fff' : 'var(--t-text-1)') : 'var(--t-text-4)',
+              background: active ? (item.value === 'Live' ? '#ef5350' : 'rgba(255,255,255,0.1)') : 'transparent',
               cursor: 'pointer',
             }}
           >
-            {s.label}
+            {item.label}
           </button>
         );
       })}
 
       <div className="flex-1" />
 
-      {/* Calendar picker — hidden input triggered by button */}
       <button
         type="button"
-        onClick={() => dateInputRef.current?.showPicker?.()}
+        onClick={openDatePicker}
         title="Pick a specific date"
-        className="flex-shrink-0 px-2 py-1 rounded text-[12px] transition-colors"
+        className="flex-shrink-0 rounded px-2 py-1 text-[11px] font-semibold tracking-[0.12em] transition-colors"
         style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
       >
-        📅
+        CAL
       </button>
       <input
         ref={dateInputRef}

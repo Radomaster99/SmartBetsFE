@@ -168,7 +168,7 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
         }
 
         if (!token.accessToken) {
-          console.error('[useLiveOddsSignalR] JWT token missing accessToken — SignalR cannot connect');
+          console.error('[useLiveOddsSignalR] JWT token missing accessToken - SignalR cannot connect');
           setStatus('error');
           return;
         }
@@ -286,7 +286,7 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
         }
 
         if (!token.accessToken) {
-          console.error('[useLiveOddsListSignalR] JWT token missing accessToken — SignalR cannot connect');
+          console.error('[useLiveOddsListSignalR] JWT token missing accessToken - SignalR cannot connect');
           setStatus('error');
           return;
         }
