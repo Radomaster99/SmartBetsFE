@@ -32,17 +32,42 @@ interface JwtTokenResponseDto {
   expiresAtUtc: string;
 }
 
-async function fetchJwtToken(): Promise<JwtTokenResponseDto> {
-  const res = await fetch('/api/auth/token', {
-    method: 'POST',
-    cache: 'no-store',
-  });
+// Module-level cache so repeated reconnects don't spam /api/auth/token
+let _cachedToken: JwtTokenResponseDto | null = null;
+let _tokenPromise: Promise<JwtTokenResponseDto> | null = null;
 
-  if (!res.ok) {
-    throw new Error('Failed to fetch JWT token');
+function isCachedTokenValid(): boolean {
+  if (!_cachedToken?.accessToken) return false;
+  const expiresAt = new Date(_cachedToken.expiresAtUtc).getTime();
+  if (!Number.isFinite(expiresAt)) return false;
+  // Treat as expired 60 s before actual expiry to avoid using it right at the boundary
+  return expiresAt - 60_000 > Date.now();
+}
+
+async function fetchJwtToken(): Promise<JwtTokenResponseDto> {
+  if (isCachedTokenValid()) {
+    return _cachedToken!;
   }
 
-  return res.json();
+  if (!_tokenPromise) {
+    _tokenPromise = fetch('/api/auth/token', {
+      method: 'POST',
+      cache: 'no-store',
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch JWT token: ${res.status}`);
+        }
+        const token = (await res.json()) as JwtTokenResponseDto;
+        _cachedToken = token;
+        return token;
+      })
+      .finally(() => {
+        _tokenPromise = null;
+      });
+  }
+
+  return _tokenPromise;
 }
 
 async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
@@ -137,7 +162,14 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
     const startConnection = async () => {
       try {
         const token = await fetchJwtToken();
-        if (!token.accessToken || disposed) {
+
+        if (disposed) {
+          return;
+        }
+
+        if (!token.accessToken) {
+          console.error('[useLiveOddsSignalR] JWT token missing accessToken — SignalR cannot connect');
+          setStatus('error');
           return;
         }
 
@@ -145,12 +177,23 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
 
         const connection = new HubConnectionBuilder()
           .withUrl(`${API_BASE_URL}/hubs/live-odds`, {
-            accessTokenFactory: async () => tokenRef.current ?? '',
+            // Always call fetchJwtToken so reconnects get a valid (cached-or-refreshed) token
+            accessTokenFactory: async () => {
+              try {
+                const t = await fetchJwtToken();
+                if (t.accessToken) {
+                  tokenRef.current = t.accessToken;
+                }
+              } catch {
+                // Keep using the last known token if refresh fails
+              }
+              return tokenRef.current ?? '';
+            },
             transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
             withCredentials: false,
           })
           .withAutomaticReconnect()
-          .configureLogging(LogLevel.None)
+          .configureLogging(LogLevel.Error)
           .build();
 
         connection.onreconnecting(() => {
@@ -186,9 +229,10 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
           await connection.invoke('JoinFixture', Number(fixtureId));
           setStatus('connected');
         }
-      } catch {
+      } catch (err) {
+        console.error('[useLiveOddsSignalR] Failed to connect:', err);
         setStatus('error');
-        // Silent fallback: REST polling remains active even if SignalR is unavailable.
+        // REST polling via useLiveOdds remains active as fallback.
       }
     };
 
@@ -236,7 +280,14 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
     const startConnection = async () => {
       try {
         const token = await fetchJwtToken();
-        if (!token.accessToken || disposed) {
+
+        if (disposed) {
+          return;
+        }
+
+        if (!token.accessToken) {
+          console.error('[useLiveOddsListSignalR] JWT token missing accessToken — SignalR cannot connect');
+          setStatus('error');
           return;
         }
 
@@ -244,12 +295,23 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
 
         const connection = new HubConnectionBuilder()
           .withUrl(`${API_BASE_URL}/hubs/live-odds`, {
-            accessTokenFactory: async () => tokenRef.current ?? '',
+            // Always call fetchJwtToken so reconnects get a valid (cached-or-refreshed) token
+            accessTokenFactory: async () => {
+              try {
+                const t = await fetchJwtToken();
+                if (t.accessToken) {
+                  tokenRef.current = t.accessToken;
+                }
+              } catch {
+                // Keep using the last known token if refresh fails
+              }
+              return tokenRef.current ?? '';
+            },
             transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling,
             withCredentials: false,
           })
           .withAutomaticReconnect()
-          .configureLogging(LogLevel.None)
+          .configureLogging(LogLevel.Error)
           .build();
 
         connection.onreconnecting(() => {
@@ -358,7 +420,8 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
           await connection.invoke('JoinFixtures', stableFixtureIds);
           setStatus('connected');
         }
-      } catch {
+      } catch (err) {
+        console.error('[useLiveOddsListSignalR] Failed to connect:', err);
         setStatus('error');
       }
     };

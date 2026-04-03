@@ -118,6 +118,7 @@ function getMovementStyles(movement?: LiveOddsMovementDirection) {
       background: 'rgba(0, 230, 118, 0.14)',
       borderColor: 'rgba(0, 230, 118, 0.55)',
       boxShadow: '0 0 0 1px rgba(0, 230, 118, 0.18)',
+      animation: 'odds-flash-up 0.55s ease-out',
     };
   }
 
@@ -126,6 +127,7 @@ function getMovementStyles(movement?: LiveOddsMovementDirection) {
       background: 'rgba(239, 83, 80, 0.14)',
       borderColor: 'rgba(239, 83, 80, 0.5)',
       boxShadow: '0 0 0 1px rgba(239, 83, 80, 0.14)',
+      animation: 'odds-flash-down 0.55s ease-out',
     };
   }
 

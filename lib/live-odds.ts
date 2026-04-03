@@ -12,6 +12,7 @@ function findOutcomeValue(values: LiveOddsValueDto[], kind: 'home' | 'draw' | 'a
   };
 
   for (const value of values) {
+    if (value.blocked || value.finished) continue;
     const normalized = normalizeOutcomeLabel(value.outcomeLabel);
     if (matchers[kind].includes(normalized)) {
       return value;

@@ -100,9 +100,12 @@ function LiveOddsStatusPill({
 
   return (
     <div
-      className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold"
       style={styles}
     >
+      {hasLiveOdds && status === 'connected' && (
+        <span className="live-dot" aria-hidden="true" />
+      )}
       {copy}
     </div>
   );

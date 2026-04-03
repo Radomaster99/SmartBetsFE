@@ -1,11 +1,22 @@
-import { NextResponse } from 'next/server';
-import { apiFetch } from '@/lib/api/client';
+import { NextRequest, NextResponse } from 'next/server';
+import { apiFetch, buildQuery } from '@/lib/api/client';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const s = req.nextUrl.searchParams;
+  const season            = s.get('season');
+  const includeOdds       = s.get('includeOdds');
+  const force             = s.get('force');
+  const maxLeagues        = s.get('maxLeagues');
+  const stopOnRateLimit   = s.get('stopOnRateLimit');
+  const minMinutesSinceLastSync = s.get('minMinutesSinceLastSync');
+
+  const q = buildQuery({ season, includeOdds, force, maxLeagues, stopOnRateLimit, minMinutesSinceLastSync });
   try {
-    const data = await apiFetch('/api/preload/run', { method: 'POST' });
+    const data = await apiFetch(`/api/preload/run${q}`, { method: 'POST' });
     return NextResponse.json(data);
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const msg = String(e);
+    console.error('[preload] POST /api/preload/run failed:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

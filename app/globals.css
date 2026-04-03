@@ -181,6 +181,33 @@ body {
   font-size: 14px;
 }
 
+/* ── Live odds movement animations ─────────────────────── */
+@keyframes odds-flash-up {
+  0%   { background: rgba(0, 230, 118, 0.45); box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.55); }
+  100% { background: rgba(0, 230, 118, 0.14); box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.18); }
+}
+
+@keyframes odds-flash-down {
+  0%   { background: rgba(239, 83, 80, 0.42); box-shadow: 0 0 0 2px rgba(239, 83, 80, 0.6); }
+  100% { background: rgba(239, 83, 80, 0.14); box-shadow: 0 0 0 1px rgba(239, 83, 80, 0.14); }
+}
+
+/* Pulsing dot for live-connected status pills */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
 /* ── Widget container ──────────────────────────────────── */
 .widget-wrap {
   width: 100%;

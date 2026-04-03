@@ -23,8 +23,10 @@ export async function GET(
       return NextResponse.json([], { status: 200 });
     }
     if (msg.includes('401')) {
+      console.error(`[live-odds] Unauthorized fetching live odds for fixture ${fixtureId} — check API_KEY and backend JWT config`);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.error(`[live-odds] Error fetching live odds for fixture ${fixtureId}:`, msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

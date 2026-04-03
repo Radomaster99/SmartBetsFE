@@ -203,6 +203,7 @@ export interface LeagueSyncStatus {
   standingsLastSyncedAtUtc: string | null;
   oddsLastSyncedAtUtc: string | null;
   bookmakersLastSyncedAtUtc: string | null;
+  liveOddsLastSyncedAtUtc?: string | null;
 }
 
 export interface SyncStatusDto {

@@ -34,16 +34,18 @@ function OddsCell({
     movement === 'up'
       ? {
           background: 'rgba(0,230,118,0.14)',
-          borderColor: 'rgba(0,230,118,0.55)',
+          border: '1px solid rgba(0,230,118,0.55)',
           boxShadow: '0 0 0 1px rgba(0,230,118,0.18)',
+          animation: 'odds-flash-up 0.55s ease-out',
         }
       : movement === 'down'
         ? {
             background: 'rgba(239,83,80,0.14)',
-            borderColor: 'rgba(239,83,80,0.5)',
+            border: '1px solid rgba(239,83,80,0.5)',
             boxShadow: '0 0 0 1px rgba(239,83,80,0.14)',
+            animation: 'odds-flash-down 0.55s ease-out',
           }
-        : undefined;
+        : null;
 
   return (
     <div
@@ -51,9 +53,7 @@ function OddsCell({
       style={{
         position: 'relative',
         minWidth: 52,
-        background: isBest ? BEST_BG : undefined,
-        border: isBest ? BEST_BORDER : undefined,
-        ...movementStyles,
+        ...(movementStyles ?? (isBest ? { background: BEST_BG, border: BEST_BORDER } : {})),
       }}
     >
       {movement ? (
