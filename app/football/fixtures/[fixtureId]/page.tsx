@@ -1,5 +1,5 @@
 'use client';
-import { use, useEffect, useRef, useState } from 'react';
+import { use, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
@@ -22,6 +22,25 @@ interface SelectedPlayer {
 }
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: 'var(--t-text-5)' }}>
+      {children}
+    </span>
+  );
+}
+
+function WidgetCard({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="rounded-lg overflow-hidden"
+      style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function findScrollContainer(element: HTMLElement): HTMLElement | Window {
   let current = element.parentElement;
@@ -57,11 +76,12 @@ function resolvePlayerLabel(target: HTMLElement): string | null {
 }
 
 function resolveInitialTab(tab: string | null): Tab {
-  if (tab === 'odds' || tab === 'h2h') {
+  if (tab === 'odds' || tab === 'h2h' || tab === 'match') {
     return tab;
   }
 
-  return 'match';
+  // Default to odds so bettors land on the comparison surface first.
+  return 'odds';
 }
 
 export default function FixtureDetailPage({ params }: Props) {
@@ -307,9 +327,9 @@ export default function FixtureDetailPage({ params }: Props) {
   const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(odds?.length);
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'match', label: 'Match' },
-    { id: 'h2h', label: 'Head to Head' },
     { id: 'odds', label: 'Odds' },
+    { id: 'match', label: 'Match' },
+    { id: 'h2h', label: 'H2H' },
     ...(selectedTeam ? [{ id: 'team' as const, label: selectedTeam.name }] : []),
   ];
 
@@ -319,10 +339,13 @@ export default function FixtureDetailPage({ params }: Props) {
         <button
           type="button"
           onClick={handleBackToMatches}
-          className="flex items-center gap-1 text-[11px] transition-colors bg-transparent border-0 p-0 cursor-pointer"
-          style={{ color: 'var(--t-text-5)' }}
+          className="inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors bg-transparent border-0 cursor-pointer"
+          style={{ color: 'var(--t-text-3)' }}
         >
-          Back to matches
+          <span aria-hidden="true" style={{ fontSize: '13px', lineHeight: 1 }}>
+            &lt;
+          </span>
+          <span>Matches</span>
         </button>
       </div>
 
@@ -332,12 +355,15 @@ export default function FixtureDetailPage({ params }: Props) {
         onTeamSelect={handleTeamSelect}
       />
 
-      <div className="flex" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-topbar-bg)' }}>
+      <div
+        className="flex items-center"
+        style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-topbar-bg)' }}
+      >
         {tabs.map((currentTab) => (
           <button
             key={currentTab.id}
             onClick={() => setTab(currentTab.id)}
-            className="px-5 py-3 text-[13px] font-medium transition-colors"
+            className="px-5 py-3 text-[13px] font-medium transition-colors flex-shrink-0"
             style={{
               color: tab === currentTab.id ? 'var(--t-text-1)' : 'var(--t-text-4)',
               borderBottom: tab === currentTab.id ? '2px solid var(--t-accent)' : '2px solid transparent',
@@ -347,52 +373,50 @@ export default function FixtureDetailPage({ params }: Props) {
             {currentTab.label}
           </button>
         ))}
+        {detail.oddsLastSyncedAtUtc && (
+          <span className="ml-auto pr-4 text-[11px] flex-shrink-0" style={{ color: 'var(--t-text-5)' }}>
+            {(() => {
+              const mins = Math.floor((Date.now() - new Date(detail.oddsLastSyncedAtUtc).getTime()) / 60000);
+              return mins < 1 ? 'Odds: just now' : mins < 60 ? `Odds: ${mins}m ago` : `Odds: ${Math.floor(mins / 60)}h ago`;
+            })()}
+          </span>
+        )}
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {tab === 'match' && (
-          <ApiSportsWidget
-            type="game"
-            gameId={detail.fixture.apiFixtureId}
-            gameTab="events"
-            refresh={isLive ? 120 : undefined}
-          />
+          <WidgetCard>
+            <ApiSportsWidget
+              type="game"
+              gameId={detail.fixture.apiFixtureId}
+              gameTab="events"
+              refresh={isLive ? 120 : undefined}
+            />
+          </WidgetCard>
         )}
 
         {tab === 'h2h' && (
-          <ApiSportsWidget
-            type="h2h"
-            h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
-          />
+          <WidgetCard>
+            <ApiSportsWidget
+              type="h2h"
+              h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
+            />
+          </WidgetCard>
         )}
 
         {tab === 'odds' &&
           (hasAnyOdds ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
               {resolvedBestOdds ? (
-                <div className="flex flex-col gap-3">
-                  <div>
-                    <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                      Best Odds
-                    </h2>
-                    <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-                      Best available 1X2 prices across bookmakers.
-                    </p>
-                  </div>
-                  <BestOddsBar bestOdds={resolvedBestOdds} />
+                <div className="flex flex-col gap-2">
+                  <SectionLabel>Best Odds</SectionLabel>
+                  <BestOddsBar bestOdds={resolvedBestOdds} fixtureId={detail.fixture.apiFixtureId} />
                 </div>
               ) : null}
 
-              <div className="flex flex-col gap-3">
-                <div>
-                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                    All Bookmakers
-                  </h2>
-                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-                    Full bookmaker comparison for this fixture.
-                  </p>
-                </div>
-                <OddsTable odds={odds ?? []} />
+              <div className="flex flex-col gap-2">
+                <SectionLabel>All Bookmakers</SectionLabel>
+                <OddsTable odds={odds ?? []} fixtureId={detail.fixture.apiFixtureId} />
               </div>
             </div>
           ) : (
@@ -407,9 +431,6 @@ export default function FixtureDetailPage({ params }: Props) {
                   <h2 className="text-[15px] font-bold" style={{ color: 'var(--t-text-1)' }}>
                     {selectedTeam.name}
                   </h2>
-                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-                    Squad and team statistics widget.
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -426,17 +447,19 @@ export default function FixtureDetailPage({ params }: Props) {
                 </button>
               </div>
 
-              <div ref={teamWidgetScopeRef}>
-                <ApiSportsWidget
-                  type="team"
-                  teamId={selectedTeam.apiTeamId}
-                  teamTab="squads"
-                  teamSquad
-                  teamStatistics
-                  league={detail.fixture.leagueApiId}
-                  season={detail.fixture.season}
-                />
-              </div>
+              <WidgetCard>
+                <div ref={teamWidgetScopeRef}>
+                  <ApiSportsWidget
+                    type="team"
+                    teamId={selectedTeam.apiTeamId}
+                    teamTab="squads"
+                    teamSquad
+                    teamStatistics
+                    league={detail.fixture.leagueApiId}
+                    season={detail.fixture.season}
+                  />
+                </div>
+              </WidgetCard>
 
               <section
                 ref={playerDetailsSectionRef}
@@ -447,25 +470,22 @@ export default function FixtureDetailPage({ params }: Props) {
                 }}
               >
                 <div className="mb-3">
-                  <h3 className="text-[14px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-                    {selectedPlayer?.label ? selectedPlayer.label : 'Player details'}
-                  </h3>
-                  <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-                    Click a player in the squad above to load statistics, trophies, and injuries here.
-                  </p>
+                  <SectionLabel>{selectedPlayer?.label ? selectedPlayer.label : 'Player Details'}</SectionLabel>
                 </div>
 
                 {selectedPlayer ? (
-                  <ApiSportsWidget
-                    key={`${selectedPlayer.apiPlayerId}-${detail.fixture.season}`}
-                    type="player"
-                    playerId={selectedPlayer.apiPlayerId}
-                    season={detail.fixture.season}
-                    league={detail.fixture.leagueApiId}
-                    playerStatistics
-                    playerTrophies
-                    playerInjuries
-                  />
+                  <WidgetCard>
+                    <ApiSportsWidget
+                      key={`${selectedPlayer.apiPlayerId}-${detail.fixture.season}`}
+                      type="player"
+                      playerId={selectedPlayer.apiPlayerId}
+                      season={detail.fixture.season}
+                      league={detail.fixture.leagueApiId}
+                      playerStatistics
+                      playerTrophies
+                      playerInjuries
+                    />
+                  </WidgetCard>
                 ) : (
                   <div
                     className="min-h-[120px] rounded-lg px-4 py-5 text-[12px]"

@@ -17,7 +17,7 @@
 :root {
   /* Layout */
   --t-page-bg:    #0d0f17;
-  --t-topbar-bg:  #0a0c14;
+  --t-topbar-bg:  #111420;
   --t-sidebar-bg: #111420;
   --t-surface:    #111420;
   --t-surface-2:  #1e2130;
@@ -164,7 +164,7 @@ body {
   font-family: 'Roboto Mono', ui-monospace, monospace;
   font-size: 13px;
   font-weight: 700;
-  color: var(--t-accent);
+  color: var(--t-text-1);
   letter-spacing: -0.02em;
 }
 .odds-btn .odds-value.na {

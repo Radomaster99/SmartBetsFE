@@ -5,7 +5,6 @@ import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
-import { SyncFreshnessBanner } from '@/components/shared/SyncFreshnessBanner';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import type { StateBucket } from '@/lib/types/api';
 
@@ -174,8 +173,6 @@ function FootballPageClient() {
 
   return (
     <div className="flex flex-col h-full">
-      <SyncFreshnessBanner />
-
       <FixtureFilters
         state={state}
         onStateChange={handleStateChange}

@@ -303,8 +303,8 @@ export function FootballSidebarContent() {
           className="flex items-center justify-between rounded px-2 py-2 text-[12px] transition-colors"
           style={{
             color: activeLeagueId ? 'var(--t-text-2)' : 'var(--t-text-1)',
-            background: activeLeagueId ? 'transparent' : 'rgba(0,230,118,0.07)',
-            borderLeft: activeLeagueId ? '2px solid transparent' : '2px solid var(--t-accent)',
+            background: activeLeagueId ? 'transparent' : 'rgba(255,255,255,0.06)',
+            borderLeft: activeLeagueId ? '2px solid transparent' : '2px solid rgba(255,255,255,0.2)',
           }}
         >
           <span>All leagues</span>
@@ -326,7 +326,7 @@ export function FootballSidebarContent() {
               onClick={() => setPopularExpanded((current) => !current)}
               className="flex w-full items-center justify-between px-2.5 py-2.5 text-left"
               style={{
-                background: 'rgba(0,230,118,0.06)',
+                background: 'rgba(255,255,255,0.03)',
                 borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
                 cursor: 'pointer',
               }}
@@ -336,8 +336,7 @@ export function FootballSidebarContent() {
                   aria-hidden="true"
                   className="inline-block h-2.5 w-2.5 rounded-sm"
                   style={{
-                    background: 'var(--t-accent)',
-                    boxShadow: '0 0 0 2px rgba(0,230,118,0.12)',
+                    background: 'var(--t-text-5)',
                     transform: 'rotate(45deg)',
                   }}
                 />
@@ -371,8 +370,8 @@ export function FootballSidebarContent() {
                       href={href}
                       className="mt-1 flex items-center rounded px-2 py-1.5 text-[12px] transition-colors"
                       style={{
-                        background: isActive ? 'rgba(0,230,118,0.08)' : 'transparent',
-                        borderLeft: isActive ? '2px solid var(--t-accent)' : '2px solid transparent',
+                        background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+                        borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
                         color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
                       }}
                     >
@@ -398,8 +397,8 @@ export function FootballSidebarContent() {
                   key={`pinned-${league.apiLeagueId}-${league.season}`}
                   className="mt-1 flex items-center gap-1 rounded pr-1"
                   style={{
-                    background: isActive ? 'rgba(0,230,118,0.08)' : 'var(--t-surface)',
-                    borderLeft: isActive ? '2px solid var(--t-accent)' : '2px solid transparent',
+                    background: isActive ? 'rgba(255,255,255,0.07)' : 'var(--t-surface)',
+                    borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
                   }}
                 >
                   <Link
@@ -419,12 +418,12 @@ export function FootballSidebarContent() {
                     style={{
                       background: 'transparent',
                       border: '1px solid var(--t-border)',
-                      color: 'var(--t-accent)',
+                      color: 'var(--t-text-3)',
                       cursor: 'pointer',
                     }}
                     aria-label={`Unpin ${league.name}`}
                   >
-                    *
+                    ★
                   </button>
                 </div>
               );
@@ -507,8 +506,8 @@ export function FootballSidebarContent() {
                         key={`${league.apiLeagueId}-${league.season}`}
                         className="ml-2 mr-1 mt-1 flex items-center gap-1 rounded pr-1"
                         style={{
-                          background: isActive ? 'rgba(0,230,118,0.08)' : 'transparent',
-                          borderLeft: isActive ? '2px solid var(--t-accent)' : '2px solid transparent',
+                          background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+                          borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
                         }}
                       >
                         <Link
@@ -523,14 +522,14 @@ export function FootballSidebarContent() {
                           onClick={() => togglePinnedLeague(league.apiLeagueId)}
                           className="rounded px-1.5 py-1 text-[10px]"
                           style={{
-                            background: isPinned ? 'rgba(0,230,118,0.12)' : 'transparent',
+                            background: isPinned ? 'rgba(255,255,255,0.08)' : 'transparent',
                             border: '1px solid var(--t-border)',
-                            color: isPinned ? 'var(--t-accent)' : 'var(--t-text-5)',
+                            color: isPinned ? 'var(--t-text-2)' : 'var(--t-text-5)',
                             cursor: 'pointer',
                           }}
                           aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${league.name}`}
                         >
-                          *
+                          ★
                         </button>
                       </div>
                     );
@@ -542,16 +541,6 @@ export function FootballSidebarContent() {
         })}
       </div>
 
-      <div className="px-2 pb-3 pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--t-border)' }}>
-        <Link
-          href="/admin/sync"
-          className="flex items-center gap-2 px-2 py-2 rounded text-[12px] transition-colors"
-          style={{ color: pathname.startsWith('/admin') ? 'var(--t-text-2)' : 'var(--t-text-5)' }}
-        >
-          <span>*</span>
-          <span>Admin / Sync</span>
-        </Link>
-      </div>
     </div>
   );
 }

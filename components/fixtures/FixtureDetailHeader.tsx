@@ -25,13 +25,6 @@ function formatDateTime(iso: string): string {
   });
 }
 
-function minutesAgo(iso: string | null): string {
-  if (!iso) return 'Never';
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
-}
 
 function TeamCard({
   name,
@@ -51,16 +44,11 @@ function TeamCard({
   const isInteractive = Boolean(onSelect);
 
   const content = (
-    <div className="flex flex-col items-center gap-3 min-w-0">
-      <TeamLogo src={logoUrl} alt={name} size={56} />
-      <span className="text-[15px] font-bold text-center leading-tight" style={{ color: 'var(--t-text-1)' }}>
+    <div className="flex flex-col items-center gap-2 min-w-0">
+      <TeamLogo src={logoUrl} alt={name} size={32} />
+      <span className="text-[14px] font-bold text-center leading-tight" style={{ color: 'var(--t-text-1)' }}>
         {name}
       </span>
-      {isInteractive ? (
-        <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: isActive ? 'var(--t-accent)' : 'var(--t-text-5)' }}>
-          {isActive ? 'Hide team details' : 'Show team details'}
-        </span>
-      ) : null}
     </div>
   );
 
@@ -72,7 +60,7 @@ function TeamCard({
     <button
       type="button"
       onClick={() => onSelect?.({ side, apiTeamId, name, logoUrl })}
-      className="flex-1 min-w-0 rounded-xl px-4 py-4 transition-colors"
+      className="flex-1 min-w-0 rounded-xl px-3 py-3 transition-colors"
       style={{
         background: isActive ? 'rgba(0,230,118,0.06)' : 'transparent',
         border: `1px solid ${isActive ? 'rgba(0,230,118,0.35)' : 'transparent'}`,
@@ -100,7 +88,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
         <span className="text-[11px]" style={{ color: 'var(--t-text-5)' }}>
           {f.countryName}
         </span>
-        <span style={{ color: 'var(--t-border-2)' }}>{'>'}</span>
+        <span style={{ color: 'var(--t-border-2)' }}>›</span>
         <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-4)' }}>
           {f.leagueName}
         </span>
@@ -112,7 +100,7 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
         </div>
       </div>
 
-      <div className="flex items-center px-6 py-6 gap-4">
+      <div className="flex items-center px-4 py-3 gap-4">
         <TeamCard
           name={f.homeTeamName}
           logoUrl={f.homeTeamLogoUrl}
@@ -122,18 +110,18 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           onSelect={onTeamSelect}
         />
 
-        <div className="flex-shrink-0 flex flex-col items-center gap-1 px-6">
+        <div className="flex-shrink-0 flex flex-col items-center gap-1 px-4">
           {hasScore ? (
             <div
-              className="flex items-center gap-3 odds-cell text-5xl font-black"
+              className="flex items-center gap-2 odds-cell text-[2.5rem] font-black"
               style={{ color: isLive ? '#fca5a5' : 'var(--t-text-1)' }}
             >
               <span>{f.homeGoals}</span>
-              <span style={{ color: 'var(--t-text-6)', fontSize: '2rem' }}>-</span>
+              <span style={{ color: 'var(--t-text-6)', fontSize: '1.5rem' }}>-</span>
               <span>{f.awayGoals}</span>
             </div>
           ) : (
-            <div className="text-[28px] font-light tracking-[0.2em]" style={{ color: 'var(--t-text-6)' }}>
+            <div className="text-[22px] font-light tracking-[0.2em]" style={{ color: 'var(--t-text-6)' }}>
               vs
             </div>
           )}
@@ -157,15 +145,6 @@ export function FixtureDetailHeader({ detail, selectedTeamSide = null, onTeamSel
           isActive={selectedTeamSide === 'away'}
           onSelect={onTeamSelect}
         />
-      </div>
-
-      <div className="flex items-center justify-end px-4 pb-3 gap-2">
-        <span className="text-[10px]" style={{ color: 'var(--t-text-6)' }}>
-          Odds updated:
-        </span>
-        <span className="text-[10px]" style={{ color: 'var(--t-text-4)' }}>
-          {minutesAgo(detail.oddsLastSyncedAtUtc)}
-        </span>
       </div>
     </div>
   );

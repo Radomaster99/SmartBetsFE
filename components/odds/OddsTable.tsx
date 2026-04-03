@@ -4,75 +4,121 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
-  createColumnHelper,
   type SortingState,
+  type ColumnDef,
 } from '@tanstack/react-table';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { OddDto } from '@/lib/types/api';
+import { buildBookmakerHref } from '@/lib/bookmakers';
 
-const col = createColumnHelper<OddDto>();
+interface Props {
+  odds: OddDto[];
+  fixtureId?: number;
+}
 
-const columns = [
-  col.accessor('bookmaker', {
-    header: 'Bookmaker',
-    cell: (info) => (
-      <span className="text-[13px]" style={{ color: 'var(--t-text-2)' }}>
-        {info.getValue()}
+const BEST_BG = 'rgba(0,230,118,0.08)';
+const BEST_BORDER = '1px solid rgba(0,230,118,0.22)';
+
+function OddsCell({ value, isBest }: { value: number; isBest: boolean }) {
+  return (
+    <div
+      className="odds-btn"
+      style={{
+        minWidth: 52,
+        background: isBest ? BEST_BG : undefined,
+        border: isBest ? BEST_BORDER : undefined,
+      }}
+    >
+      <span className="odds-value" style={{ color: isBest ? 'var(--t-accent)' : undefined }}>
+        {value.toFixed(2)}
       </span>
-    ),
-  }),
-  col.accessor('homeOdd', {
-    header: '1 Home',
-    cell: (info) => (
-      <div className="odds-btn" style={{ minWidth: 52 }}>
-        <span className="odds-label">1</span>
-        <span className="odds-value">{info.getValue().toFixed(2)}</span>
-      </div>
-    ),
-  }),
-  col.accessor('drawOdd', {
-    header: 'X Draw',
-    cell: (info) => (
-      <div className="odds-btn" style={{ minWidth: 52 }}>
-        <span className="odds-label">X</span>
-        <span className="odds-value">{info.getValue().toFixed(2)}</span>
-      </div>
-    ),
-  }),
-  col.accessor('awayOdd', {
-    header: '2 Away',
-    cell: (info) => (
-      <div className="odds-btn" style={{ minWidth: 52 }}>
-        <span className="odds-label">2</span>
-        <span className="odds-value">{info.getValue().toFixed(2)}</span>
-      </div>
-    ),
-  }),
-  col.display({
-    id: 'action',
-    header: '',
-    cell: ({ row }) => (
-      <button
-        type="button"
-        title="Bookmaker links coming soon"
-        className="rounded-md px-3 py-2 text-[11px] font-black tracking-wider transition-colors"
-        style={{
-          background: 'var(--t-accent)',
-          border: '1px solid rgba(0,0,0,0.18)',
-          color: '#04110b',
-          boxShadow: 'inset 0 -1px 0 rgba(0,0,0,0.12)',
-          cursor: 'pointer',
-        }}
-        aria-label={`Bet now with ${row.original.bookmaker}`}
-      >
-        BET NOW
-      </button>
-    ),
-  }),
-];
+    </div>
+  );
+}
 
-export function OddsTable({ odds }: { odds: OddDto[] }) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+export function OddsTable({ odds, fixtureId }: Props) {
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'homeOdd', desc: true }]);
+
+  const maxHome = useMemo(() => (odds.length > 1 ? Math.max(...odds.map((o) => o.homeOdd)) : -1), [odds]);
+  const maxDraw = useMemo(() => (odds.length > 1 ? Math.max(...odds.map((o) => o.drawOdd)) : -1), [odds]);
+  const maxAway = useMemo(() => (odds.length > 1 ? Math.max(...odds.map((o) => o.awayOdd)) : -1), [odds]);
+
+  const columns = useMemo<ColumnDef<OddDto>[]>(
+    () => [
+      {
+        accessorKey: 'bookmaker',
+        header: 'Bookmaker',
+        cell: (info) => (
+          <span className="text-[13px]" style={{ color: 'var(--t-text-2)' }}>
+            {info.getValue() as string}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'homeOdd',
+        header: 'Home',
+        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxHome} />,
+      },
+      {
+        accessorKey: 'drawOdd',
+        header: 'Draw',
+        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxDraw} />,
+      },
+      {
+        accessorKey: 'awayOdd',
+        header: 'Away',
+        cell: (info) => <OddsCell value={info.getValue() as number} isBest={(info.getValue() as number) === maxAway} />,
+      },
+      {
+        id: 'action',
+        header: 'Bet',
+        cell: ({ row }) => {
+          const targetFixtureId = fixtureId ?? row.original.apiFixtureId;
+          const bookmaker = row.original.bookmaker;
+          const options = [
+            { label: '1', outcome: 'home' as const },
+            { label: 'X', outcome: 'draw' as const },
+            { label: '2', outcome: 'away' as const },
+          ];
+
+          return (
+            <div className="grid grid-cols-3 gap-1 min-w-[112px]">
+              {options.map((option) => {
+                const href = buildBookmakerHref(bookmaker, {
+                  fixture: targetFixtureId,
+                  outcome: option.outcome,
+                  source: 'odds-table',
+                });
+
+                return (
+                  <a
+                    key={option.outcome}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-md px-2 py-1.5 text-[11px] font-bold tracking-wide transition-opacity hover:opacity-90"
+                    style={{
+                      background: 'var(--t-accent)',
+                      color: '#000',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Bet ${option.label} with ${bookmaker}`}
+                    title={`Bet ${option.label} with ${bookmaker}`}
+                  >
+                    {option.label}
+                  </a>
+                );
+              })}
+            </div>
+          );
+        },
+      },
+    ],
+    [fixtureId, maxAway, maxDraw, maxHome],
+  );
+
   const table = useReactTable({
     data: odds,
     columns,
@@ -103,32 +149,29 @@ export function OddsTable({ odds }: { odds: OddDto[] }) {
                 <th
                   key={header.id}
                   onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-                  className="px-4 py-2.5 text-left text-[10px] uppercase font-bold tracking-wider select-none"
+                  className="px-4 py-2.5 text-left text-[11px] uppercase font-bold tracking-wider select-none"
                   style={{
                     color: 'var(--t-text-5)',
                     cursor: header.column.getCanSort() ? 'pointer' : 'default',
                   }}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
-                  {header.column.getCanSort()
-                    ? header.column.getIsSorted() === 'asc'
-                      ? ' ^'
-                      : header.column.getIsSorted() === 'desc'
-                        ? ' v'
-                        : ''
-                    : ''}
+                  {header.column.getIsSorted() === 'asc' ? ' ↑' : header.column.getIsSorted() === 'desc' ? ' ↓' : ''}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row, index) => (
+          {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              style={{
-                borderBottom: '1px solid var(--t-border)',
-                background: index % 2 === 0 ? 'transparent' : 'var(--t-surface)',
+              style={{ borderBottom: '1px solid var(--t-border)' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLTableRowElement).style.background = 'var(--t-surface-2)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
               }}
             >
               {row.getVisibleCells().map((cell) => (
