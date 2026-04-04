@@ -13,6 +13,16 @@ import type { OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { buildBookmakerHref, getBookmakerMeta, getBookmakerOrder } from '@/lib/bookmakers';
 
+const SYNTHETIC_LIVE_BOOKMAKER = 'api-football live feed';
+
+function isSyntheticBookmaker(name: string): boolean {
+  return name.trim().toLowerCase() === SYNTHETIC_LIVE_BOOKMAKER;
+}
+
+function getBookmakerDisplayName(name: string): string {
+  return isSyntheticBookmaker(name) ? 'Live Feed' : name;
+}
+
 interface Props {
   odds: OddDto[];
   fixtureId?: number;
@@ -24,6 +34,7 @@ const BEST_BORDER = '1px solid rgba(0,230,118,0.22)';
 
 function BookmakerBadge({ bookmaker }: { bookmaker: string }) {
   const meta = getBookmakerMeta(bookmaker);
+  const displayName = getBookmakerDisplayName(bookmaker);
 
   return (
     <div className="flex items-center gap-2">
@@ -35,7 +46,7 @@ function BookmakerBadge({ bookmaker }: { bookmaker: string }) {
       </span>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
-          {bookmaker}
+          {displayName}
         </div>
         <div className="mt-0.5 text-[10px]" style={{ color: 'var(--t-text-5)' }}>
           Bookmaker
@@ -142,9 +153,21 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
             { label: '2', outcome: 'away' as const },
           ];
 
+          const isSynthetic = isSyntheticBookmaker(bookmaker);
           return (
             <div className="grid min-w-[112px] grid-cols-3 gap-1">
               {options.map((option) => {
+                if (isSynthetic) {
+                  return (
+                    <span
+                      key={option.outcome}
+                      className="inline-flex items-center justify-center rounded-md px-2 py-1.5 text-[11px] font-bold tracking-wide"
+                      style={{ color: 'var(--t-text-5)', background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}
+                    >
+                      {option.label}
+                    </span>
+                  );
+                }
                 const href = buildBookmakerHref(bookmaker, {
                   fixture: targetFixtureId,
                   outcome: option.outcome,

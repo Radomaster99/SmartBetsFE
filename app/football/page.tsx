@@ -417,8 +417,10 @@ function FootballPageClient() {
     leagueId: leagueId ?? undefined,
     state: state === 'All' ? undefined : state,
     season,
-    includeLiveOddsSummary: state === 'Live',
-    pageSize: state === 'Live' ? 80 : 60,
+    includeLiveOddsSummary: true,
+    pageSize: state === 'Live' ? 100 : 60,
+    // Live: sort newest-kickoff first so today's active matches surface above old stuck fixtures.
+    direction: state === 'Live' ? ('desc' as const) : undefined,
     date: usesUpcomingRange ? undefined : date,
     from: usesUpcomingRange ? today : undefined,
   };
@@ -434,7 +436,7 @@ function FootballPageClient() {
       : 0;
   const liveFallbackCount =
     state === 'Live'
-      ? fixtures.filter((fixture) => fixture.liveOddsSummary?.source !== 'live').length
+      ? fixtures.filter((fixture) => fixture.liveOddsSummary?.source === 'prematch').length
       : 0;
   const savedFixturesInView = fixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId));
   const savedOutsideViewCount = Math.max(savedFixtureIds.length - savedFixturesInView.length, 0);

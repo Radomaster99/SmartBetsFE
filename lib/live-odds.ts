@@ -35,7 +35,7 @@ function isThreeWayMainMarket(market: LiveOddsMarketDto): boolean {
 function pickThreeWayMarkets(markets: LiveOddsMarketDto[]): LiveOddsMarketDto[] {
   const preferred = markets.filter((market) => {
     const name = market.betName.trim().toLowerCase();
-    return (name === 'match winner' || name === 'winner') && isThreeWayMainMarket(market);
+    return (name === 'match winner' || name === 'winner' || name === 'fulltime result') && isThreeWayMainMarket(market);
   });
 
   if (preferred.length > 0) {

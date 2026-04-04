@@ -73,6 +73,7 @@ async function fetchJwtToken(): Promise<JwtTokenResponseDto> {
 async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
   const res = await fetch(`/api/fixtures/${fixtureId}/odds/live`, {
     cache: 'no-store',
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) {

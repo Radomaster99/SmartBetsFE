@@ -23,16 +23,14 @@ interface Props {
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
   const liveSummary = fixture.liveOddsSummary ?? null;
-
+  // If the backend already returned odds via liveOddsSummary (live or prematch), no batch call needed.
+  if (liveSummary?.source === 'live' || liveSummary?.source === 'prematch') {
+    return false;
+  }
   return (
-    (fixture.stateBucket === 'Upcoming' ||
-      fixture.stateBucket === 'Live' ||
-      fixture.stateBucket === 'Unknown') &&
-    (
-      fixture.stateBucket !== 'Live' ||
-      !liveSummary ||
-      (liveSummary.source !== 'live' && liveSummary.source !== 'prematch')
-    )
+    fixture.stateBucket === 'Upcoming' ||
+    fixture.stateBucket === 'Live' ||
+    fixture.stateBucket === 'Unknown'
   );
 }
 
@@ -55,6 +53,13 @@ function truncateBookmaker(name: string, max = 14): string {
   return name.length > max ? `${name.slice(0, max - 3)}...` : name;
 }
 
+const SYNTHETIC_LIVE_BOOKMAKER = 'api-football live feed';
+
+function resolveBookmakerForDisplay(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return name.trim().toLowerCase() === SYNTHETIC_LIVE_BOOKMAKER ? null : name;
+}
+
 function MobileOddsCell({
   fixtureId,
   label,
@@ -66,13 +71,24 @@ function MobileOddsCell({
   odd: number | null;
   bookmaker: string | null;
 }) {
-  if (!odd || !bookmaker) {
+  if (!odd) {
     return (
       <div className="odds-btn odds-btn-grid min-h-[58px]">
         <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value na">-</span>
+      </div>
+    );
+  }
+
+  if (!bookmaker) {
+    return (
+      <div className="odds-btn odds-btn-grid min-h-[58px]">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+          {label}
+        </span>
+        <span className="odds-value">{odd.toFixed(2)}</span>
       </div>
     );
   }
@@ -113,19 +129,16 @@ function MobileFixtureCard({
   const isLive = fixture.stateBucket === 'Live';
   const liveSummary = fixture.liveOddsSummary ?? null;
   const liveSource = liveSummary?.source ?? 'none';
-  const needsPreMatchFallback =
-    isLive &&
-    (!liveSummary ||
-      (liveSummary.source !== 'live' && liveSummary.source !== 'prematch'));
-  const bestOdds = !isLive || needsPreMatchFallback ? bestOddsFallback ?? null : null;
   const scoreReady = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  const homeOdd = isLive ? liveSummary?.bestHomeOdd ?? bestOdds?.bestHomeOdd ?? null : bestOdds?.bestHomeOdd ?? null;
-  const drawOdd = isLive ? liveSummary?.bestDrawOdd ?? bestOdds?.bestDrawOdd ?? null : bestOdds?.bestDrawOdd ?? null;
-  const awayOdd = isLive ? liveSummary?.bestAwayOdd ?? bestOdds?.bestAwayOdd ?? null : bestOdds?.bestAwayOdd ?? null;
-  const homeBookmaker = isLive ? liveSummary?.bestHomeBookmaker ?? bestOdds?.bestHomeBookmaker ?? null : bestOdds?.bestHomeBookmaker ?? null;
-  const drawBookmaker = isLive ? liveSummary?.bestDrawBookmaker ?? bestOdds?.bestDrawBookmaker ?? null : bestOdds?.bestDrawBookmaker ?? null;
-  const awayBookmaker = isLive ? liveSummary?.bestAwayBookmaker ?? bestOdds?.bestAwayBookmaker ?? null : bestOdds?.bestAwayBookmaker ?? null;
+  // Use liveOddsSummary for both live and upcoming (backend populates it via includeLiveOddsSummary).
+  // Fall back to bestOddsFallback (batch call) when the summary is absent.
+  const homeOdd = liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
+  const drawOdd = liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
+  const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const homeBookmaker = resolveBookmakerForDisplay(liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker);
+  const drawBookmaker = resolveBookmakerForDisplay(liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker);
+  const awayBookmaker = resolveBookmakerForDisplay(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
 
   const statusTone =
     liveSource === 'live'

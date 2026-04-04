@@ -1,17 +1,17 @@
 'use client';
-import { use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
-import { useOdds, useBestOdds } from '@/lib/hooks/useOdds';
+import { useOdds } from '@/lib/hooks/useOdds';
 import { useLiveOdds, useLiveOddsSignalR, type LiveOddsMovementDirection, type LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
-import type { BestOddsDto, OddDto } from '@/lib/types/api';
+import type { BestOddsDto, LiveOddsSummaryDto, OddDto } from '@/lib/types/api';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
 import { OddsTable } from '@/components/odds/OddsTable';
 import { BestOddsBar } from '@/components/odds/BestOddsBar';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { deriveBestOddsFromOdds, hasNonSyntheticBookmakerOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
+import { deriveBestOddsFromOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
 
 type Tab = 'odds' | 'match' | 'h2h';
 
@@ -150,7 +150,28 @@ function formatRelativeTimestamp(iso: string | null | undefined): string | null 
   return hours % 24 === 0 ? `${days}d ago` : `${days}d ${hours % 24}h ago`;
 }
 
-export default function FixtureDetailPage({ params }: Props) {
+/**
+ * Converts a LiveOddsSummaryDto (from the detail endpoint's top-level liveOddsSummary)
+ * into the BestOddsDto shape expected by BestOddsBar, so live best odds can be shown
+ * immediately while per-market useLiveOdds data is still loading.
+ */
+function summaryToBestOdds(summary: LiveOddsSummaryDto, fixture: { id: number; apiFixtureId: number }): BestOddsDto | null {
+  if (!summary.bestHomeOdd || !summary.bestDrawOdd || !summary.bestAwayOdd) return null;
+  return {
+    fixtureId: fixture.id,
+    apiFixtureId: fixture.apiFixtureId,
+    marketName: 'Match Winner',
+    collectedAtUtc: summary.collectedAtUtc ?? new Date().toISOString(),
+    bestHomeOdd: summary.bestHomeOdd,
+    bestHomeBookmaker: summary.bestHomeBookmaker ?? 'API-Football Live Feed',
+    bestDrawOdd: summary.bestDrawOdd,
+    bestDrawBookmaker: summary.bestDrawBookmaker ?? 'API-Football Live Feed',
+    bestAwayOdd: summary.bestAwayOdd,
+    bestAwayBookmaker: summary.bestAwayBookmaker ?? 'API-Football Live Feed',
+  };
+}
+
+function FixtureDetailPageInner({ params }: Props) {
   const { fixtureId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -163,21 +184,19 @@ export default function FixtureDetailPage({ params }: Props) {
   const previousDisplayOddsRef = useRef<OddDto[] | null>(null);
   const previousBestOddsRef = useRef<BestOddsDto | null>(null);
 
-  const { data: detail, isLoading, isError, error } = useFixtureDetail(fixtureId);
+  const { data: detail, isLoading, isError, error, refetch } = useFixtureDetail(fixtureId);
   const { data: odds } = useOdds(fixtureId);
-  const { data: bestOdds } = useBestOdds(fixtureId);
   const resolvedRequestedTab = useMemo(
     () => resolveInitialTab(requestedTab, detail?.fixture.stateBucket ?? null),
     [detail?.fixture.stateBucket, requestedTab],
   );
-  const liveOddsEnabled = Boolean(detail?.fixture.stateBucket === 'Live' && tab === 'odds');
+  const liveOddsEnabled = Boolean(detail?.fixture.stateBucket === 'Live');
   const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
     setTab(resolvedRequestedTab);
   }, [resolvedRequestedTab]);
 
-  const isLiveFixture = detail?.fixture.stateBucket === 'Live';
   const liveOddsRealtimeStatus = useLiveOddsSignalR(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
@@ -229,23 +248,28 @@ export default function FixtureDetailPage({ params }: Props) {
     () => (isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null),
     [isLive, mappedLiveOdds],
   );
-  const hasLiveOdds = mappedLiveOdds.length > 0;
-  const hasNamedLiveBookmakers = useMemo(
-    () => (isLive ? hasNonSyntheticBookmakerOdds(mappedLiveOdds) : false),
-    [isLive, mappedLiveOdds],
-  );
-  const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || bestOdds);
-  const shouldUseLiveBookmakerView = Boolean(isLive && hasLiveOdds && hasNamedLiveBookmakers);
-  const usingPreMatchFallback = Boolean(isLive && !shouldUseLiveBookmakerView && hasPreMatchFallback);
+  // Bridge: use detail.liveOddsSummary while per-market useLiveOdds data is still loading.
+  // This gives BestOddsBar live odds on first render without waiting for the separate odds/live call.
+  const summaryLiveBestOdds = useMemo(() => {
+    const s = detail?.liveOddsSummary;
+    if (!isLive || !s || s.source !== 'live') return null;
+    return summaryToBestOdds(s, { id: detail.fixture.id, apiFixtureId: detail.fixture.apiFixtureId });
+  }, [detail, isLive]);
+  const hasLiveOdds = mappedLiveOdds.length > 0 || Boolean(summaryLiveBestOdds);
+  const hasPerMarketLiveOdds = mappedLiveOdds.length > 0;
+  const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds);
+  const shouldUseLiveBookmakerView = Boolean(isLive && hasPerMarketLiveOdds);
+  // Not a pre-match fallback if we have live data from the summary (even before per-market loads)
+  const usingPreMatchFallback = Boolean(isLive && !shouldUseLiveBookmakerView && !summaryLiveBestOdds && hasPreMatchFallback);
   const displayOdds = useMemo(
     () => (isLive ? (shouldUseLiveBookmakerView ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
     [isLive, mappedLiveOdds, odds, shouldUseLiveBookmakerView],
   );
   const resolvedBestOdds = isLive
     ? shouldUseLiveBookmakerView
-      ? derivedLiveBestOdds ?? detail?.bestOdds ?? bestOdds ?? null
-      : detail?.bestOdds ?? bestOdds ?? null
-    : detail?.bestOdds ?? bestOdds ?? null;
+      ? derivedLiveBestOdds ?? summaryLiveBestOdds ?? detail?.bestOdds ?? null
+      : summaryLiveBestOdds ?? detail?.bestOdds ?? null
+    : detail?.bestOdds ?? null;
   const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(displayOdds.length);
   const oddsFreshnessIso = isLive
     ? resolvedBestOdds?.collectedAtUtc ?? detail?.latestOddsCollectedAtUtc ?? detail?.oddsLastSyncedAtUtc ?? null
@@ -449,30 +473,53 @@ export default function FixtureDetailPage({ params }: Props) {
 
   if (isError || !detail) {
     const detailError = error instanceof FixtureDetailError ? error : null;
-    const title = detailError?.status === 500 ? 'Live match detail is temporarily unavailable' : 'Fixture not found';
-    const description =
-      detailError?.status === 500
-        ? 'The backend fixture detail endpoint is currently failing for this match. The fixture exists, but its full detail screen cannot be loaded right now.'
-        : 'This fixture may not exist or the data is unavailable.';
+    const isTimeout = detailError?.status === 408;
+    const title = isTimeout
+      ? 'Loading timed out'
+      : detailError?.status === 404
+        ? 'Fixture not found'
+        : 'Match detail temporarily unavailable';
+    const description = isTimeout
+      ? 'The server is warming up (first load on free tier). Click Retry — it will connect on the next attempt.'
+      : detailError?.status === 404
+        ? 'This fixture may not exist or the data is unavailable.'
+        : 'The fixture detail endpoint is currently slow or unavailable. Try again in a moment.';
 
     return (
       <EmptyState
         title={title}
         description={description}
         action={
-          <button
-            type="button"
-            onClick={handleBackToMatches}
-            className="mt-2 inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
-            style={{
-              background: 'rgba(0,230,118,0.15)',
-              color: '#00e676',
-              border: '1px solid rgba(0,230,118,0.3)',
-              cursor: 'pointer',
-            }}
-          >
-            Back to matches
-          </button>
+          <div className="mt-2 flex gap-2">
+            {(isTimeout || (detailError && detailError.status !== 404)) ? (
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
+                style={{
+                  background: 'rgba(0,230,118,0.15)',
+                  color: '#00e676',
+                  border: '1px solid rgba(0,230,118,0.3)',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleBackToMatches}
+              className="inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
+              style={{
+                background: 'rgba(148,163,184,0.1)',
+                color: 'var(--t-text-3)',
+                border: '1px solid rgba(148,163,184,0.2)',
+                cursor: 'pointer',
+              }}
+            >
+              Back to matches
+            </button>
+          </div>
         }
       />
     );
@@ -613,5 +660,13 @@ export default function FixtureDetailPage({ params }: Props) {
           ))}
       </div>
     </div>
+  );
+}
+
+export default function FixtureDetailPage({ params }: Props) {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <FixtureDetailPageInner params={params} />
+    </Suspense>
   );
 }

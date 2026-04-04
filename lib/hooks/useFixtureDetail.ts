@@ -13,7 +13,19 @@ export class FixtureDetailError extends Error {
 }
 
 async function fetchFixtureDetail(fixtureId: string): Promise<FixtureDetailDto> {
-  const res = await fetch(`/api/fixtures/${fixtureId}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/fixtures/${fixtureId}`, {
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch (err) {
+    const name = err instanceof Error ? err.name : '';
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new FixtureDetailError(408, 'The server is warming up. Click Retry — it should connect on the next attempt.');
+    }
+    throw err;
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     const message =
@@ -31,6 +43,7 @@ export function useFixtureDetail(fixtureId: string) {
     queryKey: ['fixture', fixtureId],
     queryFn: () => fetchFixtureDetail(fixtureId),
     staleTime: 30_000,
+    retry: false,
     enabled: !!fixtureId,
   });
 }

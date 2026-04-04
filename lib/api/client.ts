@@ -74,6 +74,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       'X-API-KEY': API_KEY,
       ...(options?.headers ?? {}),
     },
+    signal: AbortSignal.timeout(85_000),
     next: { revalidate: 0 },
   });
 

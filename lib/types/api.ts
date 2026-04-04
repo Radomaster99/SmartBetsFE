@@ -132,6 +132,7 @@ export interface FixtureFreshnessDto {
 
 export interface FixtureDetailDto {
   fixture: FixtureDto;
+  liveOddsSummary: LiveOddsSummaryDto | null;
   bestOdds: BestOddsDto | null;
   latestOddsCollectedAtUtc: string | null;
   freshness?: FixtureFreshnessDto | null;

@@ -157,6 +157,13 @@ function truncateBookmaker(name: string, max = 11): string {
   return name.length > max ? `${name.slice(0, max - 3)}...` : name;
 }
 
+const SYNTHETIC_LIVE_BOOKMAKER = 'api-football live feed';
+
+function resolveBookmakerForDisplay(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return name.trim().toLowerCase() === SYNTHETIC_LIVE_BOOKMAKER ? null : name;
+}
+
 function OddsCell({
   label,
   value,
@@ -186,7 +193,7 @@ function OddsCell({
         </span>
       ) : null}
 
-      <span className={`odds-value${!value || !bookmaker ? ' na' : ''}`}>{value && bookmaker ? value.toFixed(2) : '-'}</span>
+      <span className={`odds-value${!value ? ' na' : ''}`}>{value ? value.toFixed(2) : '-'}</span>
 
       {value && bookmaker ? (
         <span
@@ -272,18 +279,16 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
   const isLive = fixture.stateBucket === 'Live';
   const liveSummary = fixture.liveOddsSummary ?? null;
   const liveSource = liveSummary?.source ?? 'none';
-  const needsPreMatchFallback =
-    isLive &&
-    (!liveSummary || (liveSummary.source !== 'live' && liveSummary.source !== 'prematch'));
-  const bestOdds = !isLive || needsPreMatchFallback ? bestOddsFallback ?? null : null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  const homeOdd = isLive ? liveSummary?.bestHomeOdd ?? bestOdds?.bestHomeOdd ?? null : bestOdds?.bestHomeOdd ?? null;
-  const homeBookmaker = isLive ? liveSummary?.bestHomeBookmaker ?? bestOdds?.bestHomeBookmaker ?? null : bestOdds?.bestHomeBookmaker ?? null;
-  const drawOdd = isLive ? liveSummary?.bestDrawOdd ?? bestOdds?.bestDrawOdd ?? null : bestOdds?.bestDrawOdd ?? null;
-  const drawBookmaker = isLive ? liveSummary?.bestDrawBookmaker ?? bestOdds?.bestDrawBookmaker ?? null : bestOdds?.bestDrawBookmaker ?? null;
-  const awayOdd = isLive ? liveSummary?.bestAwayOdd ?? bestOdds?.bestAwayOdd ?? null : bestOdds?.bestAwayOdd ?? null;
-  const awayBookmaker = isLive ? liveSummary?.bestAwayBookmaker ?? bestOdds?.bestAwayBookmaker ?? null : bestOdds?.bestAwayBookmaker ?? null;
+  // Use liveOddsSummary for both live and upcoming (backend populates it via includeLiveOddsSummary).
+  // Fall back to bestOddsFallback (batch call) when the summary is absent.
+  const homeOdd = liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
+  const homeBookmaker = resolveBookmakerForDisplay(liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker);
+  const drawOdd = liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
+  const drawBookmaker = resolveBookmakerForDisplay(liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker);
+  const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const awayBookmaker = resolveBookmakerForDisplay(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
 
   const detailHref = buildFixtureHref(fixture.apiFixtureId);
 
