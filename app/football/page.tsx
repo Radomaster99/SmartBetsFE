@@ -330,8 +330,10 @@ function FootballPageClient() {
   const searchParams = useSearchParams();
   const today = todayISO();
   const rawDate = searchParams.get('date');
-  const rawState = parseState(searchParams.get('state'));
-  const rawUpcomingScope = parseUpcomingScope(searchParams.get('upcomingScope'));
+  const rawStateValue = searchParams.get('state');
+  const rawUpcomingScopeValue = searchParams.get('upcomingScope');
+  const rawState = parseState(rawStateValue);
+  const rawUpcomingScope = parseUpcomingScope(rawUpcomingScopeValue);
   const leagueId = parsePositiveInt(searchParams.get('leagueId'));
   const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
   const hasExplicitDate = isValidIsoDate(rawDate);
@@ -344,25 +346,38 @@ function FootballPageClient() {
   const isFutureDate = date > today;
   const state: StateBucket | 'All' =
     isFutureDate ? 'Upcoming' : !isToday && rawState === 'Live' ? 'All' : rawState;
+  const currentQuery = searchParams.toString();
+  const currentHref = currentQuery ? `${pathname}?${currentQuery}` : pathname;
+  const canonicalHref = buildFootballHref(date, state, leagueId, season, upcomingScope);
+  const shouldCanonicalize =
+    (rawDate !== null && !hasExplicitDate) ||
+    (rawStateValue !== null && parseState(rawStateValue) !== rawStateValue) ||
+    (rawUpcomingScopeValue !== null && rawUpcomingScopeValue !== 'today' && rawUpcomingScopeValue !== 'all') ||
+    (isFutureDate && rawStateValue !== 'Upcoming') ||
+    (!isToday && rawStateValue === 'Live');
   const { data: leagues } = useLeagues(season);
   const { fixtureIds: savedFixtureIds, fixtureIdSet, toggleFixture } = useFixtureWatchlist();
   const [savedOnly, setSavedOnly] = useState(false);
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
 
   useEffect(() => {
-    const canonicalHref = buildFootballHref(date, state, leagueId, season, upcomingScope);
-    const currentQuery = searchParams.toString();
-    const currentHref = currentQuery ? `${pathname}?${currentQuery}` : pathname;
-
-    if (canonicalHref !== currentHref) {
+    if (shouldCanonicalize && canonicalHref !== currentHref) {
       router.replace(canonicalHref, { scroll: false });
       return;
     }
 
     if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, canonicalHref);
+      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, currentHref);
     }
-  }, [date, leagueId, pathname, router, searchParams, season, state, upcomingScope]);
+  }, [canonicalHref, currentHref, router, shouldCanonicalize]);
+
+  const replaceIfNeeded = (nextHref: string) => {
+    if (nextHref === currentHref) {
+      return;
+    }
+
+    router.replace(nextHref, { scroll: false });
+  };
 
   const handleDateChange = (nextDate: string) => {
     const nextToday = todayISO();
@@ -376,26 +391,26 @@ function FootballPageClient() {
       nextState = 'All';
     }
 
-    router.replace(buildFootballHref(nextDate, nextState, leagueId, season, 'today'), { scroll: false });
+    replaceIfNeeded(buildFootballHref(nextDate, nextState, leagueId, season, 'today'));
   };
 
   const handleStateChange = (nextState: StateBucket | 'All') => {
     if (isFutureDate) {
-      router.replace(buildFootballHref(date, 'Upcoming', leagueId, season, 'today'), { scroll: false });
+      replaceIfNeeded(buildFootballHref(date, 'Upcoming', leagueId, season, 'today'));
       return;
     }
 
     if (!isToday && nextState === 'Live') {
-      router.replace(buildFootballHref(date, 'All', leagueId, season, 'today'), { scroll: false });
+      replaceIfNeeded(buildFootballHref(date, 'All', leagueId, season, 'today'));
       return;
     }
 
     const nextUpcomingScope = nextState === 'Upcoming' ? upcomingScope : 'today';
-    router.replace(buildFootballHref(date, nextState, leagueId, season, nextUpcomingScope), { scroll: false });
+    replaceIfNeeded(buildFootballHref(date, nextState, leagueId, season, nextUpcomingScope));
   };
 
   const handleUpcomingScopeChange = (nextScope: UpcomingScope) => {
-    router.replace(buildFootballHref(today, 'Upcoming', leagueId, season, nextScope), { scroll: false });
+    replaceIfNeeded(buildFootballHref(today, 'Upcoming', leagueId, season, nextScope));
   };
 
   const filters = {
@@ -530,7 +545,7 @@ function FootballPageClient() {
           ) : (
             <button
               type="button"
-              onClick={() => router.replace(buildFootballHref(date, state, null, season, 'today'), { scroll: false })}
+              onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, season, 'today'))}
               className="rounded px-2.5 py-1 text-[11px] font-medium"
               style={{
                 background: 'var(--t-surface-2)',

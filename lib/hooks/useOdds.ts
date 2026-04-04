@@ -20,6 +20,30 @@ export async function fetchBestOdds(fixtureId: string, marketName?: string): Pro
   return res.json();
 }
 
+export async function fetchBestOddsBatch(
+  fixtureIds: number[],
+  marketName?: string,
+): Promise<Record<string, BestOddsDto | null>> {
+  if (fixtureIds.length === 0) {
+    return {};
+  }
+
+  const res = await fetch('/api/fixtures/best-odds/batch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fixtureIds, marketName }),
+  });
+
+  if (!res.ok) {
+    return {};
+  }
+
+  const data = (await res.json()) as { items?: Record<string, BestOddsDto | null> };
+  return data.items ?? {};
+}
+
 export function useOdds(fixtureId: string, marketName?: string) {
   return useQuery({
     queryKey: ['odds', fixtureId, marketName],

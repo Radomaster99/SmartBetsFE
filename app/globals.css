@@ -310,6 +310,72 @@ html[data-theme="light"] .cta-btn {
 }
 
 /* ── Widget container ──────────────────────────────────── */
+.sidebar-hover-item {
+  position: relative;
+  border-radius: 12px;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.sidebar-hover-item:hover,
+.sidebar-hover-item:focus-visible {
+  transform: translateX(2px);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 230, 118, 0.18),
+    0 8px 18px rgba(2, 6, 23, 0.18);
+}
+
+.sidebar-hover-item:hover {
+  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.sidebar-hover-item:focus-visible {
+  outline: none;
+  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.05)) !important;
+}
+
+.sidebar-hover-item[data-active="true"]:hover,
+.sidebar-hover-item[data-active="true"]:focus-visible {
+  background: var(--sidebar-active-hover-bg, rgba(255, 255, 255, 0.1)) !important;
+}
+
+.sidebar-hover-panel {
+  border-radius: 12px;
+  transition: box-shadow 0.16s ease;
+}
+
+.sidebar-hover-panel:hover,
+.sidebar-hover-panel:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 230, 118, 0.14),
+    0 8px 18px rgba(2, 6, 23, 0.14);
+}
+
+.filter-hover-chip {
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.filter-hover-chip:hover,
+.filter-hover-chip:focus-visible {
+  transform: translateY(-0.5px);
+  background: var(--filter-hover-bg, rgba(255, 255, 255, 0.08)) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 230, 118, 0.08);
+  outline: none;
+}
+
+.filter-hover-chip[data-active="true"]:hover,
+.filter-hover-chip[data-active="true"]:focus-visible {
+  background: var(--filter-active-hover-bg, rgba(255, 255, 255, 0.14)) !important;
+}
+
 .widget-wrap {
   width: 100%;
   min-height: 200px;

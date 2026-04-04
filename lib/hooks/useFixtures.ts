@@ -27,6 +27,8 @@ export function useFixtures(filters: FixtureFilters) {
     queryKey: ['fixtures', filters],
     queryFn: () => fetchFixtures(filters),
     staleTime: 30_000,
+    placeholderData: (previousData) => previousData,
     refetchInterval: isLive ? 30_000 : false,
+    refetchOnWindowFocus: false,
   });
 }

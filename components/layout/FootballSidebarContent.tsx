@@ -72,10 +72,7 @@ function buildUpcomingLeagueHref(leagueId: number, season: number) {
   next.set('state', 'Upcoming');
   next.set('leagueId', String(leagueId));
   next.set('upcomingScope', 'all');
-
-  if (season !== DEFAULT_SEASON) {
-    next.set('season', String(season));
-  }
+  next.set('season', String(season));
 
   return `/football?${next.toString()}`;
 }
@@ -276,12 +273,16 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
           <Link
             key={item.label}
             href={item.href}
-            onClick={onNavigate}
-            className="flex items-center rounded px-2 py-2 text-[12px] transition-colors"
+            onNavigate={onNavigate}
+            className="sidebar-hover-item flex items-center rounded px-2 py-2 text-[12px] transition-colors"
+            data-active={item.active ? 'true' : 'false'}
             style={{
               color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
               background: item.active ? 'rgba(255,255,255,0.06)' : 'transparent',
               textDecoration: 'none',
+              marginTop: item.label === 'Standings' ? '4px' : undefined,
+              ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+              ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
             }}
           >
             {item.label}
@@ -292,13 +293,16 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       <div className="flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <Link
           href={clearLeagueHref}
-          onClick={onNavigate}
-          className="flex items-center justify-between rounded px-2 py-2 text-[12px] transition-colors"
+          onNavigate={onNavigate}
+          className="sidebar-hover-item flex items-center justify-between rounded px-2 py-2 text-[12px] transition-colors"
+          data-active={isAllLeaguesActive ? 'true' : 'false'}
           style={{
             color: isAllLeaguesActive ? 'var(--t-text-1)' : 'var(--t-text-2)',
             background: isAllLeaguesActive ? 'rgba(255,255,255,0.06)' : 'transparent',
             borderLeft: isAllLeaguesActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
             textDecoration: 'none',
+            ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+            ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
           }}
         >
           <span>All leagues</span>
@@ -326,11 +330,14 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
             <button
               type="button"
               onClick={() => setPopularExpanded((current) => !current)}
-              className="flex w-full items-center justify-between px-2.5 py-2.5 text-left"
+              className="sidebar-hover-item flex w-full items-center justify-between px-2.5 py-2.5 text-left"
+              data-active={popularExpanded ? 'true' : 'false'}
               style={{
                 background: 'rgba(255,255,255,0.03)',
                 borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
                 cursor: 'pointer',
+                ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+                ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.08)',
               }}
             >
               <span className="flex items-center gap-2">
@@ -371,13 +378,16 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                     <Link
                       key={`popular-${item.leagueId}-${item.targetSeason}`}
                       href={href}
-                      onClick={onNavigate}
-                      className="mt-1 flex items-center rounded px-2 py-1.5 text-[12px] transition-colors"
+                      onNavigate={onNavigate}
+                      className="sidebar-hover-item mt-1 flex items-center rounded px-2 py-1.5 text-[12px] transition-colors"
+                      data-active={isActive ? 'true' : 'false'}
                       style={{
                         background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
                         borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
                         color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
                         textDecoration: 'none',
+                        ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+                        ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
                       }}
                     >
                       <span className="truncate">{item.displayName}</span>
@@ -400,7 +410,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
               return (
                 <div
                   key={`pinned-${league.apiLeagueId}-${league.season}`}
-                  className="mt-1 flex items-center gap-1 rounded pr-1"
+                  className="sidebar-hover-panel mt-1 flex items-center gap-1 rounded pr-1"
                   style={{
                     background: isActive ? 'rgba(255,255,255,0.07)' : 'var(--t-surface)',
                     borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
@@ -408,9 +418,15 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                 >
                   <Link
                     href={getLeagueHref(league)}
-                    onClick={onNavigate}
-                    className="min-w-0 flex-1 px-2 py-1.5 text-[12px]"
-                    style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)', textDecoration: 'none' }}
+                    onNavigate={onNavigate}
+                    className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px]"
+                    data-active={isActive ? 'true' : 'false'}
+                    style={{
+                      color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
+                      textDecoration: 'none',
+                      ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.05)',
+                      ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+                    }}
                   >
                     <span className="block truncate">{league.name}</span>
                     <span className="block truncate text-[10px]" style={{ color: 'var(--t-text-5)' }}>
@@ -463,11 +479,14 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                     [group.countryName]: !isExpanded,
                   }))
                 }
-                className="flex w-full items-center gap-2 px-2 py-2 text-left"
+                className="sidebar-hover-item flex w-full items-center gap-2 px-2 py-2 text-left"
+                data-active={hasActiveLeague ? 'true' : 'false'}
                 style={{
                   background: hasActiveLeague ? 'rgba(255,255,255,0.04)' : 'transparent',
                   borderBottom: isExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
                   cursor: 'pointer',
+                  ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+                  ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.08)',
                 }}
               >
                 {group.country?.flagUrl ? (
@@ -510,7 +529,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                     return (
                       <div
                         key={`${league.apiLeagueId}-${league.season}`}
-                        className="ml-2 mr-1 mt-1 flex items-center gap-1 rounded pr-1"
+                        className="sidebar-hover-panel ml-2 mr-1 mt-1 flex items-center gap-1 rounded pr-1"
                         style={{
                           background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
                           borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
@@ -518,9 +537,15 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                       >
                         <Link
                           href={getLeagueHref(league)}
-                          onClick={onNavigate}
-                          className="min-w-0 flex-1 px-2 py-1.5 text-[12px] transition-colors"
-                          style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)', textDecoration: 'none' }}
+                          onNavigate={onNavigate}
+                          className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px] transition-colors"
+                          data-active={isActive ? 'true' : 'false'}
+                          style={{
+                            color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)',
+                            textDecoration: 'none',
+                            ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.05)',
+                            ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+                          }}
                         >
                           <span className="block truncate">{league.name}</span>
                         </Link>

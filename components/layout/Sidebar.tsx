@@ -49,13 +49,16 @@ export function Sidebar({
         <div className="flex-shrink-0 pt-1">
           <Link
             href="/football"
-            onClick={onClose}
-            className={`mx-2 mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${isFootball ? 'chrome-btn-active' : ''}`}
+            onNavigate={onClose}
+            className={`sidebar-hover-item mx-2 mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${isFootball ? 'chrome-btn-active' : ''}`}
+            data-active={isFootball ? 'true' : 'false'}
             style={{
               color: isFootball ? 'var(--t-text-1)' : 'var(--t-text-3)',
               background: isFootball ? undefined : 'transparent',
               borderLeft: 'none',
               textDecoration: 'none',
+              ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.07)',
+              ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.12)',
             }}
           >
             <span

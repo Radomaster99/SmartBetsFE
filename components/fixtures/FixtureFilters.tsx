@@ -90,8 +90,12 @@ export function FixtureFilters({
       <button
         type="button"
         onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() - 86400000)))}
-        className="flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
-        style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
+        className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
+        style={{
+          color: 'var(--t-text-5)',
+          cursor: 'pointer',
+          ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
+        }}
         aria-label="Previous day"
       >
         {'<'}
@@ -104,11 +108,14 @@ export function FixtureFilters({
             key={day}
             type="button"
             onClick={() => onDateChange(day)}
-            className="flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            className="filter-hover-chip flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            data-active={active ? 'true' : 'false'}
             style={{
               color: active ? 'var(--t-text-1)' : day === today ? 'var(--t-text-2)' : 'var(--t-text-4)',
               background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
               fontWeight: active ? 700 : 500,
+              ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
+              ['--filter-active-hover-bg' as string]: 'rgba(255,255,255,0.14)',
             }}
           >
             {labelDate(day)}
@@ -119,8 +126,12 @@ export function FixtureFilters({
       <button
         type="button"
         onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() + 86400000)))}
-        className="flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
-        style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
+        className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
+        style={{
+          color: 'var(--t-text-5)',
+          cursor: 'pointer',
+          ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
+        }}
         aria-label="Next day"
       >
         {'>'}
@@ -137,11 +148,14 @@ export function FixtureFilters({
             key={item.value}
             type="button"
             onClick={() => onStateChange(item.value)}
-            className="flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            className="filter-hover-chip flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            data-active={active ? 'true' : 'false'}
             style={{
               color: active ? (item.value === 'Live' ? '#fff' : 'var(--t-text-1)') : 'var(--t-text-4)',
               background: active ? (item.value === 'Live' ? '#ef5350' : 'rgba(255,255,255,0.1)') : 'transparent',
               cursor: 'pointer',
+              ['--filter-hover-bg' as string]: active && item.value === 'Live' ? '#f26763' : 'rgba(255,255,255,0.08)',
+              ['--filter-active-hover-bg' as string]: active && item.value === 'Live' ? '#f26763' : 'rgba(255,255,255,0.14)',
             }}
           >
             {item.label}
@@ -155,8 +169,12 @@ export function FixtureFilters({
         type="button"
         onClick={openDatePicker}
         title="Pick a specific date"
-        className="flex-shrink-0 rounded px-2 py-1 text-[11px] font-semibold tracking-[0.12em] transition-colors"
-        style={{ color: 'var(--t-text-5)', cursor: 'pointer' }}
+        className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[11px] font-semibold tracking-[0.12em] transition-colors"
+        style={{
+          color: 'var(--t-text-5)',
+          cursor: 'pointer',
+          ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
+        }}
       >
         CAL
       </button>

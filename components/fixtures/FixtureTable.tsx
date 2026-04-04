@@ -2,10 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { FixtureDto } from '@/lib/types/api';
 import type { LiveOddsMovementByFixture } from '@/lib/hooks/useLiveOdds';
-import { fetchBestOdds } from '@/lib/hooks/useOdds';
+import { fetchBestOddsBatch } from '@/lib/hooks/useOdds';
 import { buildBookmakerHref } from '@/lib/bookmakers';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import { FixtureRow } from './FixtureRow';
@@ -19,6 +19,21 @@ interface Props {
   oddsMovements?: LiveOddsMovementByFixture;
   savedFixtureIds?: Set<number>;
   onToggleSave?: (fixtureId: number) => void;
+}
+
+function needsBestOddsFallback(fixture: FixtureDto): boolean {
+  const liveSummary = fixture.liveOddsSummary ?? null;
+
+  return (
+    (fixture.stateBucket === 'Upcoming' ||
+      fixture.stateBucket === 'Live' ||
+      fixture.stateBucket === 'Unknown') &&
+    (
+      fixture.stateBucket !== 'Live' ||
+      !liveSummary ||
+      (liveSummary.source !== 'live' && liveSummary.source !== 'prematch')
+    )
+  );
 }
 
 function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
@@ -218,41 +233,40 @@ function MobileFixtureCard({
 }
 
 export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureIds, onToggleSave }: Props) {
-  const bestOddsResults = useQueries({
-    queries: fixtures.map((fixture) => {
-      const liveSummary = fixture.liveOddsSummary ?? null;
-      const needsFallback =
-        (fixture.stateBucket === 'Upcoming' ||
-          fixture.stateBucket === 'Live' ||
-          fixture.stateBucket === 'Unknown') &&
-        (
-          fixture.stateBucket !== 'Live' ||
-          !liveSummary ||
-          (liveSummary.source !== 'live' && liveSummary.source !== 'prematch')
-        );
+  const fallbackFixtureIds = useMemo(
+    () => fixtures.filter(needsBestOddsFallback).map((fixture) => fixture.apiFixtureId),
+    [fixtures],
+  );
 
-      return {
-        queryKey: ['best-odds', String(fixture.apiFixtureId), undefined],
-        queryFn: () => fetchBestOdds(String(fixture.apiFixtureId)),
-        staleTime: 60_000,
-        enabled: needsFallback,
-      };
-    }),
+  const { data: bestOddsBatch = {} } = useQuery({
+    queryKey: ['best-odds-batch', fallbackFixtureIds],
+    queryFn: () => fetchBestOddsBatch(fallbackFixtureIds),
+    staleTime: 60_000,
+    enabled: fallbackFixtureIds.length > 0,
+    placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: false,
   });
 
   const bestOddsMap = useMemo(
-    () => new Map(fixtures.map((fixture, index) => [fixture.apiFixtureId, bestOddsResults[index]?.data ?? null])),
-    [bestOddsResults, fixtures],
+    () =>
+      new Map(
+        fixtures.map((fixture) => [fixture.apiFixtureId, bestOddsBatch[String(fixture.apiFixtureId)] ?? null]),
+      ),
+    [bestOddsBatch, fixtures],
   );
 
-  const byLeague = fixtures.reduce<Record<string, { name: string; country: string; items: FixtureDto[] }>>((acc, fixture) => {
-    const key = String(fixture.leagueApiId);
-    if (!acc[key]) {
-      acc[key] = { name: fixture.leagueName, country: fixture.countryName, items: [] };
-    }
-    acc[key].items.push(fixture);
-    return acc;
-  }, {});
+  const byLeague = useMemo(
+    () =>
+      fixtures.reduce<Record<string, { name: string; country: string; items: FixtureDto[] }>>((acc, fixture) => {
+        const key = String(fixture.leagueApiId);
+        if (!acc[key]) {
+          acc[key] = { name: fixture.leagueName, country: fixture.countryName, items: [] };
+        }
+        acc[key].items.push(fixture);
+        return acc;
+      }, {}),
+    [fixtures],
+  );
 
   if (isLoading) {
     return (

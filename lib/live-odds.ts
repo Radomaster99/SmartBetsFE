@@ -1,5 +1,7 @@
 import type { BestOddsDto, LiveOddsMarketDto, LiveOddsValueDto, OddDto } from '@/lib/types/api';
 
+const SYNTHETIC_LIVE_BOOKMAKER_LABEL = 'api-football live feed';
+
 function normalizeOutcomeLabel(label: string): string {
   return label.trim().toLowerCase();
 }
@@ -68,6 +70,10 @@ export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[]): OddDto[] {
       } satisfies OddDto;
     })
     .filter((market): market is OddDto => market !== null);
+}
+
+export function hasNonSyntheticBookmakerOdds(odds: OddDto[]): boolean {
+  return odds.some((odd) => odd.apiBookmakerId > 0 && odd.bookmaker.trim().toLowerCase() !== SYNTHETIC_LIVE_BOOKMAKER_LABEL);
 }
 
 export function deriveBestOddsFromOdds(odds: OddDto[]): BestOddsDto | null {

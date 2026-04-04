@@ -11,7 +11,7 @@ import { BestOddsBar } from '@/components/odds/BestOddsBar';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { deriveBestOddsFromOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
+import { deriveBestOddsFromOdds, hasNonSyntheticBookmakerOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
 
 type Tab = 'odds' | 'match' | 'h2h';
 
@@ -56,7 +56,14 @@ function LiveOddsStatusPill({
     color: 'var(--t-text-3)',
   };
 
-  if (hasLiveOdds && status === 'connected') {
+  if (usingPreMatchFallback) {
+    copy = 'Using pre-match fallback';
+    styles = {
+      background: 'rgba(245,158,11,0.12)',
+      border: '1px solid rgba(245,158,11,0.26)',
+      color: '#fbbf24',
+    };
+  } else if (hasLiveOdds && status === 'connected') {
     copy = 'Live odds connected';
     styles = {
       background: 'rgba(0,230,118,0.12)',
@@ -65,13 +72,6 @@ function LiveOddsStatusPill({
     };
   } else if (hasLiveOdds && (status === 'connecting' || status === 'reconnecting')) {
     copy = 'Live odds syncing';
-    styles = {
-      background: 'rgba(245,158,11,0.12)',
-      border: '1px solid rgba(245,158,11,0.26)',
-      color: '#fbbf24',
-    };
-  } else if (usingPreMatchFallback) {
-    copy = 'Using pre-match fallback';
     styles = {
       background: 'rgba(245,158,11,0.12)',
       border: '1px solid rgba(245,158,11,0.26)',
@@ -98,7 +98,7 @@ function LiveOddsStatusPill({
       className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold"
       style={styles}
     >
-      {hasLiveOdds && status === 'connected' && (
+      {hasLiveOdds && status === 'connected' && !usingPreMatchFallback && (
         <span className="live-dot" aria-hidden="true" />
       )}
       {copy}
@@ -106,9 +106,13 @@ function LiveOddsStatusPill({
   );
 }
 
-function resolveInitialTab(tab: string | null): Tab {
+function resolveInitialTab(tab: string | null, stateBucket?: string | null): Tab {
   if (tab === 'odds' || tab === 'h2h' || tab === 'match') {
     return tab;
+  }
+
+  if (stateBucket === 'Finished') {
+    return 'match';
   }
 
   // Default to odds so bettors land on the comparison surface first.
@@ -150,7 +154,8 @@ export default function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = resolveInitialTab(searchParams.get('tab'));
+  const requestedTab = searchParams.get('tab');
+  const initialTab = resolveInitialTab(requestedTab);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [bestOddsMovements, setBestOddsMovements] = useState<Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>({});
   const [oddsTableMovements, setOddsTableMovements] = useState<Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>>({});
@@ -161,12 +166,16 @@ export default function FixtureDetailPage({ params }: Props) {
   const { data: detail, isLoading, isError, error } = useFixtureDetail(fixtureId);
   const { data: odds } = useOdds(fixtureId);
   const { data: bestOdds } = useBestOdds(fixtureId);
+  const resolvedRequestedTab = useMemo(
+    () => resolveInitialTab(requestedTab, detail?.fixture.stateBucket ?? null),
+    [detail?.fixture.stateBucket, requestedTab],
+  );
   const liveOddsEnabled = Boolean(detail?.fixture.stateBucket === 'Live' && tab === 'odds');
   const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
+    setTab(resolvedRequestedTab);
+  }, [resolvedRequestedTab]);
 
   const isLiveFixture = detail?.fixture.stateBucket === 'Live';
   const liveOddsRealtimeStatus = useLiveOddsSignalR(fixtureId, liveOddsEnabled);
@@ -221,14 +230,21 @@ export default function FixtureDetailPage({ params }: Props) {
     [isLive, mappedLiveOdds],
   );
   const hasLiveOdds = mappedLiveOdds.length > 0;
+  const hasNamedLiveBookmakers = useMemo(
+    () => (isLive ? hasNonSyntheticBookmakerOdds(mappedLiveOdds) : false),
+    [isLive, mappedLiveOdds],
+  );
   const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || bestOdds);
-  const usingPreMatchFallback = Boolean(isLive && !hasLiveOdds && hasPreMatchFallback);
+  const shouldUseLiveBookmakerView = Boolean(isLive && hasLiveOdds && hasNamedLiveBookmakers);
+  const usingPreMatchFallback = Boolean(isLive && !shouldUseLiveBookmakerView && hasPreMatchFallback);
   const displayOdds = useMemo(
-    () => (isLive ? (hasLiveOdds ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
-    [hasLiveOdds, isLive, mappedLiveOdds, odds],
+    () => (isLive ? (shouldUseLiveBookmakerView ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
+    [isLive, mappedLiveOdds, odds, shouldUseLiveBookmakerView],
   );
   const resolvedBestOdds = isLive
-    ? derivedLiveBestOdds ?? detail?.bestOdds ?? bestOdds ?? null
+    ? shouldUseLiveBookmakerView
+      ? derivedLiveBestOdds ?? detail?.bestOdds ?? bestOdds ?? null
+      : detail?.bestOdds ?? bestOdds ?? null
     : detail?.bestOdds ?? bestOdds ?? null;
   const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(displayOdds.length);
   const oddsFreshnessIso = isLive
@@ -267,15 +283,15 @@ export default function FixtureDetailPage({ params }: Props) {
   const liveOddsLastSyncedLabel = formatRelativeTimestamp(liveOddsSyncedAtIso);
   const liveOddsLastChangedLabel = formatRelativeTimestamp(liveOddsLastChangedAtIso);
   const headerOddsLabel = isLive
-    ? liveOddsLastSyncedLabel
-      ? `Live odds synced ${liveOddsLastSyncedLabel}${
-          liveOddsLastChangedLabel && liveOddsLastChangedLabel !== liveOddsLastSyncedLabel
-            ? ` · Last change ${liveOddsLastChangedLabel}`
-            : ''
-        }`
-      : usingPreMatchFallback && oddsFreshnessIso
+    ? usingPreMatchFallback && oddsFreshnessIso
         ? `Pre-match odds updated ${formatRelativeTimestamp(oddsFreshnessIso) ?? 'recently'}`
-        : null
+        : liveOddsLastSyncedLabel
+          ? `Live odds synced ${liveOddsLastSyncedLabel}${
+              liveOddsLastChangedLabel && liveOddsLastChangedLabel !== liveOddsLastSyncedLabel
+                ? ` · Last change ${liveOddsLastChangedLabel}`
+                : ''
+            }`
+          : null
     : oddsFreshnessIso
       ? (() => {
           const label = formatRelativeTimestamp(oddsFreshnessIso);
@@ -554,10 +570,10 @@ export default function FixtureDetailPage({ params }: Props) {
                         color: '#fbbf24',
                       }}
                     >
-                      Provider live markets are missing for this fixture right now, so SmartBets is showing the latest pre-match prices instead.
+                      Provider live markets for this fixture do not include bookmaker-level names right now, so SmartBets is showing the latest pre-match bookmaker prices instead.
                     </div>
                   ) : null}
-                  {liveOddsRealtimeStatus === 'connected' && hasLiveOdds ? (
+                  {liveOddsRealtimeStatus === 'connected' && shouldUseLiveBookmakerView ? (
                     <div
                       className="rounded-md px-3 py-2 text-[11px]"
                       style={{
