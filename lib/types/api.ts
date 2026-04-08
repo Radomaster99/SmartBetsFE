@@ -1,5 +1,6 @@
 export type StateBucket = 'Upcoming' | 'Live' | 'Finished' | 'Postponed' | 'Cancelled' | 'Other' | 'Unknown';
 export type LiveOddsSummarySource = 'live' | 'prematch' | 'none';
+export type BookmakerIdentityType = 'real' | 'synthetic';
 
 export interface LiveOddsSummaryDto {
   apiFixtureId?: number;
@@ -98,6 +99,7 @@ export interface LiveOddsMarketDto {
   bookmakerId: number;
   apiBookmakerId: number;
   bookmaker: string;
+  bookmakerIdentityType?: BookmakerIdentityType | null;
   apiBetId: number;
   betName: string;
   collectedAtUtc?: string | null;

@@ -74,10 +74,6 @@ export function Sidebar({
           </Link>
         </div>
 
-        <div className="mx-2 mb-2 rounded-lg px-3 py-2 text-[11px] panel-shell" style={{ color: 'var(--t-text-5)' }}>
-          Live, pre-match, fixtures, standings, and sync controls all route through this football workspace.
-        </div>
-
         {isFootball ? (
           <Suspense
             fallback={

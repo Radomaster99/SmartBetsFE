@@ -5,21 +5,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useCountries } from '@/lib/hooks/useCountries';
 import { useLeagues } from '@/lib/hooks/useLeagues';
+import {
+  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
+  DEFAULT_POPULAR_LEAGUES_PRESET,
+  USER_POPULAR_LEAGUES_STORAGE_KEY,
+  USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
+  getPopularLeagueKey,
+  mergePopularLeaguePresets,
+  readPopularLeagueKeys,
+  readPopularLeaguePresets,
+  type PopularLeaguePreset,
+  writePopularLeagueKeys,
+  writePopularLeaguePresets,
+} from '@/lib/popular-leagues';
 import type { CountryDto, LeagueDto } from '@/lib/types/api';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
-const PINNED_LEAGUES_STORAGE_KEY = 'smartbets:pinned-leagues';
-const POPULAR_LEAGUES = [
-  { leagueId: 39, displayName: 'Premier League' },
-  { leagueId: 2, displayName: 'Champions League' },
-  { leagueId: 3, displayName: 'Europa League' },
-  { leagueId: 38, displayName: 'Euro U21' },
-  { leagueId: 61, displayName: 'Ligue 1' },
-  { leagueId: 78, displayName: 'Bundesliga' },
-  { leagueId: 135, displayName: 'Serie A' },
-  { leagueId: 140, displayName: 'LaLiga' },
-  { leagueId: 1, displayName: 'World Cup 2026', season: 2026 },
-];
 
 interface CountryGroup {
   countryName: string;
@@ -111,18 +112,6 @@ function buildCountryGroups(leagues: LeagueDto[] | undefined, countries: Country
     .sort((a, b) => a.countryName.localeCompare(b.countryName));
 }
 
-function sortPinnedLeagues(leagues: LeagueDto[], pinnedLeagueIds: number[]) {
-  const rank = new Map<number, number>();
-  pinnedLeagueIds.forEach((leagueId, index) => rank.set(leagueId, index));
-
-  return [...leagues].sort((a, b) => {
-    const rankA = rank.get(a.apiLeagueId) ?? Number.MAX_SAFE_INTEGER;
-    const rankB = rank.get(b.apiLeagueId) ?? Number.MAX_SAFE_INTEGER;
-    if (rankA !== rankB) return rankA - rankB;
-    return a.name.localeCompare(b.name);
-  });
-}
-
 export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -130,7 +119,10 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const normalizedSearch = search.trim().toLowerCase();
   const [popularExpanded, setPopularExpanded] = useState(true);
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
-  const [pinnedLeagueIds, setPinnedLeagueIds] = useState<number[]>([]);
+  const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
+  const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
+  const [userPopularLeaguePresets, setUserPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
+  const [hiddenPopularLeagueKeys, setHiddenPopularLeagueKeys] = useState<string[]>([]);
 
   const isMatchesPage = pathname === '/football';
   const isStandingsPage = pathname.startsWith('/football/standings');
@@ -163,28 +155,29 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       .filter((group) => group.leagues.length > 0 || group.countryName.toLowerCase().includes(normalizedSearch));
   }, [allCountryGroups, normalizedSearch]);
 
-  const pinnedLeagues = useMemo(() => {
-    if (!leagues?.length || !pinnedLeagueIds.length) {
-      return [];
-    }
+  const mergedPopularLeaguePresets = useMemo(
+    () => mergePopularLeaguePresets(adminPopularLeaguePresets, userPopularLeaguePresets, hiddenPopularLeagueKeys),
+    [adminPopularLeaguePresets, hiddenPopularLeagueKeys, userPopularLeaguePresets],
+  );
 
-    const sorted = sortPinnedLeagues(
-      leagues.filter((league) => pinnedLeagueIds.includes(league.apiLeagueId)),
-      pinnedLeagueIds,
-    );
+  const adminPopularLeagueKeys = useMemo(
+    () => new Set(adminPopularLeaguePresets.map((item) => getPopularLeagueKey(item.leagueId, item.season))),
+    [adminPopularLeaguePresets],
+  );
 
-    if (!normalizedSearch) return sorted;
+  const userPopularLeagueKeys = useMemo(
+    () => new Set(userPopularLeaguePresets.map((item) => getPopularLeagueKey(item.leagueId, item.season))),
+    [userPopularLeaguePresets],
+  );
 
-    return sorted.filter(
-      (league) =>
-        league.name.toLowerCase().includes(normalizedSearch) ||
-        league.countryName.toLowerCase().includes(normalizedSearch),
-    );
-  }, [leagues, normalizedSearch, pinnedLeagueIds]);
+  const hiddenPopularLeagueKeySet = useMemo(
+    () => new Set(hiddenPopularLeagueKeys),
+    [hiddenPopularLeagueKeys],
+  );
 
   const popularLeagues = useMemo(
     () =>
-      POPULAR_LEAGUES.map((item) => {
+      mergedPopularLeaguePresets.map((item) => {
         const sourceLeagues = item.season === 2026 ? worldCupLeagues ?? [] : leagues ?? [];
         const league = sourceLeagues.find((entry) => entry.apiLeagueId === item.leagueId) ?? null;
 
@@ -193,35 +186,42 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
           league,
           targetSeason: item.season ?? season,
         };
-      }).filter((item) => !normalizedSearch || item.displayName.toLowerCase().includes(normalizedSearch)),
-    [leagues, normalizedSearch, season, worldCupLeagues],
+      }),
+    [leagues, mergedPopularLeaguePresets, season, worldCupLeagues],
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    try {
-      const rawValue = window.localStorage.getItem(PINNED_LEAGUES_STORAGE_KEY);
-      if (!rawValue) return;
-
-      const parsed = JSON.parse(rawValue);
-      if (Array.isArray(parsed)) {
-        setPinnedLeagueIds(parsed.map((value) => Number(value)).filter((value) => Number.isFinite(value)));
-      }
-    } catch {
-      window.localStorage.removeItem(PINNED_LEAGUES_STORAGE_KEY);
-    }
+    setAdminPopularLeaguePresets(
+      readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET),
+    );
+    setUserPopularLeaguePresets(readPopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, []));
+    setHiddenPopularLeagueKeys(readPopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, []));
+    setPopularStorageHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (!popularStorageHydrated) {
       return;
     }
 
-    window.localStorage.setItem(PINNED_LEAGUES_STORAGE_KEY, JSON.stringify(pinnedLeagueIds));
-  }, [pinnedLeagueIds]);
+    writePopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, adminPopularLeaguePresets);
+  }, [adminPopularLeaguePresets, popularStorageHydrated]);
+
+  useEffect(() => {
+    if (!popularStorageHydrated) {
+      return;
+    }
+
+    writePopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, userPopularLeaguePresets);
+  }, [popularStorageHydrated, userPopularLeaguePresets]);
+
+  useEffect(() => {
+    if (!popularStorageHydrated) {
+      return;
+    }
+
+    writePopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, hiddenPopularLeagueKeys);
+  }, [hiddenPopularLeagueKeys, popularStorageHydrated]);
 
   useEffect(() => {
     if (!allCountryGroups.length) {
@@ -250,12 +250,48 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const clearLeagueHref = buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
   const isAllLeaguesActive = isMatchesPage && !activeLeagueId;
 
-  const togglePinnedLeague = (leagueId: number) => {
-    setPinnedLeagueIds((current) =>
-      current.includes(leagueId)
-        ? current.filter((value) => value !== leagueId)
-        : [leagueId, ...current.filter((value) => value !== leagueId)].slice(0, 8),
+  const togglePopularLeague = (league: Pick<LeagueDto, 'apiLeagueId' | 'name' | 'season'>) => {
+    const candidate: PopularLeaguePreset = {
+      leagueId: league.apiLeagueId,
+      displayName: league.name,
+      season: league.season,
+    };
+    const candidateKey = getPopularLeagueKey(candidate.leagueId, candidate.season);
+    const isAdminPopular = adminPopularLeagueKeys.has(candidateKey);
+    const isUserPopular = userPopularLeagueKeys.has(candidateKey);
+    const isHidden = hiddenPopularLeagueKeySet.has(candidateKey);
+    const isVisible = (isAdminPopular && !isHidden) || isUserPopular;
+
+    if (isVisible) {
+      if (isAdminPopular) {
+        setHiddenPopularLeagueKeys((current) =>
+          current.includes(candidateKey) ? current : [...current, candidateKey],
+        );
+        setUserPopularLeaguePresets((current) =>
+          current.filter((item) => getPopularLeagueKey(item.leagueId, item.season) !== candidateKey),
+        );
+        return;
+      }
+
+      if (isUserPopular) {
+        setUserPopularLeaguePresets((current) =>
+          current.filter((item) => getPopularLeagueKey(item.leagueId, item.season) !== candidateKey),
+        );
+        return;
+      }
+    }
+
+    if (isAdminPopular && isHidden) {
+      setHiddenPopularLeagueKeys((current) => current.filter((key) => key !== candidateKey));
+      return;
+    }
+
+    setUserPopularLeaguePresets((current) =>
+      current.some((item) => getPopularLeagueKey(item.leagueId, item.season) === candidateKey)
+        ? current.filter((item) => getPopularLeagueKey(item.leagueId, item.season) !== candidateKey)
+        : [candidate, ...current.filter((item) => getPopularLeagueKey(item.leagueId, item.season) !== candidateKey)].slice(0, 12),
     );
+    setHiddenPopularLeagueKeys((current) => current.filter((key) => key !== candidateKey));
   };
 
   const getLeagueHref = (league: LeagueDto) =>
@@ -263,8 +299,118 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       ? buildStandingsHref(league.apiLeagueId, league.season)
       : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
+  const popularSection = (
+    <div className="flex-shrink-0 px-1 pt-1">
+      <div className="panel-shell overflow-hidden rounded-lg">
+        <button
+          type="button"
+          onClick={() => setPopularExpanded((current) => !current)}
+          className="sidebar-hover-item flex w-full items-center justify-between px-2.5 py-2.5 text-left"
+          data-active={popularExpanded ? 'true' : 'false'}
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
+            cursor: 'pointer',
+            ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+            ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.08)',
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{
+                background: 'var(--t-accent)',
+                boxShadow: '0 0 10px rgba(0, 230, 118, 0.55)',
+                transform: 'rotate(45deg)',
+              }}
+            />
+            <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-2)' }}>
+              Popular leagues
+            </span>
+          </span>
+          <span
+            className="text-[10px]"
+            style={{
+              color: 'var(--t-text-4)',
+              transform: popularExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s ease',
+            }}
+          >
+            {'>'}
+          </span>
+        </button>
+
+        {popularExpanded ? (
+          <div className="px-1 pb-1">
+            {popularLeagues.length ? (
+              popularLeagues.map((item) => {
+                const href = isStandingsPage
+                  ? buildStandingsHref(item.leagueId, item.targetSeason)
+                  : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
+                const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
+
+                return (
+                  <div
+                    key={`popular-${item.leagueId}-${item.targetSeason}`}
+                    className="sidebar-hover-panel mt-1 flex items-center gap-1 rounded pr-1"
+                    style={{
+                      background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+                      borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
+                    }}
+                  >
+                    <Link
+                      href={href}
+                      onNavigate={onNavigate}
+                      className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px] transition-colors"
+                      data-active={isActive ? 'true' : 'false'}
+                      style={{
+                        color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
+                        textDecoration: 'none',
+                        ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+                        ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <span className="block truncate">{item.displayName}</span>
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      {item.league ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.league) {
+                              togglePopularLeague(item.league);
+                            }
+                          }}
+                          className="chrome-btn rounded px-1.5 py-1 text-[10px]"
+                          style={{
+                            color: 'var(--t-text-3)',
+                            cursor: 'pointer',
+                          }}
+                          aria-label={`Remove ${item.displayName} from popular leagues`}
+                        >
+                          -
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-2 py-2 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                No popular leagues yet.
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      {popularSection}
+
       <div className="mt-1 flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         {[
           { label: 'Matches', href: matchesHref, active: pathname === '/football' },
@@ -320,136 +466,6 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
             className="input-shell w-full px-2.5 py-2 text-[12px]"
           />
         </div>
-
-        <div className="px-1 pt-1">
-          <div
-            className="panel-shell overflow-hidden rounded-lg"
-            style={{
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setPopularExpanded((current) => !current)}
-              className="sidebar-hover-item flex w-full items-center justify-between px-2.5 py-2.5 text-left"
-              data-active={popularExpanded ? 'true' : 'false'}
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
-                cursor: 'pointer',
-                ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
-                ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.08)',
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-2.5 w-2.5 rounded-sm"
-                  style={{
-                    background: 'var(--t-accent)',
-                    boxShadow: '0 0 10px rgba(0, 230, 118, 0.55)',
-                    transform: 'rotate(45deg)',
-                  }}
-                />
-                <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-2)' }}>
-                  Popular
-                </span>
-              </span>
-              <span
-                className="text-[10px]"
-                style={{
-                  color: 'var(--t-text-4)',
-                  transform: popularExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.15s ease',
-                }}
-              >
-                {'>'}
-              </span>
-            </button>
-
-            {popularExpanded ? (
-              <div className="px-1 pb-1">
-                {popularLeagues.map((item) => {
-                  const href = isStandingsPage
-                    ? buildStandingsHref(item.leagueId, item.targetSeason)
-                    : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
-                  const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
-
-                  return (
-                    <Link
-                      key={`popular-${item.leagueId}-${item.targetSeason}`}
-                      href={href}
-                      onNavigate={onNavigate}
-                      className="sidebar-hover-item mt-1 flex items-center rounded px-2 py-1.5 text-[12px] transition-colors"
-                      data-active={isActive ? 'true' : 'false'}
-                      style={{
-                        background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
-                        borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
-                        color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
-                        textDecoration: 'none',
-                        ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
-                        ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <span className="truncate">{item.displayName}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {pinnedLeagues.length ? (
-          <div className="px-1 pt-1">
-            <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-5)' }}>
-              Pinned
-            </div>
-            {pinnedLeagues.map((league) => {
-              const isActive = league.apiLeagueId === activeLeagueId;
-
-              return (
-                <div
-                  key={`pinned-${league.apiLeagueId}-${league.season}`}
-                  className="sidebar-hover-panel mt-1 flex items-center gap-1 rounded pr-1"
-                  style={{
-                    background: isActive ? 'rgba(255,255,255,0.07)' : 'var(--t-surface)',
-                    borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
-                  }}
-                >
-                  <Link
-                    href={getLeagueHref(league)}
-                    onNavigate={onNavigate}
-                    className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px]"
-                    data-active={isActive ? 'true' : 'false'}
-                    style={{
-                      color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
-                      textDecoration: 'none',
-                      ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.05)',
-                      ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
-                    }}
-                  >
-                    <span className="block truncate">{league.name}</span>
-                    <span className="block truncate text-[10px]" style={{ color: 'var(--t-text-5)' }}>
-                      {league.countryName}
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => togglePinnedLeague(league.apiLeagueId)}
-                    className="chrome-btn rounded px-1.5 py-1 text-[10px]"
-                    style={{
-                      color: 'var(--t-text-3)',
-                      cursor: 'pointer',
-                    }}
-                    aria-label={`Unpin ${league.name}`}
-                  >
-                    -
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
 
         {leaguesLoading ? (
           <div className="px-3 py-3 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
@@ -524,7 +540,11 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                 <div className="pb-1">
                   {group.leagues.map((league) => {
                     const isActive = league.apiLeagueId === activeLeagueId;
-                    const isPinned = pinnedLeagueIds.includes(league.apiLeagueId);
+                    const leaguePopularKey = getPopularLeagueKey(league.apiLeagueId, league.season);
+                    const isAdminPopular = adminPopularLeagueKeys.has(leaguePopularKey);
+                    const isUserPopular = userPopularLeagueKeys.has(leaguePopularKey);
+                    const isHiddenPopular = hiddenPopularLeagueKeySet.has(leaguePopularKey);
+                    const isVisiblePopular = (isAdminPopular && !isHiddenPopular) || isUserPopular;
 
                     return (
                       <div
@@ -551,15 +571,15 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                         </Link>
                         <button
                           type="button"
-                          onClick={() => togglePinnedLeague(league.apiLeagueId)}
-                          className={`rounded px-1.5 py-1 text-[10px] ${isPinned ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}
+                          onClick={() => togglePopularLeague(league)}
+                          className={`rounded px-1.5 py-1 text-[10px] ${isVisiblePopular ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}
                           style={{
-                            color: isPinned ? 'var(--t-text-1)' : 'var(--t-text-5)',
+                            color: isVisiblePopular ? 'var(--t-text-1)' : 'var(--t-text-5)',
                             cursor: 'pointer',
                           }}
-                          aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${league.name}`}
+                          aria-label={`${isVisiblePopular ? 'Remove' : 'Add'} ${league.name} ${isVisiblePopular ? 'from' : 'to'} popular leagues`}
                         >
-                          {isPinned ? '-' : '+'}
+                          {isVisiblePopular ? '-' : '+'}
                         </button>
                       </div>
                     );

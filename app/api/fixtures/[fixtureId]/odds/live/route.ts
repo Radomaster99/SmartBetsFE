@@ -7,13 +7,11 @@ export async function GET(
 ) {
   const { fixtureId } = await params;
   const betId = req.nextUrl.searchParams.get('betId');
-  const bookmakerId = req.nextUrl.searchParams.get('bookmakerId');
   const latestOnlyParam = req.nextUrl.searchParams.get('latestOnly');
 
   try {
     const data = await getFixtureLiveOdds(Number(fixtureId), {
       betId: betId ? Number(betId) : undefined,
-      bookmakerId: bookmakerId ? Number(bookmakerId) : undefined,
       latestOnly: latestOnlyParam ? latestOnlyParam === 'true' : true,
     });
     return NextResponse.json(data);

@@ -1,8 +1,18 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { SideAdArtwork } from '@/components/ads/SideAdArtwork';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import {
+  DESKTOP_SIDE_AD_WIDTH_PX,
+  EMPTY_SIDE_ADS_CONFIG,
+  readSideAdsConfig,
+  SIDE_ADS_STORAGE_KEY,
+  SIDE_ADS_UPDATED_EVENT,
+  type SideAdSlotConfig,
+  type SideAdsConfig,
+} from '@/lib/side-ads';
 
 function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
   const href = anchor.getAttribute('href');
@@ -23,8 +33,10 @@ function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const DESKTOP_SHELL_GUTTER_PX = 280;
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -104,10 +116,76 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const shellGutter = isMobileViewport ? '5px' : '280px';
+  useEffect(() => {
+    const syncSideAds = () => {
+      setSideAdsConfig(readSideAdsConfig());
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SIDE_ADS_STORAGE_KEY) {
+        syncSideAds();
+      }
+    };
+
+    syncSideAds();
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(SIDE_ADS_UPDATED_EVENT, syncSideAds);
+
+    return () => {
+      window.removeEventListener(SIDE_ADS_UPDATED_EVENT, syncSideAds);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const shellGutter = isMobileViewport ? '5px' : `${DESKTOP_SHELL_GUTTER_PX}px`;
+
+  function renderSideAd(slot: SideAdSlotConfig | null, side: 'left' | 'right') {
+    if (isMobileViewport || !slot?.imageSrc) {
+      return null;
+    }
+
+    const content = (
+      <div
+        className="overflow-hidden rounded-[12px]"
+        style={{
+          height: '100%',
+          width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`,
+          border: '1px solid var(--t-border)',
+          background: 'rgba(255,255,255,0.02)',
+          boxShadow: 'var(--t-shadow-soft)',
+        }}
+      >
+        <SideAdArtwork slot={slot} alt={slot.alt || `${side} sidebar banner`} />
+      </div>
+    );
+
+    const wrapperStyle = {
+      position: 'fixed' as const,
+      top: 4,
+      bottom: 4,
+      width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`,
+      zIndex: 1,
+      [side]: 12,
+    };
+
+    if (slot.isClickable && slot.href) {
+      return (
+        <a key={side} href={slot.href} title={slot.alt || `${side} sidebar banner`} style={wrapperStyle}>
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <div key={side} aria-hidden="true" style={wrapperStyle}>
+        {content}
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box' }}>
+      {renderSideAd(sideAdsConfig.left, 'left')}
+      {renderSideAd(sideAdsConfig.right, 'right')}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <Topbar onMenuToggle={isMobileViewport ? () => setMobileSidebarOpen((current) => !current) : undefined} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>

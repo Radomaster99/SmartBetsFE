@@ -6,10 +6,17 @@ import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
+import {
+  DEFAULT_HERO_BANNERS,
+  HERO_BANNERS_STORAGE_KEY,
+  HERO_BANNERS_UPDATED_EVENT,
+  HERO_BANNER_THEMES,
+  readHeroBannersConfig,
+} from '@/lib/hero-banners';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import type { StateBucket } from '@/lib/types/api';
+import type { FixtureDto, LiveOddsSummaryDto, StateBucket } from '@/lib/types/api';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -115,6 +122,14 @@ function formatUpcomingScopeLabel(scope: UpcomingScope): string {
   return scope === 'all' ? 'All upcoming fixtures' : 'Today upcoming fixtures';
 }
 
+function isUsableLiveSummary(summary: LiveOddsSummaryDto | null | undefined): summary is LiveOddsSummaryDto {
+  if (!summary || summary.source !== 'live') {
+    return false;
+  }
+
+  return Boolean(summary.bestHomeOdd || summary.bestDrawOdd || summary.bestAwayOdd);
+}
+
 function LiveListStatusPill({
   status,
   count,
@@ -206,59 +221,44 @@ function FeedLegendPill({
 }
 
 function PromoBannerStrip() {
-  const themes = [
-    {
-      background: 'linear-gradient(180deg, #050608 0%, #0d1016 100%)',
-      border: 'rgba(255,255,255,0.08)',
-      buttonBackground: '#ffffff',
-      buttonColor: '#0d1016',
-    },
-    {
-      background: 'linear-gradient(180deg, #0b5157 0%, #0d3f45 100%)',
-      border: 'rgba(255,255,255,0.08)',
-      buttonBackground: '#ffffff',
-      buttonColor: '#0d3f45',
-    },
-    {
-      background: 'linear-gradient(180deg, #ff8a00 0%, #ff6a00 100%)',
-      border: 'rgba(255,255,255,0.18)',
-      buttonBackground: '#ffffff',
-      buttonColor: '#ff6a00',
-    },
-  ] as const;
+  const [banners, setBanners] = useState(DEFAULT_HERO_BANNERS);
 
-  const offerLines = [
-    'Football prices and fast access.',
-    'Live and pre-match bonus flow.',
-    'Matchday offer and quick entry.',
-  ] as const;
+  useEffect(() => {
+    const syncBanners = () => {
+      setBanners(readHeroBannersConfig());
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === HERO_BANNERS_STORAGE_KEY) {
+        syncBanners();
+      }
+    };
+
+    syncBanners();
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(HERO_BANNERS_UPDATED_EVENT, syncBanners);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(HERO_BANNERS_UPDATED_EVENT, syncBanners);
+    };
+  }, []);
 
   return (
     <div className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]">
-      {PROMO_BANNERS.map((banner, index) => {
+      {banners.map((banner) => {
         const meta = getBookmakerMeta(banner.bookmaker);
-        const theme = themes[index % themes.length];
-        const offer = offerLines[index % offerLines.length];
-        const href = buildBookmakerHref(banner.bookmaker, {
-          source: 'football-board-banner',
-        });
+        const theme = HERO_BANNER_THEMES[banner.themeId ?? 'graphite'];
+        const href =
+          banner.href?.trim() ||
+          buildBookmakerHref(banner.bookmaker, {
+            source: 'football-board-banner',
+          });
 
-        return (
-          <a
-            key={banner.bookmaker}
-            href={href}
-            aria-label={`Open ${meta.name}`}
-            title={`Open ${meta.name}`}
-            className="group relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 text-center transition-all md:h-[112px] md:px-3"
-            style={{
-              textDecoration: 'none',
-              background: theme.background,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
+        const cardContent = (
+          <>
             <div className="flex items-start justify-between gap-1">
               <div className="text-left text-[7px] font-bold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.64)' }}>
-                Sponsored
+                {banner.eyebrow}
               </div>
               <svg
                 viewBox="0 0 24 24"
@@ -283,7 +283,7 @@ function PromoBannerStrip() {
                 className="mx-auto mt-1 max-w-[140px] min-h-[24px] text-[8px] font-medium leading-3 md:max-w-[180px] md:min-h-[28px] md:text-[9px]"
                 style={{ color: 'rgba(255,255,255,0.94)' }}
               >
-                {offer}
+                {banner.offer}
               </div>
             </div>
 
@@ -294,9 +294,42 @@ function PromoBannerStrip() {
                 color: theme.buttonColor,
               }}
             >
-              CLAIM
+              {banner.cta}
             </div>
-          </a>
+          </>
+        );
+
+        const commonProps = {
+          key: banner.id,
+          className: 'group relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 text-center transition-all md:h-[112px] md:px-3',
+          style: {
+            textDecoration: 'none',
+            background: theme.background,
+            border: `1px solid ${theme.border}`,
+          },
+        } as const;
+
+        if (banner.isClickable && href) {
+          return (
+            <a
+              {...commonProps}
+              href={href}
+              aria-label={`Open ${meta.name}`}
+              title={`Open ${meta.name}`}
+            >
+              {cardContent}
+            </a>
+          );
+        }
+
+        return (
+          <div
+            {...commonProps}
+            aria-label={`${meta.name} promo banner`}
+            title={`${meta.name} promo banner`}
+          >
+            {cardContent}
+          </div>
         );
       })}
     </div>
@@ -358,6 +391,7 @@ function FootballPageClient() {
   const { data: leagues } = useLeagues(season);
   const { fixtureIds: savedFixtureIds, fixtureIdSet, toggleFixture } = useFixtureWatchlist();
   const [savedOnly, setSavedOnly] = useState(false);
+  const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
 
   useEffect(() => {
@@ -427,7 +461,79 @@ function FootballPageClient() {
 
   const { data, isLoading, isError, refetch } = useFixtures(filters);
   const rawFixtures = data?.items ?? [];
-  const fixtures = savedOnly ? rawFixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId)) : rawFixtures;
+  const visibleFixtureIds = state === 'Live' ? rawFixtures.map((fixture) => fixture.apiFixtureId) : [];
+
+  useEffect(() => {
+    if (state !== 'Live') {
+      setStickyLiveSummaries((current) => (Object.keys(current).length === 0 ? current : {}));
+      return;
+    }
+
+    const visibleFixtureIdSet = new Set(visibleFixtureIds);
+
+    setStickyLiveSummaries((current) => {
+      const next: Record<number, LiveOddsSummaryDto> = {};
+      let changed = false;
+
+      for (const fixture of rawFixtures) {
+        const fixtureId = fixture.apiFixtureId;
+        const freshSummary = fixture.liveOddsSummary ?? null;
+
+        if (isUsableLiveSummary(freshSummary)) {
+          next[fixtureId] = freshSummary;
+          const previous = current[fixtureId];
+          if (
+            !previous ||
+            previous.collectedAtUtc !== freshSummary.collectedAtUtc ||
+            previous.bestHomeOdd !== freshSummary.bestHomeOdd ||
+            previous.bestDrawOdd !== freshSummary.bestDrawOdd ||
+            previous.bestAwayOdd !== freshSummary.bestAwayOdd ||
+            previous.bestHomeBookmaker !== freshSummary.bestHomeBookmaker ||
+            previous.bestDrawBookmaker !== freshSummary.bestDrawBookmaker ||
+            previous.bestAwayBookmaker !== freshSummary.bestAwayBookmaker
+          ) {
+            changed = true;
+          }
+          continue;
+        }
+
+        if (current[fixtureId]) {
+          next[fixtureId] = current[fixtureId];
+        }
+      }
+
+      for (const fixtureId of Object.keys(current)) {
+        const numericFixtureId = Number(fixtureId);
+        if (!visibleFixtureIdSet.has(numericFixtureId)) {
+          changed = true;
+        }
+      }
+
+      if (!changed && Object.keys(current).length === Object.keys(next).length) {
+        return current;
+      }
+
+      return next;
+    });
+  }, [rawFixtures, state, visibleFixtureIds]);
+
+  const hydratedFixtures = rawFixtures.map((fixture): FixtureDto => {
+    if (state !== 'Live') {
+      return fixture;
+    }
+
+    const liveSummary = fixture.liveOddsSummary ?? null;
+    const stickyLiveSummary = stickyLiveSummaries[fixture.apiFixtureId] ?? null;
+    const preferredLiveSummary = liveSummary?.source === 'live' ? liveSummary : stickyLiveSummary;
+
+    return preferredLiveSummary
+      ? {
+          ...fixture,
+          liveOddsSummary: preferredLiveSummary,
+        }
+      : fixture;
+  });
+  const fixtures = savedOnly ? hydratedFixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId)) : hydratedFixtures;
   const liveFixtureIds = state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [];
   const liveOddsListRealtime = useLiveOddsListSignalR(liveFixtureIds, state === 'Live');
   const liveProviderCount =

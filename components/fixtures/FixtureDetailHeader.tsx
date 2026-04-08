@@ -25,6 +25,32 @@ function formatDateTime(iso: string): string {
   });
 }
 
+function formatCenterKickoff(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).replace(',', ' •');
+}
+
+function formatLiveMinute(status: string, elapsed?: number | null, statusExtra?: number | null): string | null {
+  const normalizedStatus = status.trim().toUpperCase();
+
+  if (normalizedStatus === 'HT') return "45'";
+  if (normalizedStatus === 'BT') return elapsed != null ? `${elapsed}'` : null;
+  if (normalizedStatus === 'INT') return elapsed != null ? `${elapsed}'` : null;
+  if (normalizedStatus === 'P') return 'PEN';
+  if (normalizedStatus === 'SUSP') return 'SUSP';
+
+  if (elapsed != null) {
+    return statusExtra ? `${elapsed}+${statusExtra}'` : `${elapsed}'`;
+  }
+
+  return null;
+}
+
 function TeamCard({
   name,
   logoUrl,
@@ -80,6 +106,7 @@ export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
   const isFinished = f.stateBucket === 'Finished';
   const hasScore = f.homeGoals !== null && f.awayGoals !== null;
   const statusLabel = formatFixtureStatusLabel(f.stateBucket, f.status);
+  const liveMinuteLabel = isLive ? formatLiveMinute(f.status ?? '', f.elapsed, f.statusExtra) : null;
 
   return (
     <div style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
@@ -95,9 +122,6 @@ export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
           {f.leagueName}
         </span>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-            {formatDateTime(f.kickoffAt)}
-          </span>
           <StatusBadge state={f.stateBucket} status={f.status} />
         </div>
       </div>
@@ -112,6 +136,9 @@ export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
         />
 
         <div className="flex flex-shrink-0 flex-col items-center gap-1 px-4">
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+            {formatCenterKickoff(f.kickoffAt)}
+          </span>
           {hasScore ? (
             <div className="odds-cell flex items-center gap-2 text-[2.5rem] font-black" style={{ color: isLive ? '#fca5a5' : 'var(--t-text-1)' }}>
               <span>{f.homeGoals}</span>
@@ -124,9 +151,19 @@ export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
             </div>
           )}
           {isLive ? (
-            <span className="animate-pulse text-[11px] font-bold" style={{ color: '#fca5a5' }}>
-              {statusLabel}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="animate-pulse text-[11px] font-bold" style={{ color: '#fca5a5' }}>
+                {statusLabel}
+              </span>
+              {liveMinuteLabel ? (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                  style={{ background: 'rgba(239,83,80,0.14)', color: '#fca5a5', border: '1px solid rgba(252,165,165,0.2)' }}
+                >
+                  {liveMinuteLabel}
+                </span>
+              ) : null}
+            </div>
           ) : null}
           {isFinished ? (
             <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-5)' }}>

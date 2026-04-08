@@ -1,6 +1,12 @@
 import type { BestOddsDto, LiveOddsMarketDto, LiveOddsValueDto, OddDto } from '@/lib/types/api';
 
-const SYNTHETIC_LIVE_BOOKMAKER_LABEL = 'api-football live feed';
+const LEGACY_SYNTHETIC_LIVE_BOOKMAKER_LABEL = 'api-football live feed';
+const FULLTIME_THREE_WAY_MARKET_NAMES = new Set([
+  'match winner',
+  'fulltime result',
+  'full time result',
+  '1x2',
+]);
 
 function normalizeOutcomeLabel(label: string): string {
   return label.trim().toLowerCase();
@@ -32,21 +38,120 @@ function isThreeWayMainMarket(market: LiveOddsMarketDto): boolean {
   return Boolean(home?.odd && draw?.odd && away?.odd);
 }
 
-function pickThreeWayMarkets(markets: LiveOddsMarketDto[]): LiveOddsMarketDto[] {
-  const preferred = markets.filter((market) => {
-    const name = market.betName.trim().toLowerCase();
-    return (name === 'match winner' || name === 'winner' || name === 'fulltime result') && isThreeWayMainMarket(market);
-  });
-
-  if (preferred.length > 0) {
-    return preferred;
-  }
-
-  return markets.filter(isThreeWayMainMarket);
+function getNormalizedMarketName(market: LiveOddsMarketDto): string {
+  return market.betName.trim().toLowerCase();
 }
 
-export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[]): OddDto[] {
-  return pickThreeWayMarkets(markets)
+function isPrimaryLiveThreeWayMarketName(name: string): boolean {
+  return FULLTIME_THREE_WAY_MARKET_NAMES.has(name) || name.startsWith('1x2');
+}
+
+function getMarketNamePriority(market: LiveOddsMarketDto): number {
+  const name = getNormalizedMarketName(market);
+  if (name === 'match winner') return 0;
+  if (name === 'fulltime result') return 1;
+  if (name === '1x2') return 2;
+  if (name.startsWith('1x2')) return 3;
+  if (name === 'winner') return 4;
+  return 5;
+}
+
+function hasMainSelection(market: LiveOddsMarketDto): boolean {
+  return market.values.some((value) => value.isMain && !value.blocked && !value.finished && value.odd != null);
+}
+
+function getMarketTimestamp(market: LiveOddsMarketDto): number {
+  const timestamp =
+    market.lastSnapshotCollectedAtUtc ??
+    market.collectedAtUtc ??
+    market.lastSyncedAtUtc ??
+    null;
+
+  if (!timestamp) {
+    return 0;
+  }
+
+  const parsed = new Date(timestamp).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function rankThreeWayGroups(markets: LiveOddsMarketDto[]): LiveOddsMarketDto[][] {
+  const groups = new Map<number, LiveOddsMarketDto[]>();
+  for (const market of markets) {
+    const existing = groups.get(market.apiBetId);
+    if (existing) {
+      existing.push(market);
+    } else {
+      groups.set(market.apiBetId, [market]);
+    }
+  }
+
+  return Array.from(groups.values()).sort((left, right) => {
+    const leftSample = left[0];
+    const rightSample = right[0];
+
+    const leftPriority = getMarketNamePriority(leftSample);
+    const rightPriority = getMarketNamePriority(rightSample);
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    const leftHasMain = left.some(hasMainSelection);
+    const rightHasMain = right.some(hasMainSelection);
+    if (leftHasMain !== rightHasMain) {
+      return leftHasMain ? -1 : 1;
+    }
+
+    const leftRealCount = left.filter((market) => market.apiBookmakerId > 0).length;
+    const rightRealCount = right.filter((market) => market.apiBookmakerId > 0).length;
+    if (leftRealCount !== rightRealCount) {
+      return rightRealCount - leftRealCount;
+    }
+
+    const leftFreshness = Math.max(...left.map(getMarketTimestamp));
+    const rightFreshness = Math.max(...right.map(getMarketTimestamp));
+    if (leftFreshness !== rightFreshness) {
+      return rightFreshness - leftFreshness;
+    }
+
+    return leftSample.apiBetId - rightSample.apiBetId;
+  });
+}
+
+function pickThreeWayMarkets(
+  markets: LiveOddsMarketDto[],
+  options?: { fulltimeOnly?: boolean },
+): LiveOddsMarketDto[] {
+  const candidates = markets.filter(isThreeWayMainMarket);
+  const scopedCandidates = options?.fulltimeOnly
+    ? candidates.filter((market) => isPrimaryLiveThreeWayMarketName(getNormalizedMarketName(market)))
+    : candidates;
+
+  const effectiveCandidates = scopedCandidates;
+
+  const rankedGroups = rankThreeWayGroups(effectiveCandidates);
+  if (rankedGroups.length === 0) {
+    return [];
+  }
+
+  return [...rankedGroups[0]].sort((left, right) => {
+    const leftReal = left.apiBookmakerId > 0 ? 1 : 0;
+    const rightReal = right.apiBookmakerId > 0 ? 1 : 0;
+    if (leftReal !== rightReal) {
+      return rightReal - leftReal;
+    }
+
+    return getMarketTimestamp(right) - getMarketTimestamp(left);
+  });
+}
+
+function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: { fulltimeOnly?: boolean }): OddDto[] {
+  const selectedMarkets = pickThreeWayMarkets(markets, options);
+  if (selectedMarkets.length === 0) {
+    return [];
+  }
+
+  return selectedMarkets
     .map((market) => {
       const home = findOutcomeValue(market.values, 'home');
       const draw = findOutcomeValue(market.values, 'draw');
@@ -72,8 +177,27 @@ export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[]): OddDto[] {
     .filter((market): market is OddDto => market !== null);
 }
 
-export function hasNonSyntheticBookmakerOdds(odds: OddDto[]): boolean {
-  return odds.some((odd) => odd.apiBookmakerId > 0 && odd.bookmaker.trim().toLowerCase() !== SYNTHETIC_LIVE_BOOKMAKER_LABEL);
+export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[]): OddDto[] {
+  return mapThreeWayMarketsToOdds(markets);
+}
+
+export function mapLiveOddsToMainMatchOdds(markets: LiveOddsMarketDto[]): OddDto[] {
+  return mapThreeWayMarketsToOdds(markets, { fulltimeOnly: true });
+}
+
+export function hasUsableLiveBookmakerOdds(markets: LiveOddsMarketDto[]): boolean {
+  return markets.some((market) => {
+    const bookmakerName = market.bookmaker?.trim();
+    if (!bookmakerName) {
+      return false;
+    }
+
+    if (bookmakerName.toLowerCase() === LEGACY_SYNTHETIC_LIVE_BOOKMAKER_LABEL) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 export function deriveBestOddsFromOdds(odds: OddDto[]): BestOddsDto | null {

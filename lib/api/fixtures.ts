@@ -42,11 +42,10 @@ export async function getFixtureBestOdds(apiFixtureId: number, marketName?: stri
 
 export async function getFixtureLiveOdds(
   apiFixtureId: number,
-  options?: { betId?: number; bookmakerId?: number; latestOnly?: boolean },
+  options?: { betId?: number; latestOnly?: boolean },
 ): Promise<LiveOddsMarketDto[]> {
   const q = buildQuery({
     betId: options?.betId,
-    bookmakerId: options?.bookmakerId,
     latestOnly: options?.latestOnly ?? true,
   });
 

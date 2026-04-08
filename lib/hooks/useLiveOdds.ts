@@ -17,6 +17,7 @@ import type {
   LiveOddsUpdatedDto,
   PagedResultDto,
 } from '@/lib/types/api';
+import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://smartbets-fqzk.onrender.com';
 
@@ -96,6 +97,26 @@ function mapSummaryPayload(payload: LiveOddsSummaryUpdatedDto): LiveOddsSummaryD
   };
 }
 
+function mapMarketsToSummary(markets: LiveOddsMarketDto[]): LiveOddsSummaryDto | null {
+  const odds = mapLiveOddsToMainMatchOdds(markets);
+  const bestOdds = deriveBestOddsFromOdds(odds);
+
+  if (!bestOdds) {
+    return null;
+  }
+
+  return {
+    source: 'live',
+    collectedAtUtc: bestOdds.collectedAtUtc,
+    bestHomeOdd: bestOdds.bestHomeOdd,
+    bestHomeBookmaker: bestOdds.bestHomeBookmaker,
+    bestDrawOdd: bestOdds.bestDrawOdd,
+    bestDrawBookmaker: bestOdds.bestDrawBookmaker,
+    bestAwayOdd: bestOdds.bestAwayOdd,
+    bestAwayBookmaker: bestOdds.bestAwayBookmaker,
+  };
+}
+
 function getMovementDirection(previousValue: number | null, nextValue: number | null): LiveOddsMovementDirection | null {
   if (previousValue == null || nextValue == null || previousValue === nextValue) {
     return null;
@@ -135,6 +156,23 @@ function findFixtureSummaryInCache(
   return null;
 }
 
+function isConnectedState(connection: HubConnection): boolean {
+  return connection.state === HubConnectionState.Connected || connection.state === HubConnectionState.Connecting;
+}
+
+async function stopConnectionQuietly(connection: HubConnection | null): Promise<void> {
+  if (!connection || connection.state === HubConnectionState.Disconnected) {
+    return;
+  }
+
+  try {
+    await connection.stop();
+  } catch {
+    // The connection can already be closing during route changes/unmounts.
+    // In that case we intentionally suppress the expected cancellation noise.
+  }
+}
+
 export function useLiveOdds(fixtureId: string, enabled = true) {
   return useQuery({
     queryKey: ['live-odds', fixtureId],
@@ -142,6 +180,88 @@ export function useLiveOdds(fixtureId: string, enabled = true) {
     staleTime: 0,
     refetchInterval: enabled ? 30_000 : false,
     enabled: enabled && !!fixtureId,
+  });
+}
+
+function applyFixtureSummaryUpdate(
+  queryClient: ReturnType<typeof useQueryClient>,
+  fixtureId: number,
+  nextSummary: LiveOddsSummaryDto,
+  setMovements: React.Dispatch<React.SetStateAction<LiveOddsMovementByFixture>>,
+  movementTimeoutsRef: React.MutableRefObject<Map<string, number>>,
+) {
+  const cachedQueries = queryClient.getQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] });
+  const previousSummary = findFixtureSummaryInCache(fixtureId, cachedQueries);
+  const movement = getSummaryMovements(previousSummary, nextSummary);
+
+  queryClient.setQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] }, (current) => {
+    if (!current) {
+      return current;
+    }
+
+    let changed = false;
+
+    const items = current.items.map((fixture) => {
+      if (fixture.apiFixtureId !== fixtureId) {
+        return fixture;
+      }
+
+      changed = true;
+      return {
+        ...fixture,
+        liveOddsSummary: nextSummary,
+      };
+    });
+
+    return changed ? { ...current, items } : current;
+  });
+
+  if (Object.keys(movement).length === 0) {
+    return;
+  }
+
+  setMovements((current) => ({
+    ...current,
+    [fixtureId]: {
+      ...(current[fixtureId] ?? {}),
+      ...movement,
+    },
+  }));
+
+  (Object.entries(movement) as Array<['home' | 'draw' | 'away', LiveOddsMovementDirection]>).forEach(([outcome]) => {
+    const timeoutKey = `${fixtureId}:${outcome}`;
+    const existingTimeout = movementTimeoutsRef.current.get(timeoutKey);
+
+    if (existingTimeout) {
+      window.clearTimeout(existingTimeout);
+    }
+
+    const timeout = window.setTimeout(() => {
+      setMovements((current) => {
+        const fixtureMovement = current[fixtureId];
+        if (!fixtureMovement?.[outcome]) {
+          return current;
+        }
+
+        const nextFixtureMovement = { ...fixtureMovement };
+        delete nextFixtureMovement[outcome];
+
+        if (Object.keys(nextFixtureMovement).length === 0) {
+          const nextState = { ...current };
+          delete nextState[fixtureId];
+          return nextState;
+        }
+
+        return {
+          ...current,
+          [fixtureId]: nextFixtureMovement,
+        };
+      });
+
+      movementTimeoutsRef.current.delete(timeoutKey);
+    }, 1800);
+
+    movementTimeoutsRef.current.set(timeoutKey, timeout);
   });
 }
 
@@ -205,8 +325,22 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
         });
 
         connection.onreconnected(async () => {
+          if (disposed) {
+            return;
+          }
+
           setStatus('connected');
-          await connection.invoke('JoinFixture', Number(fixtureId));
+          if (!isConnectedState(connection)) {
+            return;
+          }
+
+          try {
+            await connection.invoke('JoinFixture', Number(fixtureId));
+          } catch {
+            if (!disposed) {
+              setStatus('error');
+            }
+          }
         });
 
         connection.onclose(() => {
@@ -223,7 +357,7 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
 
         await connection.start();
         if (disposed) {
-          await connection.stop();
+          await stopConnectionQuietly(connection);
           return;
         }
 
@@ -248,8 +382,7 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
       connectionRef.current = null;
 
       if (connection) {
-        void connection.invoke('LeaveFixture', Number(fixtureId)).catch(() => undefined);
-        void connection.stop().catch(() => undefined);
+        void stopConnectionQuietly(connection);
       }
 
       setStatus('idle');
@@ -326,8 +459,22 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
         });
 
         connection.onreconnected(async () => {
+          if (disposed) {
+            return;
+          }
+
           setStatus('connected');
-          await connection.invoke('JoinFixtures', stableFixtureIds);
+          if (!isConnectedState(connection)) {
+            return;
+          }
+
+          try {
+            await connection.invoke('JoinFixtures', stableFixtureIds);
+          } catch {
+            if (!disposed) {
+              setStatus('error');
+            }
+          }
         });
 
         connection.onclose(() => {
@@ -338,86 +485,37 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
           if (!stableFixtureIds.includes(Number(payload.apiFixtureId))) {
             return;
           }
+          applyFixtureSummaryUpdate(
+            queryClient,
+            Number(payload.apiFixtureId),
+            mapSummaryPayload(payload),
+            setMovements,
+            movementTimeoutsRef,
+          );
+        });
 
-          const cachedQueries = queryClient.getQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] });
-          const previousSummary = findFixtureSummaryInCache(Number(payload.apiFixtureId), cachedQueries);
-          const nextSummary = mapSummaryPayload(payload);
-          const movement = getSummaryMovements(previousSummary, nextSummary);
-
-          queryClient.setQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] }, (current) => {
-            if (!current) {
-              return current;
-            }
-
-            let changed = false;
-
-            const items = current.items.map((fixture) => {
-              if (fixture.apiFixtureId !== payload.apiFixtureId) {
-                return fixture;
-              }
-
-              changed = true;
-              return {
-                ...fixture,
-                liveOddsSummary: nextSummary,
-              };
-            });
-
-            return changed ? { ...current, items } : current;
-          });
-
-          if (Object.keys(movement).length === 0) {
+        connection.on('LiveOddsUpdated', (payload: LiveOddsUpdatedDto) => {
+          if (!stableFixtureIds.includes(Number(payload.apiFixtureId))) {
             return;
           }
 
-          setMovements((current) => ({
-            ...current,
-            [payload.apiFixtureId]: {
-              ...(current[payload.apiFixtureId] ?? {}),
-              ...movement,
-            },
-          }));
+          const nextSummary = mapMarketsToSummary(payload.markets ?? []);
+          if (!nextSummary) {
+            return;
+          }
 
-          (Object.entries(movement) as Array<['home' | 'draw' | 'away', LiveOddsMovementDirection]>).forEach(([outcome]) => {
-            const timeoutKey = `${payload.apiFixtureId}:${outcome}`;
-            const existingTimeout = movementTimeoutsRef.current.get(timeoutKey);
-
-            if (existingTimeout) {
-              window.clearTimeout(existingTimeout);
-            }
-
-            const timeout = window.setTimeout(() => {
-              setMovements((current) => {
-                const fixtureMovement = current[payload.apiFixtureId];
-                if (!fixtureMovement?.[outcome]) {
-                  return current;
-                }
-
-                const nextFixtureMovement = { ...fixtureMovement };
-                delete nextFixtureMovement[outcome];
-
-                if (Object.keys(nextFixtureMovement).length === 0) {
-                  const nextState = { ...current };
-                  delete nextState[payload.apiFixtureId];
-                  return nextState;
-                }
-
-                return {
-                  ...current,
-                  [payload.apiFixtureId]: nextFixtureMovement,
-                };
-              });
-
-              movementTimeoutsRef.current.delete(timeoutKey);
-            }, 1800);
-
-            movementTimeoutsRef.current.set(timeoutKey, timeout);
-          });
+          applyFixtureSummaryUpdate(
+            queryClient,
+            Number(payload.apiFixtureId),
+            nextSummary,
+            setMovements,
+            movementTimeoutsRef,
+          );
         });
 
         await connection.start();
         if (disposed) {
-          await connection.stop();
+          await stopConnectionQuietly(connection);
           return;
         }
 
@@ -446,8 +544,7 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
       movementTimeoutsRef.current.clear();
 
       if (connection) {
-        void connection.invoke('LeaveFixtures', stableFixtureIds).catch(() => undefined);
-        void connection.stop().catch(() => undefined);
+        void stopConnectionQuietly(connection);
       }
 
       setStatus('idle');
