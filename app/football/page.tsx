@@ -300,7 +300,6 @@ function PromoBannerStrip() {
         );
 
         const commonProps = {
-          key: banner.id,
           className: 'group relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 text-center transition-all md:h-[112px] md:px-3',
           style: {
             textDecoration: 'none',
@@ -312,6 +311,7 @@ function PromoBannerStrip() {
         if (banner.isClickable && href) {
           return (
             <a
+              key={banner.id}
               {...commonProps}
               href={href}
               aria-label={`Open ${meta.name}`}
@@ -324,6 +324,7 @@ function PromoBannerStrip() {
 
         return (
           <div
+            key={banner.id}
             {...commonProps}
             aria-label={`${meta.name} promo banner`}
             title={`${meta.name} promo banner`}
