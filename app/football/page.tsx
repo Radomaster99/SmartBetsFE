@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PromoStrip } from '@/components/ads/PromoStrip';
+import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
@@ -537,6 +538,12 @@ function FootballPageClient() {
               onRowClick={handleRowClick}
             />
           </div>
+          {selectedFixtureId != null ? (
+            <FixtureDetailPanel
+              fixtureId={selectedFixtureId}
+              onClose={() => setSelectedFixtureId(null)}
+            />
+          ) : null}
         </div>
       )}
     </div>
