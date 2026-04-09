@@ -79,16 +79,17 @@ interface Props {
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
+  // Live fixtures must only show live odds from the backend liveOddsSummary.
+  // Never fall back to pre-match batch odds on live rows.
+  if (fixture.stateBucket === 'Live') {
+    return false;
+  }
   const liveSummary = fixture.liveOddsSummary ?? null;
   // If the backend already returned odds via liveOddsSummary (live or prematch), no batch call needed.
   if (liveSummary?.source === 'live' || liveSummary?.source === 'prematch') {
     return false;
   }
-  return (
-    fixture.stateBucket === 'Upcoming' ||
-    fixture.stateBucket === 'Live' ||
-    fixture.stateBucket === 'Unknown'
-  );
+  return fixture.stateBucket === 'Upcoming' || fixture.stateBucket === 'Unknown';
 }
 
 function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {

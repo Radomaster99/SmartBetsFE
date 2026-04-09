@@ -204,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {mobileOverlay === 'search' ? <MobileSearchOverlay onClose={() => setMobileOverlay('none')} /> : null}
       {mobileOverlay === 'leagues' ? <LeaguesBottomSheet onClose={() => setMobileOverlay('none')} /> : null}
-      {mobileOverlay === 'saved' ? <MobileSavedScreen onClose={() => setMobileOverlay('none')} /> : null}
+      {mobileOverlay === 'saved' ? <MobileSavedScreen entries={favoriteEntries} onClose={() => setMobileOverlay('none')} /> : null}
     </div>
   );
 }

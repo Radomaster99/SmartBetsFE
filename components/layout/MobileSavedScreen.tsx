@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
-import { useFixtureWatchlist, type WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
+import type { WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
 
 function formatKickoff(iso: string | undefined): string {
   if (!iso) return '';
@@ -172,27 +171,24 @@ function SavedCard({ entry, onClose }: { entry: WatchlistFixtureEntry; onClose: 
   );
 }
 
-export function MobileSavedScreen({ onClose }: { onClose: () => void }) {
-  const { entries } = useFixtureWatchlist();
+interface Props {
+  entries: WatchlistFixtureEntry[];
+  onClose: () => void;
+}
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
+export function MobileSavedScreen({ entries, onClose }: Props) {
   return (
     <div
-      className="md:hidden"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 60,
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--t-bg)',
+        // Use a solid dark background — var(--t-page-bg) is semi-transparent in dark mode
+        // so fall back to a fully opaque colour so text is always readable.
+        background: 'var(--t-page-bg, #07101a)',
+        backgroundColor: 'var(--t-topbar-bg, #090e1a)',
       }}
     >
       <div
@@ -203,32 +199,44 @@ export function MobileSavedScreen({ onClose }: { onClose: () => void }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexShrink: 0,
+          background: 'var(--t-topbar-bg)',
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--t-text-1)' }}>Saved matches</span>
         <button
           type="button"
           onClick={onClose}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-text-4)', fontSize: 16, padding: '2px 6px' }}
+          style={{
+            background: 'var(--t-surface-2)',
+            border: '1px solid var(--t-border)',
+            borderRadius: 6,
+            cursor: 'pointer',
+            color: 'var(--t-text-2)',
+            fontSize: 14,
+            padding: '4px 10px',
+            lineHeight: 1,
+            fontWeight: 700,
+          }}
+          aria-label="Close saved matches"
         >
           ✕
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--t-page-bg)' }}>
         {entries.length === 0 ? (
           <div
             style={{
               padding: '60px 24px',
               textAlign: 'center',
-              color: 'var(--t-text-5)',
+              color: 'var(--t-text-4)',
               fontSize: 13,
               lineHeight: 1.6,
             }}
           >
             No saved matches yet.
             <br />
-            Tap ☆ on any match to save it.
+            <span style={{ color: 'var(--t-text-5)', fontSize: 12 }}>Tap ☆ on any match to save it.</span>
           </div>
         ) : (
           entries.map((entry) => (

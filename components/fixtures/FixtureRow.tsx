@@ -250,12 +250,48 @@ export function FixtureRow({
   const liveSummary = fixture.liveOddsSummary ?? null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  const homeOdd = liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
-  const homeBookmaker = resolveBookmaker(liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker);
-  const drawOdd = liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
-  const drawBookmaker = resolveBookmaker(liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker);
-  const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
-  const awayBookmaker = resolveBookmaker(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
+  // Live rows: only show odds from the live odds summary (currently bet365 only).
+  // Never fall back to pre-match batch odds so we don't display stale prices
+  // from bookmakers that don't provide live feeds yet.
+  const hasLiveSummary = isLive && liveSummary?.source === 'live';
+  const usePreMatch = !isLive;
+
+  const homeOdd = hasLiveSummary
+    ? (liveSummary?.bestHomeOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null)
+      : null;
+  const homeBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestHomeBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker)
+        : null,
+  );
+  const drawOdd = hasLiveSummary
+    ? (liveSummary?.bestDrawOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null)
+      : null;
+  const drawBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestDrawBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker)
+        : null,
+  );
+  const awayOdd = hasLiveSummary
+    ? (liveSummary?.bestAwayOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null)
+      : null;
+  const awayBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestAwayBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker)
+        : null,
+  );
 
   // Score flash: detect when live score changes
   const prevScoreRef = useRef({ home: fixture.homeGoals, away: fixture.awayGoals });
