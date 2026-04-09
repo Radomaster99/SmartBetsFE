@@ -1,17 +1,15 @@
 'use client';
-import { Suspense, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, use, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
-import { useOdds } from '@/lib/hooks/useOdds';
-import { useLiveOdds, useLiveOddsSignalR, type LiveOddsMovementDirection, type LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
-import type { BestOddsDto, LiveOddsSummaryDto, OddDto } from '@/lib/types/api';
+import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
+import { type LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
 import { OddsTable } from '@/components/odds/OddsTable';
 import { BestOddsBar } from '@/components/odds/BestOddsBar';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { deriveBestOddsFromOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
 
 type Tab = 'odds' | 'match' | 'h2h';
 
@@ -119,57 +117,6 @@ function resolveInitialTab(tab: string | null, stateBucket?: string | null): Tab
   return 'odds';
 }
 
-function getMovementDirection(previousValue: number | null | undefined, nextValue: number | null | undefined): LiveOddsMovementDirection | null {
-  if (previousValue == null || nextValue == null || previousValue === nextValue) {
-    return null;
-  }
-
-  return nextValue > previousValue ? 'up' : 'down';
-}
-
-function formatRelativeTimestamp(iso: string | null | undefined): string | null {
-  if (!iso) {
-    return null;
-  }
-
-  const diffMs = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(diffMs) || diffMs < 0) {
-    return null;
-  }
-
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) {
-    return mins % 60 === 0 ? `${hours}h ago` : `${hours}h ${mins % 60}m ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-  return hours % 24 === 0 ? `${days}d ago` : `${days}d ${hours % 24}h ago`;
-}
-
-/**
- * Converts a LiveOddsSummaryDto (from the detail endpoint's top-level liveOddsSummary)
- * into the BestOddsDto shape expected by BestOddsBar, so live best odds can be shown
- * immediately while per-market useLiveOdds data is still loading.
- */
-function summaryToBestOdds(summary: LiveOddsSummaryDto, fixture: { id: number; apiFixtureId: number }): BestOddsDto | null {
-  if (!summary.bestHomeOdd || !summary.bestDrawOdd || !summary.bestAwayOdd) return null;
-  return {
-    fixtureId: fixture.id,
-    apiFixtureId: fixture.apiFixtureId,
-    marketName: 'Match Winner',
-    collectedAtUtc: summary.collectedAtUtc ?? new Date().toISOString(),
-    bestHomeOdd: summary.bestHomeOdd,
-    bestHomeBookmaker: summary.bestHomeBookmaker ?? 'Bet365',
-    bestDrawOdd: summary.bestDrawOdd,
-    bestDrawBookmaker: summary.bestDrawBookmaker ?? 'Bet365',
-    bestAwayOdd: summary.bestAwayOdd,
-    bestAwayBookmaker: summary.bestAwayBookmaker ?? 'Bet365',
-  };
-}
 
 function FixtureDetailPageInner({ params }: Props) {
   const { fixtureId } = use(params);
@@ -178,26 +125,36 @@ function FixtureDetailPageInner({ params }: Props) {
   const requestedTab = searchParams.get('tab');
   const initialTab = resolveInitialTab(requestedTab);
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [bestOddsMovements, setBestOddsMovements] = useState<Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>({});
-  const [oddsTableMovements, setOddsTableMovements] = useState<Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>>({});
-  const detailOddsMovementTimeoutsRef = useRef(new Map<string, number>());
-  const previousDisplayOddsRef = useRef<OddDto[] | null>(null);
-  const previousBestOddsRef = useRef<BestOddsDto | null>(null);
 
-  const { data: detail, isLoading, isError, error, refetch } = useFixtureDetail(fixtureId);
-  const { data: odds } = useOdds(fixtureId);
+  const {
+    detail,
+    isLoading,
+    isError,
+    error,
+    isLive,
+    displayOdds,
+    resolvedBestOdds,
+    hasAnyOdds,
+    usingPreMatchFallback,
+    hasLiveOdds,
+    shouldUseLiveBookmakerView,
+    liveOddsRealtimeStatus,
+    bestOddsMovements,
+    oddsTableMovements,
+    headerOddsLabel,
+  } = useFixtureOddsData(fixtureId, tab === 'odds');
+
+  // useFixtureDetail is called inside useFixtureOddsData; we still need refetch
+  const { refetch } = useFixtureDetail(fixtureId);
+
   const resolvedRequestedTab = useMemo(
     () => resolveInitialTab(requestedTab, detail?.fixture.stateBucket ?? null),
     [detail?.fixture.stateBucket, requestedTab],
   );
-  const liveOddsEnabled = Boolean(detail?.fixture.stateBucket === 'Live');
-  const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
     setTab(resolvedRequestedTab);
   }, [resolvedRequestedTab]);
-
-  const liveOddsRealtimeStatus = useLiveOddsSignalR(fixtureId, liveOddsEnabled);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY)) {
@@ -229,243 +186,6 @@ function FixtureDetailPageInner({ params }: Props) {
     const teamHref = `/football/teams/${team.apiTeamId}?${params.toString()}`;
     router.push(teamHref);
   };
-
-  useEffect(() => {
-    return () => {
-      for (const timeout of detailOddsMovementTimeoutsRef.current.values()) {
-        window.clearTimeout(timeout);
-      }
-      detailOddsMovementTimeoutsRef.current.clear();
-    };
-  }, []);
-
-  const isLive = detail?.fixture.stateBucket === 'Live';
-  const mappedLiveOdds = useMemo(
-    () => (isLive ? mapLiveOddsToOdds(liveOddsQuery.data ?? []) : []),
-    [isLive, liveOddsQuery.data],
-  );
-  const derivedLiveBestOdds = useMemo(
-    () => (isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null),
-    [isLive, mappedLiveOdds],
-  );
-  // Bridge: use detail.liveOddsSummary while per-market useLiveOdds data is still loading.
-  // This gives BestOddsBar live odds on first render without waiting for the separate odds/live call.
-  const summaryLiveBestOdds = useMemo(() => {
-    const s = detail?.liveOddsSummary;
-    if (!isLive || !s || s.source !== 'live') return null;
-    return summaryToBestOdds(s, { id: detail.fixture.id, apiFixtureId: detail.fixture.apiFixtureId });
-  }, [detail, isLive]);
-  const hasLiveOdds = mappedLiveOdds.length > 0 || Boolean(summaryLiveBestOdds);
-  const hasPerMarketLiveOdds = mappedLiveOdds.length > 0;
-  const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds);
-  const shouldUseLiveBookmakerView = Boolean(isLive && hasPerMarketLiveOdds);
-  // Not a pre-match fallback if we have live data from the summary (even before per-market loads)
-  const usingPreMatchFallback = Boolean(isLive && !shouldUseLiveBookmakerView && !summaryLiveBestOdds && hasPreMatchFallback);
-  const displayOdds = useMemo(
-    () => (isLive ? (shouldUseLiveBookmakerView ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
-    [isLive, mappedLiveOdds, odds, shouldUseLiveBookmakerView],
-  );
-  const resolvedBestOdds = isLive
-    ? shouldUseLiveBookmakerView
-      ? derivedLiveBestOdds ?? summaryLiveBestOdds ?? detail?.bestOdds ?? null
-      : summaryLiveBestOdds ?? detail?.bestOdds ?? null
-    : detail?.bestOdds ?? null;
-  const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(displayOdds.length);
-  const oddsFreshnessIso = isLive
-    ? resolvedBestOdds?.collectedAtUtc ?? detail?.latestOddsCollectedAtUtc ?? detail?.oddsLastSyncedAtUtc ?? null
-    : detail?.oddsLastSyncedAtUtc ?? null;
-  const liveOddsSyncedAtIso =
-    isLive && hasLiveOdds
-      ? (liveOddsQuery.data ?? []).reduce<string | null>((latest, market) => {
-          const marketTimestamp = market.lastSyncedAtUtc ?? market.collectedAtUtc ?? null;
-          if (!marketTimestamp) {
-            return latest;
-          }
-
-          if (!latest || new Date(marketTimestamp).getTime() > new Date(latest).getTime()) {
-            return marketTimestamp;
-          }
-
-          return latest;
-        }, null)
-      : null;
-  const liveOddsLastChangedAtIso =
-    isLive && hasLiveOdds
-      ? (liveOddsQuery.data ?? []).reduce<string | null>((latest, market) => {
-          const marketTimestamp = market.lastSnapshotCollectedAtUtc ?? market.collectedAtUtc ?? null;
-          if (!marketTimestamp) {
-            return latest;
-          }
-
-          if (!latest || new Date(marketTimestamp).getTime() > new Date(latest).getTime()) {
-            return marketTimestamp;
-          }
-
-          return latest;
-        }, null)
-      : null;
-  const liveOddsLastSyncedLabel = formatRelativeTimestamp(liveOddsSyncedAtIso);
-  const liveOddsLastChangedLabel = formatRelativeTimestamp(liveOddsLastChangedAtIso);
-  const headerOddsLabel = isLive
-    ? usingPreMatchFallback && oddsFreshnessIso
-        ? `Pre-match odds updated ${formatRelativeTimestamp(oddsFreshnessIso) ?? 'recently'}`
-        : liveOddsLastSyncedLabel
-          ? `Live odds synced ${liveOddsLastSyncedLabel}${
-              liveOddsLastChangedLabel && liveOddsLastChangedLabel !== liveOddsLastSyncedLabel
-                ? ` · Last change ${liveOddsLastChangedLabel}`
-                : ''
-            }`
-          : null
-    : oddsFreshnessIso
-      ? (() => {
-          const label = formatRelativeTimestamp(oddsFreshnessIso);
-          return label ? `Odds updated ${label}` : null;
-        })()
-      : null;
-
-  useEffect(() => {
-    if (!isLive || tab !== 'odds') {
-      previousDisplayOddsRef.current = null;
-      previousBestOddsRef.current = null;
-      setBestOddsMovements((current) => (Object.keys(current).length === 0 ? current : {}));
-      setOddsTableMovements((current) => (Object.keys(current).length === 0 ? current : {}));
-
-      if (detailOddsMovementTimeoutsRef.current.size > 0) {
-        for (const timeout of detailOddsMovementTimeoutsRef.current.values()) {
-          window.clearTimeout(timeout);
-        }
-        detailOddsMovementTimeoutsRef.current.clear();
-      }
-      return;
-    }
-
-    const previousDisplayOdds = previousDisplayOddsRef.current;
-    const previousBestOdds = previousBestOddsRef.current;
-
-    const scheduleBestMovementClear = (outcome: 'home' | 'draw' | 'away') => {
-      const timeoutKey = `best:${outcome}`;
-      const existingTimeout = detailOddsMovementTimeoutsRef.current.get(timeoutKey);
-      if (existingTimeout) {
-        window.clearTimeout(existingTimeout);
-      }
-
-      const timeout = window.setTimeout(() => {
-        setBestOddsMovements((current) => {
-          if (!current[outcome]) {
-            return current;
-          }
-
-          const next = { ...current };
-          delete next[outcome];
-          return next;
-        });
-        detailOddsMovementTimeoutsRef.current.delete(timeoutKey);
-      }, 1800);
-
-      detailOddsMovementTimeoutsRef.current.set(timeoutKey, timeout);
-    };
-
-    const scheduleTableMovementClear = (bookmaker: string, outcome: 'home' | 'draw' | 'away') => {
-      const timeoutKey = `table:${bookmaker}:${outcome}`;
-      const existingTimeout = detailOddsMovementTimeoutsRef.current.get(timeoutKey);
-      if (existingTimeout) {
-        window.clearTimeout(existingTimeout);
-      }
-
-      const timeout = window.setTimeout(() => {
-        setOddsTableMovements((current) => {
-          const fixtureMovement = current[bookmaker];
-          if (!fixtureMovement?.[outcome]) {
-            return current;
-          }
-
-          const nextBookmakerMovement = { ...fixtureMovement };
-          delete nextBookmakerMovement[outcome];
-
-          if (Object.keys(nextBookmakerMovement).length === 0) {
-            const nextState = { ...current };
-            delete nextState[bookmaker];
-            return nextState;
-          }
-
-          return {
-            ...current,
-            [bookmaker]: nextBookmakerMovement,
-          };
-        });
-
-        detailOddsMovementTimeoutsRef.current.delete(timeoutKey);
-      }, 1800);
-
-      detailOddsMovementTimeoutsRef.current.set(timeoutKey, timeout);
-    };
-
-    if (previousBestOdds && resolvedBestOdds) {
-      const nextBestMovements: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>> = {};
-
-      const homeMovement = getMovementDirection(previousBestOdds.bestHomeOdd, resolvedBestOdds.bestHomeOdd);
-      const drawMovement = getMovementDirection(previousBestOdds.bestDrawOdd, resolvedBestOdds.bestDrawOdd);
-      const awayMovement = getMovementDirection(previousBestOdds.bestAwayOdd, resolvedBestOdds.bestAwayOdd);
-
-      if (homeMovement) nextBestMovements.home = homeMovement;
-      if (drawMovement) nextBestMovements.draw = drawMovement;
-      if (awayMovement) nextBestMovements.away = awayMovement;
-
-      if (Object.keys(nextBestMovements).length > 0) {
-        setBestOddsMovements((current) => ({ ...current, ...nextBestMovements }));
-        (Object.keys(nextBestMovements) as Array<'home' | 'draw' | 'away'>).forEach(scheduleBestMovementClear);
-      }
-    }
-
-    if (previousDisplayOdds) {
-      const previousByBookmaker = new Map(previousDisplayOdds.map((odd) => [odd.bookmaker, odd]));
-      const nextTableMovements: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>> = {};
-
-      displayOdds.forEach((odd) => {
-        const previous = previousByBookmaker.get(odd.bookmaker);
-        if (!previous) {
-          return;
-        }
-
-        const homeMovement = getMovementDirection(previous.homeOdd, odd.homeOdd);
-        const drawMovement = getMovementDirection(previous.drawOdd, odd.drawOdd);
-        const awayMovement = getMovementDirection(previous.awayOdd, odd.awayOdd);
-        const bookmakerMovements: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>> = {};
-
-        if (homeMovement) bookmakerMovements.home = homeMovement;
-        if (drawMovement) bookmakerMovements.draw = drawMovement;
-        if (awayMovement) bookmakerMovements.away = awayMovement;
-
-        if (Object.keys(bookmakerMovements).length > 0) {
-          nextTableMovements[odd.bookmaker] = bookmakerMovements;
-        }
-      });
-
-      if (Object.keys(nextTableMovements).length > 0) {
-        setOddsTableMovements((current) => {
-          const nextState = { ...current };
-
-          for (const [bookmaker, movements] of Object.entries(nextTableMovements)) {
-            nextState[bookmaker] = {
-              ...(current[bookmaker] ?? {}),
-              ...movements,
-            };
-          }
-
-          return nextState;
-        });
-
-        for (const [bookmaker, movements] of Object.entries(nextTableMovements)) {
-          (Object.keys(movements) as Array<'home' | 'draw' | 'away'>).forEach((outcome) => {
-            scheduleTableMovementClear(bookmaker, outcome);
-          });
-        }
-      }
-    }
-
-    previousDisplayOddsRef.current = displayOdds;
-    previousBestOddsRef.current = resolvedBestOdds;
-  }, [displayOdds, isLive, resolvedBestOdds, tab]);
 
   if (isLoading) {
     return <LoadingSpinner />;
