@@ -74,19 +74,22 @@ interface Props {
   oddsMovements?: LiveOddsMovementByFixture;
   savedFixtureIds?: Set<number>;
   onToggleSave?: (fixture: FixtureDto) => void;
+  selectedFixtureId?: number;
+  onRowClick?: (fixture: FixtureDto) => void;
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
+  // Live fixtures must only show live odds from the backend liveOddsSummary.
+  // Never fall back to pre-match batch odds on live rows.
+  if (fixture.stateBucket === 'Live') {
+    return false;
+  }
   const liveSummary = fixture.liveOddsSummary ?? null;
   // If the backend already returned odds via liveOddsSummary (live or prematch), no batch call needed.
   if (liveSummary?.source === 'live' || liveSummary?.source === 'prematch') {
     return false;
   }
-  return (
-    fixture.stateBucket === 'Upcoming' ||
-    fixture.stateBucket === 'Live' ||
-    fixture.stateBucket === 'Unknown'
-  );
+  return fixture.stateBucket === 'Upcoming' || fixture.stateBucket === 'Unknown';
 }
 
 function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
@@ -313,7 +316,7 @@ function FetchingBar() {
   );
 }
 
-export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, savedFixtureIds, onToggleSave }: Props) {
+export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, savedFixtureIds, onToggleSave, selectedFixtureId, onRowClick }: Props) {
   const popularLeagueOrder = usePopularLeagueOrder();
   const fallbackFixtureIds = useMemo(
     () => fixtures.filter(needsBestOddsFallback).map((fixture) => fixture.apiFixtureId),
@@ -447,27 +450,23 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
               <thead>
                 <tr>
                   <th
-                    className="w-[80px] py-1.5 pl-3 pr-2 text-center text-[10px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: 'var(--t-text-6)' }}
+                    style={{ width: 62, padding: '6px 6px 6px 10px', textAlign: 'left', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--t-text-6)' }}
                   >
-                    Time
+                    Status
                   </th>
-                  <th className="px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
-                    Home
+                  <th
+                    style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--t-text-6)' }}
+                  >
+                    Match
                   </th>
-                  <th className="w-14 px-1 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
-                    Score
-                  </th>
-                  <th className="px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
-                    Away
-                  </th>
-                  <th className="w-[228px] py-1.5 pl-1 pr-3" style={{ color: 'var(--t-text-6)' }}>
-                    <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-bold uppercase tracking-[0.12em]">
-                      <span>1</span>
-                      <span>X</span>
-                      <span>2</span>
+                  <th style={{ width: 198, padding: '6px 6px 6px 4px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, textAlign: 'center', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--t-text-6)' }}>
+                      <span>HOME</span>
+                      <span>DRAW</span>
+                      <span>AWAY</span>
                     </div>
                   </th>
+                  <th style={{ width: 22 }} />
                 </tr>
               </thead>
               <tbody>
@@ -479,6 +478,8 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
                     oddsMovement={oddsMovements?.[fixture.apiFixtureId]}
                     isSaved={savedFixtureIds?.has(fixture.apiFixtureId) ?? false}
                     onToggleSave={onToggleSave}
+                    isSelected={selectedFixtureId === fixture.apiFixtureId}
+                    onRowClick={onRowClick}
                   />
                 ))}
               </tbody>

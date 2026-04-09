@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import type { BestOddsDto, FixtureDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { TeamLogo } from '@/components/shared/TeamLogo';
@@ -12,13 +12,8 @@ interface Props {
   oddsMovement?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   isSaved?: boolean;
   onToggleSave?: (fixture: FixtureDto) => void;
-}
-
-function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
-  const params = new URLSearchParams();
-  if (tab) params.set('tab', tab);
-  const query = params.toString();
-  return `/football/fixtures/${apiFixtureId}${query ? `?${query}` : ''}`;
+  isSelected?: boolean;
+  onRowClick?: (fixture: FixtureDto) => void;
 }
 
 function formatKickoff(iso: string): string {
@@ -33,142 +28,97 @@ function isTodayKickoff(iso: string): boolean {
   return new Date(iso).toDateString() === new Date().toDateString();
 }
 
+function isTomorrowKickoff(iso: string): boolean {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return new Date(iso).toDateString() === tomorrow.toDateString();
+}
+
 function formatLiveMinute(status: string, elapsed?: number | null, statusExtra?: number | null): string {
-  const normalizedStatus = status.toUpperCase();
-  if (normalizedStatus === 'HT') return 'HT';
-  if (normalizedStatus === 'BT') return 'BT';
-  if (normalizedStatus === 'P') return 'PEN';
-  if (normalizedStatus === 'SUSP') return 'SUSP';
-  if (normalizedStatus === 'INT') return 'INT';
-
-  if (elapsed != null) {
-    return statusExtra ? `${elapsed}+${statusExtra}'` : `${elapsed}'`;
-  }
-
-  return normalizedStatus;
+  const s = status.toUpperCase();
+  if (s === 'HT') return 'HT';
+  if (s === 'BT') return 'BT';
+  if (s === 'P') return 'PEN';
+  if (s === 'SUSP') return 'SUSP';
+  if (s === 'INT') return 'INT';
+  if (elapsed != null) return statusExtra ? `${elapsed}+${statusExtra}'` : `${elapsed}'`;
+  return s;
 }
 
-function getLiveSourceMeta(source?: 'live' | 'prematch' | 'none' | null) {
-  if (source === 'live') {
-    return {
-      label: 'Live prices',
-      color: 'var(--t-accent)',
-      background: 'rgba(0,230,118,0.14)',
-      borderColor: 'rgba(0,230,118,0.28)',
-    };
-  }
-
-  if (source === 'prematch') {
-    return {
-      label: 'Pre-match',
-      color: '#fbbf24',
-      background: 'rgba(245,158,11,0.14)',
-      borderColor: 'rgba(245,158,11,0.28)',
-    };
-  }
-
-  return {
-    label: 'Waiting',
-    color: 'var(--t-text-4)',
-    background: 'rgba(148,163,184,0.12)',
-    borderColor: 'rgba(148,163,184,0.2)',
-  };
+function resolveBookmaker(name: string | null | undefined): string | null {
+  return name?.trim() || null;
 }
 
-function renderTimeCell(
-  iso: string,
-  stateBucket: string,
-  status: string,
-  elapsed?: number | null,
-  statusExtra?: number | null,
-  liveSource?: 'live' | 'prematch' | 'none' | null,
-  liveSaveControl?: React.ReactNode,
-) {
+function StatusCell({ fixture }: { fixture: FixtureDto }) {
+  const { stateBucket, kickoffAt, status, elapsed, statusExtra } = fixture;
+
   if (stateBucket === 'Live') {
-    const liveLabel = formatLiveMinute(status, elapsed, statusExtra);
-    const sourceMeta = getLiveSourceMeta(liveSource);
+    const minute = formatLiveMinute(status ?? '', elapsed, statusExtra);
     return (
-      <div className="flex flex-col items-center gap-0.5">
-        <div className="flex items-center gap-1">
-          <span className="rounded px-1 py-0.5 text-[10px] font-black" style={{ background: '#7f1d1d', color: '#fca5a5' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span
+            style={{
+              display: 'inline-block',
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: '#ef4444',
+              animation: 'live-pulse 1.4s ease-in-out infinite',
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fca5a5' }}>
             LIVE
           </span>
-          {liveSaveControl}
         </div>
-        <span className="max-w-[68px] text-center text-[10px] font-bold leading-tight" style={{ color: '#fca5a5' }}>
-          {liveLabel}
-        </span>
-        <span
-          className="rounded-full border px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-[0.08em]"
-          style={{
-            color: sourceMeta.color,
-            background: sourceMeta.background,
-            borderColor: sourceMeta.borderColor,
-          }}
-        >
-          {sourceMeta.label}
-        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#fca5a5' }}>{minute}</span>
       </div>
     );
   }
 
   if (stateBucket === 'Finished') {
     return (
-      <div className="flex flex-col items-center gap-0.5">
-        <span className="text-[11px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
-          FT
-        </span>
-      </div>
+      <span style={{ fontSize: 9, color: 'var(--t-text-5)', fontWeight: 600 }}>Full-time</span>
     );
   }
 
   if (stateBucket === 'Postponed') {
     return (
-      <span className="text-[10px] font-semibold" style={{ color: '#f59e0b' }}>
-        PST
-      </span>
+      <span style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b' }}>PST</span>
     );
   }
 
   if (stateBucket === 'Cancelled') {
     return (
-      <span className="text-[10px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
-        CANC
-      </span>
+      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--t-text-5)' }}>CANC</span>
     );
   }
 
-  const todayKickoff = isTodayKickoff(iso);
+  // Upcoming
+  const isToday = isTodayKickoff(kickoffAt);
+  const isTomorrow = isTomorrowKickoff(kickoffAt);
+  const dateLabel = isToday ? 'Today' : isTomorrow ? 'Tomorrow' : formatKickoffDate(kickoffAt);
+
   return (
-    <div className="flex flex-col items-center gap-0.5 leading-tight">
-      {!todayKickoff ? (
-        <span className="text-[10px] font-medium" style={{ color: 'var(--t-text-5)' }}>
-          {formatKickoffDate(iso)}
-        </span>
-      ) : null}
-      <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>
-        {formatKickoff(iso)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--t-text-3)' }}>
+        {formatKickoff(kickoffAt)}
       </span>
+      <span style={{ fontSize: 9, color: 'var(--t-text-5)' }}>{dateLabel}</span>
     </div>
   );
 }
 
-function truncateBookmaker(name: string, max = 11): string {
-  return name.length > max ? `${name.slice(0, max - 3)}...` : name;
-}
-
-function resolveBookmakerForDisplay(name: string | null | undefined): string | null {
-  return name?.trim() || null;
-}
-
-function OddsCell({
+function OddsButton({
   label,
   value,
   bookmaker,
   fixtureId,
   outcomeKey,
   movement,
-  onOddsClick,
+  isBest,
+  onFallbackClick,
 }: {
   label: string;
   value?: number | null;
@@ -176,215 +126,372 @@ function OddsCell({
   fixtureId: number;
   outcomeKey: 'home' | 'draw' | 'away';
   movement?: LiveOddsMovementDirection;
-  onOddsClick: (event: React.MouseEvent) => void;
+  isBest: boolean;
+  onFallbackClick: (event: React.MouseEvent) => void;
 }) {
-  const content = (
-    <div className="odds-btn odds-btn-grid" style={{ position: 'relative' }}>
+  const prevMovementRef = useRef<LiveOddsMovementDirection | undefined>(movement);
+  const [flashAnimation, setFlashAnimation] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (movement && movement !== prevMovementRef.current) {
+      const anim = movement === 'up'
+        ? 'odds-flash-up 0.6s ease-out forwards'
+        : 'odds-flash-down 0.6s ease-out forwards';
+      setFlashAnimation(anim);
+      const timer = window.setTimeout(() => setFlashAnimation(null), 650);
+      prevMovementRef.current = movement;
+      return () => window.clearTimeout(timer);
+    }
+    prevMovementRef.current = movement;
+  }, [movement]);
+
+  const buttonStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    height: 32,
+    borderRadius: 6,
+    border: isBest ? '1px solid rgba(0,230,118,0.35)' : '1px solid var(--t-border)',
+    background: isBest ? 'rgba(0,230,118,0.1)' : 'var(--t-surface-2)',
+    cursor: value && bookmaker ? 'pointer' : 'default',
+    position: 'relative',
+    textDecoration: 'none',
+    padding: 0,
+    width: '100%',
+    ...(flashAnimation ? { animation: flashAnimation } : {}),
+  };
+
+  const inner = (
+    <>
       {movement ? (
         <span
           aria-hidden="true"
-          className="absolute right-1 top-1 text-[10px] font-bold leading-none"
-          style={{ color: movement === 'up' ? 'var(--t-accent)' : '#f87171' }}
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 3,
+            fontSize: 9,
+            fontWeight: 700,
+            lineHeight: 1,
+            color: movement === 'up' ? 'var(--t-accent)' : '#f87171',
+          }}
         >
-          {movement === 'up' ? '\u2191' : '\u2193'}
+          {movement === 'up' ? '↑' : '↓'}
         </span>
       ) : null}
 
-      <span className={`odds-value${!value ? ' na' : ''}`}>{value ? value.toFixed(2) : '-'}</span>
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: isBest ? 'var(--t-accent)' : value ? 'var(--t-text-2)' : 'var(--t-text-6)',
+          lineHeight: 1,
+        }}
+      >
+        {value ? value.toFixed(2) : '–'}
+      </span>
 
-      {value && bookmaker ? (
-        <span className="odds-bk">
-          {truncateBookmaker(bookmaker)}
-        </span>
-      ) : null}
-    </div>
+      <span
+        style={{
+          fontSize: 7,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: isBest ? 'var(--t-accent)' : 'var(--t-text-6)',
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </span>
+    </>
   );
 
-  if (!value || !bookmaker) {
+  if (value && bookmaker) {
+    const href = buildBookmakerHref(bookmaker, { fixture: fixtureId, outcome: outcomeKey, source: 'fixture-list' });
     return (
-      <button
-        type="button"
-        onClick={onOddsClick}
-        className="w-full cursor-pointer border-0 bg-transparent p-0"
-        aria-label={`${label} odds`}
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        aria-label={`${value.toFixed(2)} at ${bookmaker} — ${label}`}
+        style={buttonStyle as React.CSSProperties}
       >
-        {content}
-      </button>
+        {inner}
+      </a>
     );
   }
 
-  const href = buildBookmakerHref(bookmaker, {
-    fixture: fixtureId,
-    outcome: outcomeKey,
-    source: 'fixture-list',
-  });
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(event) => event.stopPropagation()}
-      aria-label={`${value.toFixed(2)} at ${bookmaker} - ${label}`}
-      style={{ display: 'block', textDecoration: 'none' }}
-    >
-      {content}
-    </a>
-  );
-}
-
-function SaveButton({
-  saved,
-  onClick,
-}: {
-  saved: boolean;
-  onClick: (event: React.MouseEvent) => void;
-}) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-black transition-colors"
-      style={{
-        background: saved ? 'rgba(0,230,118,0.12)' : 'var(--t-surface-2)',
-        borderColor: saved ? 'rgba(0,230,118,0.28)' : 'var(--t-border-2)',
-        color: saved ? 'var(--t-accent)' : 'var(--t-text-5)',
-        cursor: 'pointer',
-      }}
-      aria-label={saved ? 'Remove fixture from watchlist' : 'Save fixture to watchlist'}
-      title={saved ? 'Saved to watchlist' : 'Save to watchlist'}
+      onClick={onFallbackClick}
+      aria-label={`${label} odds`}
+      style={{ ...buttonStyle, background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}
     >
-      {saved ? '\u2605' : '\u2606'}
+      {inner}
     </button>
   );
 }
 
-export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = false, onToggleSave }: Props) {
-  const router = useRouter();
+export function FixtureRow({
+  fixture,
+  bestOddsFallback,
+  oddsMovement,
+  isSaved = false,
+  onToggleSave,
+  isSelected = false,
+  onRowClick,
+}: Props) {
   const isLive = fixture.stateBucket === 'Live';
+  const isFinished = fixture.stateBucket === 'Finished';
   const liveSummary = fixture.liveOddsSummary ?? null;
-  const liveSource = liveSummary?.source ?? 'none';
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  // Use liveOddsSummary for both live and upcoming (backend populates it via includeLiveOddsSummary).
-  // Fall back to bestOddsFallback (batch call) when the summary is absent.
-  const homeOdd = liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
-  const homeBookmaker = resolveBookmakerForDisplay(liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker);
-  const drawOdd = liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
-  const drawBookmaker = resolveBookmakerForDisplay(liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker);
-  const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
-  const awayBookmaker = resolveBookmakerForDisplay(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
+  // Live rows: only show odds from the live odds summary (currently bet365 only).
+  // Never fall back to pre-match batch odds so we don't display stale prices
+  // from bookmakers that don't provide live feeds yet.
+  const hasLiveSummary = isLive && liveSummary?.source === 'live';
+  const usePreMatch = !isLive;
 
-  const detailHref = buildFixtureHref(fixture.apiFixtureId);
+  const homeOdd = hasLiveSummary
+    ? (liveSummary?.bestHomeOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null)
+      : null;
+  const homeBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestHomeBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker)
+        : null,
+  );
+  const drawOdd = hasLiveSummary
+    ? (liveSummary?.bestDrawOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null)
+      : null;
+  const drawBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestDrawBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker)
+        : null,
+  );
+  const awayOdd = hasLiveSummary
+    ? (liveSummary?.bestAwayOdd ?? null)
+    : usePreMatch
+      ? (liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null)
+      : null;
+  const awayBookmaker = resolveBookmaker(
+    hasLiveSummary
+      ? liveSummary?.bestAwayBookmaker
+      : usePreMatch
+        ? (liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker)
+        : null,
+  );
 
-  const openOddsTab = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    router.push(buildFixtureHref(fixture.apiFixtureId, 'odds'));
+  // Score flash: detect when live score changes
+  const prevScoreRef = useRef({ home: fixture.homeGoals, away: fixture.awayGoals });
+  const [scoreFlashActive, setScoreFlashActive] = useState(false);
+
+  useEffect(() => {
+    const prev = prevScoreRef.current;
+    if (
+      fixture.stateBucket === 'Live' &&
+      (prev.home !== fixture.homeGoals || prev.away !== fixture.awayGoals)
+    ) {
+      prevScoreRef.current = { home: fixture.homeGoals, away: fixture.awayGoals };
+      setScoreFlashActive(true);
+      const timer = window.setTimeout(() => setScoreFlashActive(false), 450);
+      return () => window.clearTimeout(timer);
+    }
+    prevScoreRef.current = { home: fixture.homeGoals, away: fixture.awayGoals };
+  }, [fixture.homeGoals, fixture.awayGoals, fixture.stateBucket]);
+
+  // Highest value among the three = loosest market (gets green highlight)
+  const allOdds = [homeOdd, drawOdd, awayOdd].filter((o): o is number => o !== null);
+  const bestOddValue = allOdds.length > 0 ? Math.max(...allOdds) : null;
+
+  const homeWin = hasScore && fixture.homeGoals! > fixture.awayGoals!;
+  const awayWin = hasScore && fixture.awayGoals! > fixture.homeGoals!;
+
+  const homeNameColor = isLive || !hasScore
+    ? 'var(--t-text-1)'
+    : homeWin
+      ? 'var(--t-text-1)'
+      : awayWin
+        ? 'var(--t-text-4)'
+        : 'var(--t-text-2)';
+
+  const awayNameColor = isLive || !hasScore
+    ? 'var(--t-text-1)'
+    : awayWin
+      ? 'var(--t-text-1)'
+      : homeWin
+        ? 'var(--t-text-4)'
+        : 'var(--t-text-2)';
+
+  const trStyle: React.CSSProperties = {
+    opacity: isFinished ? 0.65 : 1,
+    cursor: 'pointer',
+    borderLeft: isLive
+      ? '2px solid rgba(239,83,80,0.35)'
+      : isSelected
+        ? '2px solid rgba(0,230,118,0.4)'
+        : '2px solid transparent',
+    background: isLive
+      ? 'rgba(239,83,80,0.03)'
+      : isSelected
+        ? 'rgba(0,230,118,0.04)'
+        : 'transparent',
   };
 
-  const toggleSave = (event: React.MouseEvent) => {
+  const handleRowClick = () => onRowClick?.(fixture);
+
+  const handleOpenOdds = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onRowClick?.(fixture);
+  };
+
+  const handleToggleSave = (event: React.MouseEvent) => {
     event.stopPropagation();
     onToggleSave?.(fixture);
   };
 
   return (
-    <tr
-      onClick={() => router.push(detailHref)}
-      className="cursor-pointer"
-      data-live={isLive ? 'true' : 'false'}
-    >
-      <td className="w-[80px] px-2 py-1.5 pl-3 text-center">
-        <div className="flex flex-col items-center gap-1">
-          {renderTimeCell(
-            fixture.kickoffAt,
-            fixture.stateBucket,
-            fixture.status ?? '',
-            fixture.elapsed,
-            fixture.statusExtra,
-            liveSource,
-            isLive ? <SaveButton saved={isSaved} onClick={toggleSave} /> : undefined,
-          )}
-          {!isLive ? <SaveButton saved={isSaved} onClick={toggleSave} /> : null}
-        </div>
+    <tr onClick={handleRowClick} style={trStyle} data-live={isLive ? 'true' : 'false'} data-selected={isSelected ? 'true' : 'false'}>
+      {/* Status column — 62px */}
+      <td style={{ width: 62, padding: '8px 6px 8px 10px', verticalAlign: 'middle' }}>
+        <StatusCell fixture={fixture} />
       </td>
 
-      <td className="px-2 py-1.5">
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          <span
-            className="block min-w-0 flex-1 truncate text-right text-[12px] font-semibold"
-            style={{ color: isLive ? 'var(--t-text-1)' : 'var(--t-text-2)' }}
-            title={fixture.homeTeamName}
-          >
-            {fixture.homeTeamName}
-          </span>
-          <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={16} />
-        </div>
-      </td>
-
-      <td className="w-16 px-1 py-1.5 text-center">
-        {hasScore ? (
-          <div
-            className="odds-cell inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold"
-            style={{
-              background: isLive ? 'rgba(239,83,80,0.15)' : 'var(--t-surface-2)',
-              color: isLive ? '#fca5a5' : 'var(--t-text-2)',
-              border: isLive ? '1px solid rgba(239,83,80,0.25)' : '1px solid var(--t-border-2)',
-            }}
-          >
-            <span>{fixture.homeGoals}</span>
-            <span style={{ color: 'var(--t-text-5)' }}>-</span>
-            <span>{fixture.awayGoals}</span>
+      {/* Center: Home ←→ Score ←→ Away */}
+      <td style={{ padding: '6px 8px', verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Home side */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: homeWin ? 700 : 500,
+                color: homeNameColor,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                minWidth: 0,
+              }}
+              title={fixture.homeTeamName}
+            >
+              {fixture.homeTeamName}
+            </span>
+            <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={18} />
           </div>
-        ) : (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-6)' }}>
-            vs
-          </span>
-        )}
-      </td>
 
-      <td className="px-2 py-1.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={16} />
-          <span
-            className="block min-w-0 flex-1 truncate text-[12px] font-semibold"
-            style={{ color: isLive ? 'var(--t-text-1)' : 'var(--t-text-2)' }}
-            title={fixture.awayTeamName}
-          >
-            {fixture.awayTeamName}
-          </span>
+          {/* Score / vs */}
+          <div style={{ flexShrink: 0, width: 48, textAlign: 'center' }}>
+            {hasScore ? (
+              <span
+                className={scoreFlashActive ? 'score-flash' : undefined}
+                style={{
+                  fontSize: 14,
+                  fontWeight: 900,
+                  color: isLive ? '#fca5a5' : 'var(--t-text-1)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {fixture.homeGoals} – {fixture.awayGoals}
+              </span>
+            ) : (
+              <span style={{ fontSize: 11, color: 'var(--t-text-5)', fontWeight: 500 }}>vs</span>
+            )}
+          </div>
+
+          {/* Away side */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, minWidth: 0 }}>
+            <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={18} />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: awayWin ? 700 : 500,
+                color: awayNameColor,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                minWidth: 0,
+              }}
+              title={fixture.awayTeamName}
+            >
+              {fixture.awayTeamName}
+            </span>
+          </div>
         </div>
       </td>
 
-      <td className="w-[228px] py-1.5 pl-1 pr-3">
-        <div className="grid grid-cols-3 gap-1.5">
-          <OddsCell
-            label="Home"
+      {/* Odds column — 198px */}
+      <td
+        style={{ width: 198, padding: '6px 6px 6px 4px', verticalAlign: 'middle' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+          <OddsButton
+            label="HOME"
             value={homeOdd}
             bookmaker={homeBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="home"
             movement={oddsMovement?.home}
-            onOddsClick={openOddsTab}
+            isBest={bestOddValue !== null && homeOdd === bestOddValue}
+            onFallbackClick={handleOpenOdds}
           />
-          <OddsCell
-            label="Draw"
+          <OddsButton
+            label="DRAW"
             value={drawOdd}
             bookmaker={drawBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="draw"
             movement={oddsMovement?.draw}
-            onOddsClick={openOddsTab}
+            isBest={bestOddValue !== null && drawOdd === bestOddValue}
+            onFallbackClick={handleOpenOdds}
           />
-          <OddsCell
-            label="Away"
+          <OddsButton
+            label="AWAY"
             value={awayOdd}
             bookmaker={awayBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="away"
             movement={oddsMovement?.away}
-            onOddsClick={openOddsTab}
+            isBest={bestOddValue !== null && awayOdd === bestOddValue}
+            onFallbackClick={handleOpenOdds}
           />
         </div>
+      </td>
+
+      {/* Save column — 22px */}
+      <td style={{ width: 22, padding: '6px 8px 6px 2px', verticalAlign: 'middle' }}>
+        <button
+          type="button"
+          onClick={handleToggleSave}
+          style={{
+            width: 22,
+            height: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 14,
+            color: isSaved ? '#f59e0b' : 'var(--t-text-5)',
+            padding: 0,
+          }}
+          aria-label={isSaved ? 'Remove from watchlist' : 'Save to watchlist'}
+          title={isSaved ? 'Remove from watchlist' : 'Save to watchlist'}
+        >
+          {isSaved ? '★' : '☆'}
+        </button>
       </td>
     </tr>
   );

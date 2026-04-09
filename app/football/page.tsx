@@ -1,18 +1,12 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { HeroBannerCard } from '@/components/ads/HeroBannerCard';
+import { PromoStrip } from '@/components/ads/PromoStrip';
+import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
-import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
-import {
-  DEFAULT_HERO_BANNERS,
-  HERO_BANNERS_STORAGE_KEY,
-  HERO_BANNERS_UPDATED_EVENT,
-  readHeroBannersConfig,
-} from '@/lib/hero-banners';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -21,30 +15,6 @@ import type { FixtureDto, LiveOddsSummaryDto, StateBucket } from '@/lib/types/ap
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 type UpcomingScope = 'today' | 'all';
-
-const PROMO_BANNERS = [
-  {
-    bookmaker: 'Bet365',
-    eyebrow: 'Sponsored',
-    headline: 'Fast football prices',
-    blurb: 'Open a major book right after you compare the board.',
-    cta: 'Open Bet365',
-  },
-  {
-    bookmaker: 'Pinnacle',
-    eyebrow: 'Sharp lines',
-    headline: 'Market reference spot',
-    blurb: 'Use the board, then jump into sharper pricing in one click.',
-    cta: 'Open Pinnacle',
-  },
-  {
-    bookmaker: 'Betano',
-    eyebrow: 'Matchday promo',
-    headline: 'Ready for today’s card',
-    blurb: 'Keep the scan here and move straight into the bookmaker flow.',
-    cta: 'Open Betano',
-  },
-] as const;
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
@@ -220,54 +190,6 @@ function FeedLegendPill({
   );
 }
 
-function PromoBannerStrip() {
-  const [banners, setBanners] = useState(DEFAULT_HERO_BANNERS);
-
-  useEffect(() => {
-    const syncBanners = () => {
-      setBanners(readHeroBannersConfig());
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === HERO_BANNERS_STORAGE_KEY) {
-        syncBanners();
-      }
-    };
-
-    syncBanners();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener(HERO_BANNERS_UPDATED_EVENT, syncBanners);
-
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener(HERO_BANNERS_UPDATED_EVENT, syncBanners);
-    };
-  }, []);
-
-  return (
-    <div className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]">
-      {banners.map((banner) => {
-        const meta = getBookmakerMeta(banner.bookmaker);
-        const href =
-          banner.href?.trim() ||
-          buildBookmakerHref(banner.bookmaker, {
-            source: 'football-board-banner',
-          });
-
-        return (
-          <HeroBannerCard
-            key={banner.id}
-            banner={banner}
-            href={href}
-            clickable={Boolean(banner.isClickable && href)}
-            aria-label={`${meta.name} promo banner`}
-            title={`${meta.name} promo banner`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 function SavedFixtureLink({
   fixtureId,
   label,
@@ -325,6 +247,7 @@ function FootballPageClient() {
   const { data: leagues } = useLeagues(season);
   const { fixtureIdSet, toggleFixture, upsertFixtures } = useFixtureWatchlist();
   const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
+  const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
 
   useEffect(() => {
@@ -378,6 +301,16 @@ function FootballPageClient() {
 
   const handleUpcomingScopeChange = (nextScope: UpcomingScope) => {
     replaceIfNeeded(buildFootballHref(today, 'Upcoming', leagueId, season, nextScope));
+  };
+
+  const handleRowClick = (fixture: FixtureDto) => {
+    if (window.innerWidth < 768) {
+      const params = new URLSearchParams();
+      params.set('tab', 'odds');
+      router.push(`/football/fixtures/${fixture.apiFixtureId}?${params.toString()}`);
+    } else {
+      setSelectedFixtureId((prev) => (prev === fixture.apiFixtureId ? null : fixture.apiFixtureId));
+    }
   };
 
   const filters = {
@@ -487,14 +420,8 @@ function FootballPageClient() {
 
   return (
     <div className="flex flex-col h-full">
-      <div
-        className="panel-shell mx-3 mt-3 rounded-2xl p-2 md:mx-4 md:p-2.5"
-        style={{
-          background:
-            'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
-        }}
-      >
-        <PromoBannerStrip />
+      <div className="mx-3 mt-3 md:mx-4">
+        <PromoStrip />
       </div>
 
       <FixtureFilters
@@ -598,14 +525,26 @@ function FootballPageClient() {
           </button>
         </div>
       ) : (
-        <FixtureTable
-          fixtures={fixtures}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          oddsMovements={liveOddsListRealtime.movements}
-          savedFixtureIds={fixtureIdSet}
-          onToggleSave={toggleFixture}
-        />
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <FixtureTable
+              fixtures={fixtures}
+              isLoading={isLoading}
+              isFetching={isFetching}
+              oddsMovements={liveOddsListRealtime.movements}
+              savedFixtureIds={fixtureIdSet}
+              onToggleSave={toggleFixture}
+              selectedFixtureId={selectedFixtureId ?? undefined}
+              onRowClick={handleRowClick}
+            />
+          </div>
+          {selectedFixtureId != null ? (
+            <FixtureDetailPanel
+              fixtureId={selectedFixtureId}
+              onClose={() => setSelectedFixtureId(null)}
+            />
+          ) : null}
+        </div>
       )}
     </div>
   );

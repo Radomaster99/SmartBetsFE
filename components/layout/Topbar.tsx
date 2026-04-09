@@ -1,17 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { useTheme } from '@/lib/contexts/ThemeContext';
-
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { useLiveFixtureCount } from '@/lib/hooks/useLiveFixtureCount';
 
 function SunIcon() {
   return (
@@ -30,10 +23,10 @@ function MoonIcon() {
   );
 }
 
-export function Topbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
-  const pathname = usePathname();
+export function Topbar() {
   const { theme, toggle } = useTheme();
-  const isAdmin = pathname.startsWith('/admin');
+  const router = useRouter();
+  const liveCount = useLiveFixtureCount();
 
   return (
     <header
@@ -46,52 +39,64 @@ export function Topbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         zIndex: 50,
       }}
     >
-      {onMenuToggle ? (
-        <button
-          type="button"
-          onClick={onMenuToggle}
-          className="icon-btn md:hidden"
-          style={{ cursor: 'pointer' }}
-          aria-label="Toggle navigation"
-        >
-          <MenuIcon />
-        </button>
-      ) : null}
-
+      {/* Logo — icon + SmartBets (no Football sub-label) */}
       <div className="flex min-w-0 flex-shrink-0 items-center md:w-56 md:min-w-56">
         <Link href="/football" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
           <div
             className="flex h-8 w-8 items-center justify-center rounded-full"
             style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.24)' }}
           >
-            <span className="block h-2.5 w-2.5 rounded-full" style={{ background: 'var(--t-accent)', boxShadow: '0 0 0 4px rgba(0,230,118,0.12)' }} />
+            <span
+              className="block h-2.5 w-2.5 rounded-full"
+              style={{ background: 'var(--t-accent)', boxShadow: '0 0 0 4px rgba(0,230,118,0.12)' }}
+            />
           </div>
-          <div className="flex min-w-0 flex-col leading-none">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: 'var(--t-text-4)' }}>
-              Football
-            </span>
-            <span className="text-[17px] font-black tracking-[-0.02em]" style={{ color: 'var(--t-text-1)' }}>
-              SmartBets
-            </span>
-          </div>
+          <span
+            className="text-[17px] font-black tracking-[-0.02em]"
+            style={{ color: 'var(--t-text-1)' }}
+          >
+            SmartBets
+          </span>
         </Link>
       </div>
 
+      {/* Desktop search */}
       <div className="hidden min-w-0 flex-1 items-center md:-ml-2 md:flex">
         <GlobalSearch />
       </div>
 
+      {/* Right side actions */}
       <div className="ml-auto flex items-center gap-2 md:gap-3">
-        <Link
-          href="/admin/sync"
-          className={`hidden px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex ${isAdmin ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}
-          style={{
-            textDecoration: 'none',
-          }}
-        >
-          Admin
-        </Link>
+        {/* Live pill — only shown on desktop when there are live fixtures */}
+        {liveCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => router.push('/football?state=Live')}
+            className="hidden md:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            style={{
+              background: 'rgba(0,230,118,0.12)',
+              border: '1px solid rgba(0,230,118,0.3)',
+              color: 'var(--t-accent)',
+              cursor: 'pointer',
+            }}
+            aria-label={`${liveCount} live fixtures — click to view`}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: 'var(--t-accent)',
+                animation: 'live-pulse 1.4s ease-in-out infinite',
+              }}
+              aria-hidden="true"
+            />
+            {liveCount} Live
+          </button>
+        ) : null}
 
+        {/* Theme toggle */}
         <button
           type="button"
           onClick={toggle}

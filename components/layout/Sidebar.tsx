@@ -5,53 +5,23 @@ import { usePathname } from 'next/navigation';
 import { AdminSidebarContent } from '@/components/layout/AdminSidebarContent';
 import { FootballSidebarContent } from '@/components/layout/FootballSidebarContent';
 
-export function Sidebar({
-  mobileOpen = false,
-  onClose,
-}: {
-  mobileOpen?: boolean;
-  onClose?: () => void;
-}) {
+export function Sidebar() {
   const pathname = usePathname();
   const isFootball = pathname.startsWith('/football');
   const isAdmin = pathname.startsWith('/admin');
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-30 bg-black/50 transition-opacity md:hidden ${mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      <aside
-        className={`layout-sidebar fixed inset-y-0 left-0 z-40 flex h-full w-64 max-w-[86vw] flex-col overflow-hidden md:static md:z-auto md:w-56 md:max-w-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        style={{
-          background: 'var(--t-sidebar-bg)',
-          borderRight: '1px solid var(--t-border)',
-          transition: 'transform 0.2s ease',
-        }}
-      >
-        <div className="flex-shrink-0 border-b md:hidden" style={{ borderColor: 'var(--t-border)' }}>
-          <div className="flex items-center justify-between px-3 py-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-5)' }}>
-              Navigation
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="chrome-btn px-2 py-1 text-[11px]"
-              >
-              Close
-            </button>
-          </div>
-        </div>
-
+    <aside
+      className="layout-sidebar hidden md:flex md:w-56 md:flex-shrink-0 md:flex-col md:overflow-hidden"
+      style={{
+        background: 'var(--t-sidebar-bg)',
+        borderRight: '1px solid var(--t-border)',
+      }}
+    >
         {!isAdmin ? (
           <div className="flex-shrink-0 pt-1">
             <Link
               href="/football"
-              onNavigate={onClose}
               className={`sidebar-hover-item mx-2 mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${isFootball ? 'chrome-btn-active' : ''}`}
               data-active={isFootball ? 'true' : 'false'}
               style={{
@@ -90,7 +60,7 @@ export function Sidebar({
               </div>
             }
           >
-            <AdminSidebarContent onNavigate={onClose} />
+            <AdminSidebarContent />
           </Suspense>
         ) : null}
 
@@ -107,10 +77,9 @@ export function Sidebar({
               </div>
             }
           >
-            <FootballSidebarContent onNavigate={onClose} />
+            <FootballSidebarContent />
           </Suspense>
         ) : null}
-      </aside>
-    </>
+    </aside>
   );
 }

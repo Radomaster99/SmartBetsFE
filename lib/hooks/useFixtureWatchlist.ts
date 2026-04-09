@@ -149,6 +149,31 @@ export function useFixtureWatchlist() {
   const [entries, setEntries] = useState<WatchlistFixtureEntry[]>([]);
   const serializedRef = useRef('[]');
 
+  // PERSIST EFFECT — declared first so React runs it before the sync effect.
+  // The equality guard prevents the initial entries=[] from overwriting real
+  // localStorage data: on mount serializedRef is '[]' and entries serialises
+  // to '[]' too, so they match and we skip.  After the sync effect runs and
+  // updates both entries and serializedRef to the real stored value they match
+  // again and we skip.  Only an actual user-driven change produces a mismatch
+  // and triggers a real write.
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const nextSerialized = JSON.stringify(entries);
+    if (nextSerialized === serializedRef.current) {
+      return; // Nothing changed — do not overwrite localStorage
+    }
+
+    serializedRef.current = nextSerialized;
+    window.localStorage.setItem(WATCHLIST_STORAGE_KEY, nextSerialized);
+    window.dispatchEvent(new CustomEvent(WATCHLIST_UPDATED_EVENT));
+  }, [entries]);
+
+  // SYNC EFFECT — declared second so it runs after the persist effect on mount.
+  // Reads the real stored data on mount and re-syncs when other tabs / hook
+  // instances write to localStorage.
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -156,14 +181,14 @@ export function useFixtureWatchlist() {
 
     const syncFromStorage = () => {
       const raw = window.localStorage.getItem(WATCHLIST_STORAGE_KEY);
-      const nextSerialized = raw ?? '[]';
+      const nextEntries = normalizeWatchlistEntries(raw);
+      const nextSerialized = JSON.stringify(nextEntries);
 
       if (nextSerialized === serializedRef.current) {
         return;
       }
 
-      const nextEntries = normalizeWatchlistEntries(raw);
-      serializedRef.current = JSON.stringify(nextEntries);
+      serializedRef.current = nextSerialized;
       setEntries(nextEntries);
     };
 
@@ -192,17 +217,6 @@ export function useFixtureWatchlist() {
       window.removeEventListener(WATCHLIST_UPDATED_EVENT, syncFromStorage);
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const nextSerialized = JSON.stringify(entries);
-    serializedRef.current = nextSerialized;
-    window.localStorage.setItem(WATCHLIST_STORAGE_KEY, nextSerialized);
-    window.dispatchEvent(new CustomEvent(WATCHLIST_UPDATED_EVENT));
-  }, [entries]);
 
   const fixtureIds = useMemo(() => entries.map((entry) => entry.apiFixtureId), [entries]);
   const fixtureIdSet = useMemo(() => new Set(fixtureIds), [fixtureIds]);

@@ -359,6 +359,17 @@ html[data-theme="light"] .fixture-table tbody tr:hover td:first-child {
   100% { background: rgba(239, 83, 80, 0.14); box-shadow: 0 0 0 1px rgba(239, 83, 80, 0.14); }
 }
 
+/* Score update flash — fires when a live score changes */
+@keyframes score-flash {
+  0%   { color: #ffffff; transform: scale(1.18); }
+  40%  { color: #fca5a5; transform: scale(1.12); }
+  100% { color: inherit; transform: scale(1); }
+}
+
+.score-flash {
+  animation: score-flash 0.4s ease-out forwards;
+}
+
 /* Thin progress bar for data refetching */
 @keyframes fetching-slide {
   0%   { left: -42%; width: 40%; }
