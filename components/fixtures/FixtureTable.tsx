@@ -73,7 +73,7 @@ interface Props {
   isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
   savedFixtureIds?: Set<number>;
-  onToggleSave?: (fixtureId: number) => void;
+  onToggleSave?: (fixture: FixtureDto) => void;
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
@@ -175,7 +175,7 @@ function MobileFixtureCard({
   fixture: FixtureDto;
   bestOddsFallback: BestOddsDto | null;
   isSaved: boolean;
-  onToggleSave?: (fixtureId: number) => void;
+  onToggleSave?: (fixture: FixtureDto) => void;
 }) {
   const router = useRouter();
   const isLive = fixture.stateBucket === 'Live';
@@ -238,7 +238,7 @@ function MobileFixtureCard({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onToggleSave?.(fixture.apiFixtureId);
+              onToggleSave?.(fixture);
             }}
             className="flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-black"
             style={{

@@ -1,11 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { HeroBannerSlotEditor } from '@/components/admin/HeroBannerSlotEditor';
 import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
+  DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+  DEFAULT_HERO_BANNER_IMAGE_ZOOM,
   DEFAULT_HERO_BANNERS,
+  normalizeHeroBannerFocusPercent,
+  normalizeHeroBannerImageOpacity,
+  normalizeHeroBannerImageZoom,
   readHeroBannersConfig,
   type HeroBannerConfig,
   writeHeroBannersConfig,
@@ -35,6 +41,9 @@ import {
 } from '@/lib/side-ads';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
+const ADMIN_SECTION_IDS = ['quick', 'league', 'popular', 'hero', 'ads', 'result', 'snapshot', 'status'] as const;
+
+type AdminSectionId = (typeof ADMIN_SECTION_IDS)[number];
 
 function freshnessColor(ts: string | null): string {
   if (!ts) return '#ef5350';
@@ -56,6 +65,8 @@ type ActionBtn = {
   id: string;
   label: string;
   runningLabel: string;
+  description: string;
+  requestPreview: string[];
   accent?: boolean;
   onClick: () => void;
   disabled?: boolean;
@@ -77,6 +88,46 @@ function ActionButton({ btn, loading }: { btn: ActionBtn; loading: string | null
     >
       {isRunning ? btn.runningLabel : btn.label}
     </button>
+  );
+}
+
+function ActionCard({ btn, loading }: { btn: ActionBtn; loading: string | null }) {
+  return (
+    <div
+      className="rounded-lg p-3"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid var(--t-border)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[12px] font-bold" style={{ color: 'var(--t-text-2)' }}>
+            {btn.label}
+          </div>
+          <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+            {btn.description}
+          </div>
+        </div>
+        <ActionButton btn={btn} loading={loading} />
+      </div>
+
+      <div className="mt-3 space-y-1">
+        {btn.requestPreview.map((requestLine) => (
+          <div
+            key={requestLine}
+            className="rounded px-2 py-1 font-mono text-[10px]"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--t-border)',
+              color: 'var(--t-text-4)',
+            }}
+          >
+            {requestLine}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -155,6 +206,35 @@ async function optimizeSideBannerImage(file: File): Promise<string> {
   return canvas.toDataURL('image/webp', 0.985);
 }
 
+async function optimizeHeroBannerImage(file: File): Promise<string> {
+  const source = await readFileAsDataUrl(file);
+
+  if (file.type === 'image/svg+xml') {
+    return source;
+  }
+
+  const image = await loadImage(source);
+  const maxWidth = 2200;
+  const maxHeight = 1200;
+  const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    return source;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, width, height);
+
+  return canvas.toDataURL('image/webp', 0.98);
+}
+
 type AccordionSectionProps = {
   title: string;
   summary?: string;
@@ -214,8 +294,9 @@ function AccordionSection({ title, summary, badge, isOpen, onToggle, children }:
   );
 }
 
-export default function AdminSyncPage() {
+function AdminSyncPageContent() {
   const ALL_LEAGUES_VALUE = '__all__';
+  const searchParams = useSearchParams();
   const [season, setSeason] = useState(DEFAULT_SEASON);
   const [syncLeagueId, setSyncLeagueId] = useState(ALL_LEAGUES_VALUE);
   const [syncSeason, setSyncSeason] = useState(String(DEFAULT_SEASON));
@@ -229,6 +310,7 @@ export default function AdminSyncPage() {
   const [includeOdds, setIncludeOdds] = useState(false);
   const [forceSync, setForceSync] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const [uploadingHeroBannerId, setUploadingHeroBannerId] = useState<HeroBannerConfig['id'] | null>(null);
   const [uploadingSideAdSlot, setUploadingSideAdSlot] = useState<SideAdSlotId | null>(null);
   const [result, setResult] = useState<{ action: string; ok: boolean; message: string } | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -242,7 +324,7 @@ export default function AdminSyncPage() {
     status: true,
   });
 
-  const { data: status, isLoading: statusLoading, refetch } = useSyncStatus(season);
+  const { data: status, isLoading: statusLoading, refetch } = useSyncStatus(season, false);
 
   async function runAction(action: string, url: string) {
     setLoading(action);
@@ -371,6 +453,9 @@ export default function AdminSyncPage() {
       id: 'core-data',
       label: 'Sync Core Data',
       runningLabel: 'Running...',
+      description:
+        'Runs the main preload bootstrap for core football data. It covers catalogs, teams, fixtures, and optionally pre-match odds.',
+      requestPreview: [`POST ${buildCoreDataUrl()}`],
       accent: true,
       onClick: () => runAction('core-data', buildCoreDataUrl()),
     },
@@ -378,6 +463,9 @@ export default function AdminSyncPage() {
       id: 'startup-pack',
       label: 'Startup Pack',
       runningLabel: 'Running...',
+      description:
+        'Runs the core bootstrap first and then refreshes the live bet type catalog, so the system is ready for both pre-match and live odds flows.',
+      requestPreview: [`POST ${buildCoreDataUrl()}`, 'POST /api/odds/live-bets/sync'],
       onClick: () =>
         runSequence('startup-pack', [
           { label: 'Core data', url: buildCoreDataUrl() },
@@ -388,15 +476,22 @@ export default function AdminSyncPage() {
       id: 'live-bets',
       label: 'Sync Live Bet Types',
       runningLabel: 'Syncing...',
+      description:
+        'Refreshes the live odds bet id reference list used by the live odds importer and widgets.',
+      requestPreview: ['POST /api/odds/live-bets/sync'],
       onClick: () => runAction('live-bets', '/api/odds/live-bets/sync'),
     },
   ];
 
+  const leagueTargetPreview = syncLeagueId === ALL_LEAGUES_VALUE ? '{leagueId}' : syncLeagueId;
   const perLeagueButtons: ActionBtn[] = [
     {
       id: 'upcoming',
       label: 'Sync Upcoming Fixtures',
       runningLabel: 'Syncing...',
+      description:
+        'Pulls only upcoming fixtures for the selected league-season. In bulk mode it runs once per tracked league.',
+      requestPreview: [`POST /api/fixtures/sync-upcoming?leagueId=${leagueTargetPreview}&season=${syncSeason}`],
       onClick: () => runLeagueAction('upcoming', (leagueId) => `/api/fixtures/sync-upcoming?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
       disabledReason: 'Select a league group and season',
@@ -405,6 +500,9 @@ export default function AdminSyncPage() {
       id: 'fixtures-full',
       label: 'Sync Full Fixtures',
       runningLabel: 'Syncing...',
+      description:
+        'Runs the full fixture sync for the selected league-season. In bulk mode it loops through each tracked league sequentially.',
+      requestPreview: [`POST /api/fixtures/sync?leagueId=${leagueTargetPreview}&season=${syncSeason}`],
       onClick: () => runLeagueAction('fixtures-full', (leagueId) => `/api/fixtures/sync?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
       disabledReason: 'Select a league group and season',
@@ -413,6 +511,9 @@ export default function AdminSyncPage() {
       id: 'odds',
       label: 'Sync Pre-match Odds',
       runningLabel: 'Syncing...',
+      description:
+        'Imports the latest pre-match Match Winner odds for the selected league-season. In bulk mode it runs once per tracked league.',
+      requestPreview: [`POST /api/odds/sync?leagueId=${leagueTargetPreview}&season=${syncSeason}`],
       onClick: () => runLeagueAction('odds', (leagueId) => `/api/odds/sync?leagueId=${leagueId}&season=${syncSeason}`),
       disabled: !hasLeagueAndSeason,
       disabledReason: 'Select a league group and season',
@@ -421,6 +522,9 @@ export default function AdminSyncPage() {
       id: 'live-odds',
       label: 'Sync Live Odds',
       runningLabel: 'Syncing...',
+      description:
+        'Imports currently available live odds for the selected league. In bulk mode it runs per tracked league without a season parameter.',
+      requestPreview: [`POST /api/odds/live/sync?leagueId=${leagueTargetPreview}`],
       accent: true,
       onClick: () => runLeagueAction('live-odds', (leagueId) => `/api/odds/live/sync?leagueId=${leagueId}`),
       disabled: !hasLeague,
@@ -434,7 +538,7 @@ export default function AdminSyncPage() {
 
   const leagueSummary =
     syncLeagueId === ALL_LEAGUES_VALUE
-      ? `Bulk mode over ${selectedLeagueIds.length} active leagues.`
+      ? `Bulk mode over ${selectedLeagueIds.length} tracked leagues.`
       : `Targeting ${leagueNameById.get(syncLeagueId) ?? 'one league'}${syncSeason ? ` for ${syncSeason}.` : '.'}`;
 
   const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues for new visitors in this browser profile.`;
@@ -445,6 +549,10 @@ export default function AdminSyncPage() {
     : 'No side banners configured yet.';
   const snapshotSummary = status ? `Latest snapshot ${fmtTs(status.generatedAtUtc)}.` : 'No sync snapshot loaded yet.';
   const statusSummary = `${syncLeagues.length} league-season rows for ${season}.`;
+  const rawSection = searchParams.get('section');
+  const activeSection = ADMIN_SECTION_IDS.includes(rawSection as AdminSectionId)
+    ? (rawSection as AdminSectionId)
+    : null;
 
   useEffect(() => {
     setAdminPopularLeaguePresets(
@@ -512,6 +620,21 @@ export default function AdminSyncPage() {
     setOpenSections((current) => (current.result ? current : { ...current, result: true }));
   }, [result]);
 
+  useEffect(() => {
+    if (!activeSection) {
+      return;
+    }
+
+    setOpenSections((current) =>
+      current[activeSection]
+        ? current
+        : {
+            ...current,
+            [activeSection]: true,
+          },
+    );
+  }, [activeSection]);
+
   function toggleSection(sectionId: string) {
     setOpenSections((current) => ({
       ...current,
@@ -561,6 +684,31 @@ export default function AdminSyncPage() {
           ? {
               ...banner,
               ...updates,
+              backgroundImageOpacity:
+                'backgroundImageOpacity' in updates
+                  ? normalizeHeroBannerImageOpacity(updates.backgroundImageOpacity, banner.backgroundImageOpacity ?? 0.42)
+                  : banner.backgroundImageOpacity,
+              imageFocusXPercent:
+                'imageFocusXPercent' in updates
+                  ? normalizeHeroBannerFocusPercent(
+                      updates.imageFocusXPercent,
+                      banner.imageFocusXPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                    )
+                  : banner.imageFocusXPercent,
+              imageFocusYPercent:
+                'imageFocusYPercent' in updates
+                  ? normalizeHeroBannerFocusPercent(
+                      updates.imageFocusYPercent,
+                      banner.imageFocusYPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                    )
+                  : banner.imageFocusYPercent,
+              imageZoom:
+                'imageZoom' in updates
+                  ? normalizeHeroBannerImageZoom(
+                      updates.imageZoom,
+                      banner.imageZoom ?? DEFAULT_HERO_BANNER_IMAGE_ZOOM,
+                    )
+                  : banner.imageZoom,
               updatedAtUtc: new Date().toISOString(),
             }
           : banner,
@@ -574,6 +722,68 @@ export default function AdminSyncPage() {
       action: 'hero-banners-reset',
       ok: true,
       message: 'Hero banner slots were reset to the default preset.',
+    });
+  }
+
+  async function handleHeroBannerFileChange(id: HeroBannerConfig['id'], file: File) {
+    setUploadingHeroBannerId(id);
+
+    try {
+      const backgroundImageSrc = await optimizeHeroBannerImage(file);
+      const prettyId = id.replace('slot-', 'Hero slot ');
+
+      setHeroBanners((current) =>
+        current.map((banner) =>
+          banner.id === id
+            ? {
+                ...banner,
+                backgroundImageSrc,
+                backgroundImageOpacity: banner.backgroundImageOpacity ?? 0.42,
+                imageFocusXPercent: banner.imageFocusXPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                imageFocusYPercent: banner.imageFocusYPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                imageZoom: banner.imageZoom ?? DEFAULT_HERO_BANNER_IMAGE_ZOOM,
+                updatedAtUtc: new Date().toISOString(),
+              }
+            : banner,
+        ),
+      );
+
+      setResult({
+        action: `${id}-hero-image`,
+        ok: true,
+        message: `${prettyId} background image uploaded successfully.`,
+      });
+    } catch (error) {
+      setResult({
+        action: `${id}-hero-image`,
+        ok: false,
+        message: String(error),
+      });
+    } finally {
+      setUploadingHeroBannerId(null);
+    }
+  }
+
+  function clearHeroBannerImage(id: HeroBannerConfig['id']) {
+    setHeroBanners((current) =>
+      current.map((banner) =>
+        banner.id === id
+          ? {
+              ...banner,
+              backgroundImageSrc: '',
+              imageFocusXPercent: DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+              imageFocusYPercent: DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+              imageZoom: DEFAULT_HERO_BANNER_IMAGE_ZOOM,
+              updatedAtUtc: new Date().toISOString(),
+            }
+          : banner,
+      ),
+    );
+
+    setResult({
+      action: `${id}-hero-image`,
+      ok: true,
+      message: `${id.replace('slot-', 'Hero slot ')} background image was cleared.`,
     });
   }
 
@@ -690,18 +900,48 @@ export default function AdminSyncPage() {
     return runAction(action, buildUrl(syncLeagueId));
   }
 
+  const sectionHeader = (() => {
+    switch (activeSection) {
+      case 'quick':
+        return { title: 'Quick sync', description: quickSummary };
+      case 'league':
+        return { title: 'League actions', description: leagueSummary };
+      case 'popular':
+        return { title: 'Popular leagues', description: popularSummary };
+      case 'hero':
+        return { title: 'Hero banners', description: heroSummary };
+      case 'ads':
+        return { title: 'Side ads', description: adsSummary };
+      case 'result':
+        return {
+          title: 'Last run',
+          description: result
+            ? `Latest action "${result.action}" ${result.ok ? 'completed successfully' : 'returned an error'}.`
+            : 'No admin action has been executed yet in this session.',
+        };
+      case 'snapshot':
+        return { title: 'Freshness snapshot', description: snapshotSummary };
+      case 'status':
+        return { title: 'League sync status', description: statusSummary };
+      default:
+        return null;
+    }
+  })();
+
   return (
     <div className="max-w-5xl p-5">
       <div className="mb-5">
         <h1 className="mb-0.5 text-[18px] font-bold" style={{ color: 'var(--t-text-1)' }}>
-          Sync Control Panel
+          {sectionHeader?.title ?? 'Admin control panel page'}
         </h1>
         <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-          Cleaner admin controls for sync jobs, predefined popular leagues, and freshness checks.
+          {sectionHeader?.description ?? 'Choose a category from the left menu to open the admin tools for that area.'}
         </p>
       </div>
 
+      {activeSection ? (
       <div className="space-y-3">
+        {activeSection === 'quick' ? (
         <AccordionSection
           title="Quick Sync"
           summary={quickSummary}
@@ -735,18 +975,20 @@ export default function AdminSyncPage() {
               Core sync covers countries, leagues, bookmaker catalog, teams, and fixtures. Live odds still run separately.
             </InfoStrip>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {quickActionButtons.map((btn) => (
-                <ActionButton key={btn.id} btn={btn} loading={loading} />
+                <ActionCard key={btn.id} btn={btn} loading={loading} />
               ))}
             </div>
           </div>
         </AccordionSection>
+        ) : null}
 
+        {activeSection === 'league' ? (
         <AccordionSection
           title="League Actions"
           summary={leagueSummary}
-          badge={syncLeagueId === ALL_LEAGUES_VALUE ? `${selectedLeagueIds.length} active` : 'manual target'}
+          badge={syncLeagueId === ALL_LEAGUES_VALUE ? `${selectedLeagueIds.length} tracked` : 'manual target'}
           isOpen={openSections.league}
           onToggle={() => toggleSection('league')}
         >
@@ -761,7 +1003,7 @@ export default function AdminSyncPage() {
                   onChange={(e) => setSyncLeagueId(e.target.value)}
                   className="input-shell min-w-[240px] px-3 py-1.5 text-[12px]"
                 >
-                  <option value={ALL_LEAGUES_VALUE}>All active leagues ({selectedLeagueIds.length})</option>
+                  <option value={ALL_LEAGUES_VALUE}>All tracked leagues ({selectedLeagueIds.length})</option>
                   {syncLeagues.map((league) => (
                     <option key={`${league.leagueApiId}-${league.season}`} value={String(league.leagueApiId)}>
                       {league.countryName} - {league.leagueName} ({league.season})
@@ -783,20 +1025,22 @@ export default function AdminSyncPage() {
               </div>
             </div>
 
-            <InfoStrip>
+              <InfoStrip>
               {syncLeagueId === ALL_LEAGUES_VALUE
-                ? `Bulk mode will run sequentially across ${selectedLeagueIds.length} active leagues.`
+                ? `Bulk mode will run sequentially across ${selectedLeagueIds.length} tracked leagues.`
                 : `Only ${leagueNameById.get(syncLeagueId) ?? 'the selected league'} will be touched.`}
             </InfoStrip>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 md:grid-cols-2">
               {perLeagueButtons.map((btn) => (
-                <ActionButton key={btn.id} btn={btn} loading={loading} />
+                <ActionCard key={btn.id} btn={btn} loading={loading} />
               ))}
             </div>
           </div>
         </AccordionSection>
+        ) : null}
 
+        {activeSection === 'popular' ? (
         <AccordionSection
           title="Popular Leagues"
           summary={popularSummary}
@@ -881,7 +1125,9 @@ export default function AdminSyncPage() {
             </div>
           </div>
         </AccordionSection>
+        ) : null}
 
+        {activeSection === 'hero' ? (
         <AccordionSection
           title="Hero Banners"
           summary={heroSummary}
@@ -890,9 +1136,9 @@ export default function AdminSyncPage() {
           onToggle={() => toggleSection('hero')}
         >
           <div className="space-y-3">
-            <InfoStrip>
-              Control the three promo cards at the top of the football board: text, CTA, theme, destination URL, and whether each slot is clickable.
-            </InfoStrip>
+              <InfoStrip>
+                Control the three promo cards at the top of the football board: text, theme, font family, font scale, alignment, color palette, CTA, destination URL, and whether each slot is clickable.
+              </InfoStrip>
 
             <div className="flex flex-wrap gap-2">
               <button
@@ -904,18 +1150,23 @@ export default function AdminSyncPage() {
               </button>
             </div>
 
-            <div className="grid gap-3">
-              {heroBanners.map((banner) => (
-                <HeroBannerSlotEditor
-                  key={banner.id}
-                  banner={banner}
-                  onChange={updateHeroBanner}
-                />
-              ))}
-            </div>
+              <div className="grid gap-3">
+                {heroBanners.map((banner) => (
+                  <HeroBannerSlotEditor
+                    key={banner.id}
+                    banner={banner}
+                    onChange={updateHeroBanner}
+                    onUploadImage={handleHeroBannerFileChange}
+                    onClearImage={clearHeroBannerImage}
+                    isUploadingImage={uploadingHeroBannerId === banner.id}
+                  />
+                ))}
+              </div>
           </div>
         </AccordionSection>
+        ) : null}
 
+        {activeSection === 'ads' ? (
         <AccordionSection
           title="Side Ads"
           summary={adsSummary}
@@ -945,31 +1196,37 @@ export default function AdminSyncPage() {
             </div>
           </div>
         </AccordionSection>
+        ) : null}
 
-        {result ? (
+        {activeSection === 'result' ? (
           <AccordionSection
             title="Last Run"
-            summary={result.ok ? `Latest action "${result.action}" completed successfully.` : `Latest action "${result.action}" returned an error.`}
-            badge={result.ok ? 'OK' : 'ERR'}
+            summary={result ? (result.ok ? `Latest action "${result.action}" completed successfully.` : `Latest action "${result.action}" returned an error.`) : 'No admin action has been executed yet in this session.'}
+            badge={result ? (result.ok ? 'OK' : 'ERR') : 'empty'}
             isOpen={openSections.result}
             onToggle={() => toggleSection('result')}
           >
-            <div
-              className="rounded p-3 font-mono text-[12px]"
-              style={{
-                background: result.ok ? 'rgba(0,230,118,0.06)' : 'rgba(239,83,80,0.06)',
-                border: `1px solid ${result.ok ? 'rgba(0,230,118,0.2)' : 'rgba(239,83,80,0.2)'}`,
-                color: result.ok ? '#00e676' : '#fca5a5',
-              }}
-            >
-              <div className="mb-1 font-bold">
-                {result.ok ? 'OK' : 'ERR'} {result.action}
+            {result ? (
+              <div
+                className="rounded p-3 font-mono text-[12px]"
+                style={{
+                  background: result.ok ? 'rgba(0,230,118,0.06)' : 'rgba(239,83,80,0.06)',
+                  border: `1px solid ${result.ok ? 'rgba(0,230,118,0.2)' : 'rgba(239,83,80,0.2)'}`,
+                  color: result.ok ? '#00e676' : '#fca5a5',
+                }}
+              >
+                <div className="mb-1 font-bold">
+                  {result.ok ? 'OK' : 'ERR'} {result.action}
+                </div>
+                <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-[11px]">{result.message}</pre>
               </div>
-              <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-[11px]">{result.message}</pre>
-            </div>
+            ) : (
+              <InfoStrip>No action result yet. Run any admin action to populate this section.</InfoStrip>
+            )}
           </AccordionSection>
         ) : null}
 
+        {activeSection === 'snapshot' ? (
         <AccordionSection
           title="Freshness Snapshot"
           summary={snapshotSummary}
@@ -992,7 +1249,9 @@ export default function AdminSyncPage() {
             <InfoStrip>No status snapshot has been loaded yet for this season.</InfoStrip>
           )}
         </AccordionSection>
+        ) : null}
 
+        {activeSection === 'status' ? (
         <AccordionSection
           title="League Sync Status"
           summary={statusSummary}
@@ -1084,7 +1343,34 @@ export default function AdminSyncPage() {
             )}
           </div>
         </AccordionSection>
+        ) : null}
       </div>
+      ) : (
+        <section
+          className="panel-shell rounded-xl px-6 py-8"
+          style={{ background: 'rgba(255,255,255,0.02)' }}
+        >
+          <div className="max-w-2xl">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--t-text-5)' }}>
+              Admin
+            </div>
+            <h2 className="mt-2 text-[22px] font-black" style={{ color: 'var(--t-text-1)' }}>
+              Control panel page
+            </h2>
+            <p className="mt-3 text-[13px]" style={{ color: 'var(--t-text-4)' }}>
+              Select a category from the left menu to open sync actions, popular league presets, hero banners, side ads, freshness snapshots, or league status tools.
+            </p>
+          </div>
+        </section>
+      )}
     </div>
+  );
+}
+
+export default function AdminSyncPage() {
+  return (
+    <Suspense fallback={<div className="p-5"><LoadingSpinner /></div>}>
+      <AdminSyncPageContent />
+    </Suspense>
   );
 }

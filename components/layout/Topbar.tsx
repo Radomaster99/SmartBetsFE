@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { useTheme } from '@/lib/contexts/ThemeContext';
-import { useSyncStatus } from '@/lib/hooks/useSyncStatus';
 
 function MenuIcon() {
   return (
@@ -27,35 +27,6 @@ function MoonIcon() {
     <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-  );
-}
-
-function OddsFreshnessLabel() {
-  const { data } = useSyncStatus();
-
-  if (!data) return null;
-
-  const leagues = Array.isArray(data.leagues) ? data.leagues : [];
-  const timestamps = leagues
-    .filter((league) => league.isActive && league.oddsLastSyncedAtUtc)
-    .map((league) => new Date(league.oddsLastSyncedAtUtc!).getTime());
-
-  if (!timestamps.length) return null;
-
-  const latest = Math.max(...timestamps);
-  const mins = Math.floor((Date.now() - latest) / 60000);
-
-  const label =
-    mins < 1 ? 'Pre-match refreshed just now' :
-    mins < 60 ? `Pre-match refreshed ${mins}m ago` :
-    `Pre-match refreshed ${Math.floor(mins / 60)}h ago`;
-
-  const color = mins < 30 ? 'var(--t-text-4)' : mins < 180 ? '#f59e0b' : '#ef5350';
-
-  return (
-    <span className="status-chip hidden md:inline-flex" style={{ color }}>
-      {label}
-    </span>
   );
 }
 
@@ -87,33 +58,30 @@ export function Topbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
         </button>
       ) : null}
 
-      <Link href="/football" className="flex min-w-0 items-center gap-2.5 flex-shrink-0" style={{ textDecoration: 'none' }}>
-        <div
-          className="flex h-8 w-8 items-center justify-center rounded-full"
-          style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.24)' }}
-        >
-          <span className="block h-2.5 w-2.5 rounded-full" style={{ background: 'var(--t-accent)', boxShadow: '0 0 0 4px rgba(0,230,118,0.12)' }} />
-        </div>
-        <div className="flex min-w-0 flex-col leading-none">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: 'var(--t-text-4)' }}>
-            Football
-          </span>
-          <span className="text-[17px] font-black tracking-[-0.02em]" style={{ color: 'var(--t-text-1)' }}>
-            SmartBets
-          </span>
-        </div>
-      </Link>
+      <div className="flex min-w-0 flex-shrink-0 items-center md:w-56 md:min-w-56">
+        <Link href="/football" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full"
+            style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.24)' }}
+          >
+            <span className="block h-2.5 w-2.5 rounded-full" style={{ background: 'var(--t-accent)', boxShadow: '0 0 0 4px rgba(0,230,118,0.12)' }} />
+          </div>
+          <div className="flex min-w-0 flex-col leading-none">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: 'var(--t-text-4)' }}>
+              Football
+            </span>
+            <span className="text-[17px] font-black tracking-[-0.02em]" style={{ color: 'var(--t-text-1)' }}>
+              SmartBets
+            </span>
+          </div>
+        </Link>
+      </div>
 
-      <div className="hidden min-[900px]:flex flex-1 items-center gap-3 pl-2">
-        <div className="h-4 w-px" style={{ background: 'var(--t-border-2)' }} />
-        <span className="text-[11px] uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-5)' }}>
-          Odds desk for serious football bettors
-        </span>
+      <div className="hidden min-w-0 flex-1 items-center md:-ml-2 md:flex">
+        <GlobalSearch />
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:gap-3">
-        <OddsFreshnessLabel />
-
         <Link
           href="/admin/sync"
           className={`hidden px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex ${isAdmin ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}

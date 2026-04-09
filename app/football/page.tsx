@@ -1,6 +1,7 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { HeroBannerCard } from '@/components/ads/HeroBannerCard';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
@@ -10,7 +11,6 @@ import {
   DEFAULT_HERO_BANNERS,
   HERO_BANNERS_STORAGE_KEY,
   HERO_BANNERS_UPDATED_EVENT,
-  HERO_BANNER_THEMES,
   readHeroBannersConfig,
 } from '@/lib/hero-banners';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
@@ -247,90 +247,21 @@ function PromoBannerStrip() {
     <div className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]">
       {banners.map((banner) => {
         const meta = getBookmakerMeta(banner.bookmaker);
-        const theme = HERO_BANNER_THEMES[banner.themeId ?? 'graphite'];
         const href =
           banner.href?.trim() ||
           buildBookmakerHref(banner.bookmaker, {
             source: 'football-board-banner',
           });
 
-        const cardContent = (
-          <>
-            <div className="flex items-start justify-between gap-1">
-              <div className="text-left text-[7px] font-bold uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,0.64)' }}>
-                {banner.eyebrow}
-              </div>
-              <svg
-                viewBox="0 0 24 24"
-                width="10"
-                height="10"
-                aria-hidden="true"
-                fill="none"
-                stroke="rgba(255,255,255,0.88)"
-                strokeWidth="2"
-                className="transition-transform duration-150 group-hover:-translate-y-0.5"
-              >
-                <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-
-            <div className="flex flex-1 flex-col items-center justify-center">
-              <div className="mt-0.5 text-[11px] font-black tracking-[-0.02em] md:text-[13px]" style={{ color: '#ffffff' }}>
-                {banner.bookmaker}
-              </div>
-
-              <div
-                className="mx-auto mt-1 max-w-[140px] min-h-[24px] text-[8px] font-medium leading-3 md:max-w-[180px] md:min-h-[28px] md:text-[9px]"
-                style={{ color: 'rgba(255,255,255,0.94)' }}
-              >
-                {banner.offer}
-              </div>
-            </div>
-
-            <div
-              className="mt-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] transition-transform duration-150 group-hover:translate-y-[-1px] md:text-[9px]"
-              style={{
-                background: theme.buttonBackground,
-                color: theme.buttonColor,
-              }}
-            >
-              {banner.cta}
-            </div>
-          </>
-        );
-
-        const commonProps = {
-          className: 'group relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 text-center transition-all md:h-[112px] md:px-3',
-          style: {
-            textDecoration: 'none',
-            background: theme.background,
-            border: `1px solid ${theme.border}`,
-          },
-        } as const;
-
-        if (banner.isClickable && href) {
-          return (
-            <a
-              key={banner.id}
-              {...commonProps}
-              href={href}
-              aria-label={`Open ${meta.name}`}
-              title={`Open ${meta.name}`}
-            >
-              {cardContent}
-            </a>
-          );
-        }
-
         return (
-          <div
+          <HeroBannerCard
             key={banner.id}
-            {...commonProps}
+            banner={banner}
+            href={href}
+            clickable={Boolean(banner.isClickable && href)}
             aria-label={`${meta.name} promo banner`}
             title={`${meta.name} promo banner`}
-          >
-            {cardContent}
-          </div>
+          />
         );
       })}
     </div>
@@ -392,8 +323,7 @@ function FootballPageClient() {
     (isPastDate && rawStateValue !== 'Finished') ||
     (!isToday && rawStateValue === 'Live');
   const { data: leagues } = useLeagues(season);
-  const { fixtureIds: savedFixtureIds, fixtureIdSet, toggleFixture } = useFixtureWatchlist();
-  const [savedOnly, setSavedOnly] = useState(false);
+  const { fixtureIdSet, toggleFixture, upsertFixtures } = useFixtureWatchlist();
   const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
 
@@ -536,7 +466,7 @@ function FootballPageClient() {
         }
       : fixture;
   });
-  const fixtures = savedOnly ? hydratedFixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId)) : hydratedFixtures;
+  const fixtures = hydratedFixtures;
   const liveFixtureIds = state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [];
   const liveOddsListRealtime = useLiveOddsListSignalR(liveFixtureIds, state === 'Live');
   const liveProviderCount =
@@ -547,8 +477,13 @@ function FootballPageClient() {
     state === 'Live'
       ? fixtures.filter((fixture) => fixture.liveOddsSummary?.source === 'prematch').length
       : 0;
-  const savedFixturesInView = fixtures.filter((fixture) => fixtureIdSet.has(fixture.apiFixtureId));
-  const savedOutsideViewCount = Math.max(savedFixtureIds.length - savedFixturesInView.length, 0);
+  useEffect(() => {
+    if (hydratedFixtures.length === 0) {
+      return;
+    }
+
+    upsertFixtures(hydratedFixtures);
+  }, [hydratedFixtures, upsertFixtures]);
 
   return (
     <div className="flex flex-col h-full">
@@ -561,44 +496,6 @@ function FootballPageClient() {
       >
         <PromoBannerStrip />
       </div>
-
-      {savedFixtureIds.length > 0 ? (
-        <div className="mx-3 mt-3 rounded-2xl panel-shell px-4 py-3 md:mx-4">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-5)' }}>
-                Watchlist
-              </div>
-              <div className="text-[13px]" style={{ color: 'var(--t-text-3)' }}>
-                {savedFixturesInView.length > 0
-                  ? 'Saved fixtures in this board stay one tap away.'
-                  : 'Your saved fixtures are outside the current filters or date range.'}
-                {savedOutsideViewCount > 0 ? ` ${savedOutsideViewCount} saved fixture${savedOutsideViewCount === 1 ? '' : 's'} outside this view.` : ''}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSavedOnly((current) => !current)}
-              className={savedOnly ? 'chrome-btn chrome-btn-active px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]' : 'chrome-btn px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]'}
-            >
-              {savedOnly ? 'Show full board' : 'Focus watchlist'}
-            </button>
-          </div>
-
-          {savedFixturesInView.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {savedFixturesInView.slice(0, 8).map((fixture) => (
-                <SavedFixtureLink
-                  key={fixture.apiFixtureId}
-                  fixtureId={fixture.apiFixtureId}
-                  label={`${fixture.homeTeamName} vs ${fixture.awayTeamName}`}
-                  context={fixture.stateBucket === 'Live' ? 'Live' : date === today ? 'Today' : date}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       <FixtureFilters
         state={state}

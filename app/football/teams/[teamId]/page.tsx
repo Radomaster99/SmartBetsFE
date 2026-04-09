@@ -103,6 +103,16 @@ function TeamPageContent({ teamId }: { teamId: number }) {
     direction: 'desc',
   });
 
+  const liveFixturesQuery = useFixtures({
+    teamId,
+    leagueId: leagueId ?? undefined,
+    season,
+    state: 'Live',
+    page: 1,
+    pageSize: 3,
+    direction: 'asc',
+  });
+
   const upcomingFixturesQuery = useFixtures({
     teamId,
     leagueId: leagueId ?? undefined,
@@ -444,6 +454,22 @@ function TeamPageContent({ teamId }: { teamId: number }) {
           </section>
 
           <div className="flex flex-col gap-5">
+            {liveFixturesQuery.isLoading || (liveFixturesQuery.data?.items?.length ?? 0) > 0 ? (
+              <TeamFixturesList
+                title="Live now"
+                description={
+                  selectedLeague
+                    ? `${team.name} currently has a live match in ${selectedLeague.name}.`
+                    : `${team.name} currently has a live match.`
+                }
+                fixtures={liveFixturesQuery.data?.items ?? []}
+                teamApiId={team.apiTeamId}
+                emptyTitle="No live matches right now"
+                emptyDescription="There is no active live fixture for this team in the selected context."
+                isLoading={liveFixturesQuery.isLoading}
+              />
+            ) : null}
+
             <TeamFixturesList
               title="Last 5 matches"
               description={

@@ -67,11 +67,12 @@ export async function getJwtToken(forceRefresh = false): Promise<JwtTokenRespons
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;
+  const hasBody = options?.body !== undefined && options?.body !== null;
   const res = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
       'X-API-KEY': API_KEY,
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
       ...(options?.headers ?? {}),
     },
     signal: AbortSignal.timeout(85_000),
@@ -89,13 +90,14 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 export async function apiFetchWithJwt<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getJwtToken();
   const url = `${BASE_URL}${path}`;
+  const hasBody = options?.body !== undefined && options?.body !== null;
 
   const makeRequest = async (accessToken: string) =>
     fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
         ...(options?.headers ?? {}),
       },
       next: { revalidate: 0 },

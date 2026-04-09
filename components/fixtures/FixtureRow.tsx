@@ -11,7 +11,7 @@ interface Props {
   bestOddsFallback?: BestOddsDto | null;
   oddsMovement?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   isSaved?: boolean;
-  onToggleSave?: (fixtureId: number) => void;
+  onToggleSave?: (fixture: FixtureDto) => void;
 }
 
 function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
@@ -284,7 +284,7 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
 
   const toggleSave = (event: React.MouseEvent) => {
     event.stopPropagation();
-    onToggleSave?.(fixture.apiFixtureId);
+    onToggleSave?.(fixture);
   };
 
   return (

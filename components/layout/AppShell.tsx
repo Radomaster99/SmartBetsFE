@@ -2,8 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { SideAdArtwork } from '@/components/ads/SideAdArtwork';
+import { FavoritesDock } from '@/components/layout/FavoritesDock';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
+import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
   DESKTOP_SIDE_AD_WIDTH_PX,
   EMPTY_SIDE_ADS_CONFIG,
@@ -37,6 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
+  const { entries: favoriteEntries, removeFixture } = useFixtureWatchlist();
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
@@ -169,7 +172,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     if (slot.isClickable && slot.href) {
       return (
-        <a key={side} href={slot.href} title={slot.alt || `${side} sidebar banner`} style={wrapperStyle}>
+        <a
+          key={side}
+          href={slot.href}
+          aria-label={slot.alt || `${side} sidebar banner`}
+          style={wrapperStyle}
+        >
           {content}
         </a>
       );
@@ -186,6 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box' }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
+      <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} />
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <Topbar onMenuToggle={isMobileViewport ? () => setMobileSidebarOpen((current) => !current) : undefined} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
