@@ -3,6 +3,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { SideAdArtwork } from '@/components/ads/SideAdArtwork';
 import { FavoritesDock } from '@/components/layout/FavoritesDock';
+import { LeaguesBottomSheet } from '@/components/layout/LeaguesBottomSheet';
+import { MobileBottomNav, type MobileOverlay } from '@/components/layout/MobileBottomNav';
+import { MobileSavedScreen } from '@/components/layout/MobileSavedScreen';
+import { MobileSearchOverlay } from '@/components/layout/MobileSearchOverlay';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
@@ -36,7 +40,7 @@ function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const DESKTOP_SHELL_GUTTER_PX = 280;
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileOverlay, setMobileOverlay] = useState<MobileOverlay>('none');
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
   const { entries: favoriteEntries, removeFixture } = useFixtureWatchlist();
@@ -54,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!mobileSidebarOpen) {
+    if (mobileOverlay === 'none') {
       return;
     }
 
@@ -64,13 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [mobileSidebarOpen]);
-
-  useEffect(() => {
-    if (!isMobileViewport && mobileSidebarOpen) {
-      setMobileSidebarOpen(false);
-    }
-  }, [isMobileViewport, mobileSidebarOpen]);
+  }, [mobileOverlay]);
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -194,14 +192,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box' }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
-      <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} />
+      {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <Topbar onMenuToggle={isMobileViewport ? () => setMobileSidebarOpen((current) => !current) : undefined} />
+        <Topbar />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <Sidebar mobileOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+          <Sidebar />
           <main style={{ flex: 1, overflowY: 'auto' }}>{children}</main>
         </div>
+        <MobileBottomNav activeOverlay={mobileOverlay} onOverlayChange={setMobileOverlay} />
       </div>
+
+      {mobileOverlay === 'search' ? <MobileSearchOverlay onClose={() => setMobileOverlay('none')} /> : null}
+      {mobileOverlay === 'leagues' ? <LeaguesBottomSheet onClose={() => setMobileOverlay('none')} /> : null}
+      {mobileOverlay === 'saved' ? <MobileSavedScreen onClose={() => setMobileOverlay('none')} /> : null}
     </div>
   );
 }

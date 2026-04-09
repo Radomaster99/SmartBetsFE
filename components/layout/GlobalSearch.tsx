@@ -34,7 +34,7 @@ const TYPE_STYLES: Record<
   },
 };
 
-export function GlobalSearch() {
+export function GlobalSearch({ autoFocus }: { autoFocus?: boolean } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +201,7 @@ export function GlobalSearch() {
         <input
           type="search"
           value={query}
+          autoFocus={autoFocus}
           onChange={(event) => {
             setQuery(event.target.value);
             setIsOpen(true);
