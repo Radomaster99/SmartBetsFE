@@ -2,16 +2,6 @@ import type { BestOddsDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
 
-const SYNTHETIC_LIVE_BOOKMAKER = 'api-football live feed';
-
-function isSyntheticBookmaker(name: string): boolean {
-  return name.trim().toLowerCase() === SYNTHETIC_LIVE_BOOKMAKER;
-}
-
-function getBookmakerDisplayName(name: string): string {
-  return isSyntheticBookmaker(name) ? 'Live Feed' : name;
-}
-
 interface Props {
   bestOdds: BestOddsDto;
   fixtureId?: number;
@@ -42,9 +32,7 @@ function OddsRow({
   isLast: boolean;
   movement?: LiveOddsMovementDirection;
 }) {
-  const isSynthetic = isSyntheticBookmaker(bookmaker);
-  const displayName = getBookmakerDisplayName(bookmaker);
-  const href = isSynthetic ? null : buildBookmakerHref(bookmaker, {
+  const href = buildBookmakerHref(bookmaker, {
     fixture: fixtureId,
     outcome: outcomeKey,
     source: 'best-odds',
@@ -84,8 +72,8 @@ function OddsRow({
           {meta.logoText}
         </span>
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={displayName}>
-            {displayName}
+          <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={bookmaker}>
+            {bookmaker}
           </div>
           <div className="mt-0.5 text-[10px]" style={{ color: 'var(--t-text-5)' }}>
             Bookmaker
@@ -93,27 +81,25 @@ function OddsRow({
         </div>
       </div>
 
-      {isSynthetic ? null : (
-        <a
-          href={href!}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="cta-btn flex-shrink-0 rounded px-4 py-1.5 text-[12px] font-bold tracking-wide"
-          style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          BET
-        </a>
-      )}
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="cta-btn flex-shrink-0 rounded px-4 py-1.5 text-[12px] font-bold tracking-wide"
+        style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        BET
+      </a>
     </div>
   );
 }
 
 export function BestOddsBar({ bestOdds, fixtureId, movements }: Props) {
   const rows = [
-    { outcome: 'Home Win', odd: bestOdds.bestHomeOdd, bookmaker: bestOdds.bestHomeBookmaker || SYNTHETIC_LIVE_BOOKMAKER, outcomeKey: 'home' as const },
-    { outcome: 'Draw', odd: bestOdds.bestDrawOdd, bookmaker: bestOdds.bestDrawBookmaker || SYNTHETIC_LIVE_BOOKMAKER, outcomeKey: 'draw' as const },
-    { outcome: 'Away Win', odd: bestOdds.bestAwayOdd, bookmaker: bestOdds.bestAwayBookmaker || SYNTHETIC_LIVE_BOOKMAKER, outcomeKey: 'away' as const },
+    { outcome: 'Home Win', odd: bestOdds.bestHomeOdd, bookmaker: bestOdds.bestHomeBookmaker, outcomeKey: 'home' as const },
+    { outcome: 'Draw', odd: bestOdds.bestDrawOdd, bookmaker: bestOdds.bestDrawBookmaker, outcomeKey: 'draw' as const },
+    { outcome: 'Away Win', odd: bestOdds.bestAwayOdd, bookmaker: bestOdds.bestAwayBookmaker, outcomeKey: 'away' as const },
   ].filter((row) => row.odd != null && row.odd > 0);
 
   if (rows.length === 0) return null;

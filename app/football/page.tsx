@@ -378,8 +378,9 @@ function FootballPageClient() {
 
   const isToday = date === today;
   const isFutureDate = date > today;
+  const isPastDate = !isToday && !isFutureDate;
   const state: StateBucket | 'All' =
-    isFutureDate ? 'Upcoming' : !isToday && rawState === 'Live' ? 'All' : rawState;
+    isFutureDate ? 'Upcoming' : isPastDate ? 'Finished' : rawState;
   const currentQuery = searchParams.toString();
   const currentHref = currentQuery ? `${pathname}?${currentQuery}` : pathname;
   const canonicalHref = buildFootballHref(date, state, leagueId, season, upcomingScope);
@@ -388,6 +389,7 @@ function FootballPageClient() {
     (rawStateValue !== null && parseState(rawStateValue) !== rawStateValue) ||
     (rawUpcomingScopeValue !== null && rawUpcomingScopeValue !== 'today' && rawUpcomingScopeValue !== 'all') ||
     (isFutureDate && rawStateValue !== 'Upcoming') ||
+    (isPastDate && rawStateValue !== 'Finished') ||
     (!isToday && rawStateValue === 'Live');
   const { data: leagues } = useLeagues(season);
   const { fixtureIds: savedFixtureIds, fixtureIdSet, toggleFixture } = useFixtureWatchlist();
@@ -422,8 +424,8 @@ function FootballPageClient() {
 
     if (nextIsFuture) {
       nextState = 'Upcoming';
-    } else if (!nextIsToday && nextState === 'Live') {
-      nextState = 'All';
+    } else if (!nextIsToday) {
+      nextState = 'Finished';
     }
 
     replaceIfNeeded(buildFootballHref(nextDate, nextState, leagueId, season, 'today'));
@@ -606,6 +608,7 @@ function FootballPageClient() {
         showLiveFilter={isToday}
         showFinishedFilter={!isFutureDate}
         futureOnlyUpcoming={isFutureDate}
+        pastOnlyFinished={isPastDate}
       />
 
       {activeLeague ? (

@@ -163,11 +163,11 @@ function summaryToBestOdds(summary: LiveOddsSummaryDto, fixture: { id: number; a
     marketName: 'Match Winner',
     collectedAtUtc: summary.collectedAtUtc ?? new Date().toISOString(),
     bestHomeOdd: summary.bestHomeOdd,
-    bestHomeBookmaker: summary.bestHomeBookmaker ?? 'API-Football Live Feed',
+    bestHomeBookmaker: summary.bestHomeBookmaker ?? 'Bet365',
     bestDrawOdd: summary.bestDrawOdd,
-    bestDrawBookmaker: summary.bestDrawBookmaker ?? 'API-Football Live Feed',
+    bestDrawBookmaker: summary.bestDrawBookmaker ?? 'Bet365',
     bestAwayOdd: summary.bestAwayOdd,
-    bestAwayBookmaker: summary.bestAwayBookmaker ?? 'API-Football Live Feed',
+    bestAwayBookmaker: summary.bestAwayBookmaker ?? 'Bet365',
   };
 }
 
@@ -617,7 +617,7 @@ function FixtureDetailPageInner({ params }: Props) {
                         color: '#fbbf24',
                       }}
                     >
-                      Provider live markets for this fixture do not include bookmaker-level names right now, so SmartBets is showing the latest pre-match bookmaker prices instead.
+                      Live odds from the provider are not yet available for this match. Showing latest pre-match prices.
                     </div>
                   ) : null}
                   {liveOddsRealtimeStatus === 'connected' && shouldUseLiveBookmakerView ? (

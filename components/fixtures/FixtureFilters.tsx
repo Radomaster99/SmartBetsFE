@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
 import type { StateBucket } from '@/lib/types/api';
+import { CalendarPicker } from './CalendarPicker';
 
 interface Props {
   state: StateBucket | 'All';
@@ -11,6 +11,7 @@ interface Props {
   showLiveFilter: boolean;
   showFinishedFilter: boolean;
   futureOnlyUpcoming: boolean;
+  pastOnlyFinished: boolean;
 }
 
 const STATES: { value: StateBucket | 'All'; label: string }[] = [
@@ -42,9 +43,8 @@ export function FixtureFilters({
   showLiveFilter,
   showFinishedFilter,
   futureOnlyUpcoming,
+  pastOnlyFinished,
 }: Props) {
-  const dateInputRef = useRef<HTMLInputElement>(null);
-  const selectedDate = new Date(`${date}T12:00:00`);
   const today = fmt(new Date());
   const yesterday = fmt(new Date(Date.now() - 86400000));
   const tomorrow = fmt(new Date(Date.now() + 86400000));
@@ -61,22 +61,11 @@ export function FixtureFilters({
 
   const visibleStates = STATES.filter((item) => {
     if (futureOnlyUpcoming) return item.value === 'Upcoming';
+    if (pastOnlyFinished) return item.value === 'Finished';
     if (!showLiveFilter && item.value === 'Live') return false;
     if (!showFinishedFilter && item.value === 'Finished') return false;
     return true;
   });
-
-  const openDatePicker = () => {
-    const input = dateInputRef.current;
-    if (!input) return;
-
-    try {
-      input.showPicker?.();
-    } catch {
-      input.focus();
-      input.click();
-    }
-  };
 
   return (
     <div
@@ -89,7 +78,7 @@ export function FixtureFilters({
     >
       <button
         type="button"
-        onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() - 86400000)))}
+        onClick={() => onDateChange(fmt(new Date(new Date(`${date}T12:00:00`).getTime() - 86400000)))}
         className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
         style={{
           color: 'var(--t-text-5)',
@@ -125,7 +114,7 @@ export function FixtureFilters({
 
       <button
         type="button"
-        onClick={() => onDateChange(fmt(new Date(selectedDate.getTime() + 86400000)))}
+        onClick={() => onDateChange(fmt(new Date(new Date(`${date}T12:00:00`).getTime() + 86400000)))}
         className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
         style={{
           color: 'var(--t-text-5)',
@@ -165,28 +154,7 @@ export function FixtureFilters({
 
       <div className="flex-1" />
 
-      <button
-        type="button"
-        onClick={openDatePicker}
-        title="Pick a specific date"
-        className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[11px] font-semibold tracking-[0.12em] transition-colors"
-        style={{
-          color: 'var(--t-text-5)',
-          cursor: 'pointer',
-          ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
-        }}
-      >
-        CAL
-      </button>
-      <input
-        ref={dateInputRef}
-        type="date"
-        value={date}
-        onChange={(e) => onDateChange(e.target.value)}
-        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-        tabIndex={-1}
-        aria-hidden="true"
-      />
+      <CalendarPicker value={date} onChange={onDateChange} />
     </div>
   );
 }

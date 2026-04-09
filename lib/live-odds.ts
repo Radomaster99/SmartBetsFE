@@ -1,6 +1,5 @@
 import type { BestOddsDto, LiveOddsMarketDto, LiveOddsValueDto, OddDto } from '@/lib/types/api';
 
-const LEGACY_SYNTHETIC_LIVE_BOOKMAKER_LABEL = 'api-football live feed';
 const FULLTIME_THREE_WAY_MARKET_NAMES = new Set([
   'match winner',
   'fulltime result',
@@ -183,21 +182,6 @@ export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[]): OddDto[] {
 
 export function mapLiveOddsToMainMatchOdds(markets: LiveOddsMarketDto[]): OddDto[] {
   return mapThreeWayMarketsToOdds(markets, { fulltimeOnly: true });
-}
-
-export function hasUsableLiveBookmakerOdds(markets: LiveOddsMarketDto[]): boolean {
-  return markets.some((market) => {
-    const bookmakerName = market.bookmaker?.trim();
-    if (!bookmakerName) {
-      return false;
-    }
-
-    if (bookmakerName.toLowerCase() === LEGACY_SYNTHETIC_LIVE_BOOKMAKER_LABEL) {
-      return false;
-    }
-
-    return true;
-  });
 }
 
 export function deriveBestOddsFromOdds(odds: OddDto[]): BestOddsDto | null {

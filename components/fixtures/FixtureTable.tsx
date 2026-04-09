@@ -53,11 +53,8 @@ function truncateBookmaker(name: string, max = 14): string {
   return name.length > max ? `${name.slice(0, max - 3)}...` : name;
 }
 
-const SYNTHETIC_LIVE_BOOKMAKER = 'api-football live feed';
-
 function resolveBookmakerForDisplay(name: string | null | undefined): string | null {
-  if (!name) return null;
-  return name.trim().toLowerCase() === SYNTHETIC_LIVE_BOOKMAKER ? null : name;
+  return name?.trim() || null;
 }
 
 function MobileOddsCell({
