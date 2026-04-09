@@ -192,8 +192,10 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
                       gap: 8,
                       padding: '8px 10px',
                       background: hasActive ? 'rgba(255,255,255,0.04)' : 'transparent',
+                      borderTop: 'none',
+                      borderRight: 'none',
+                      borderLeft: 'none',
                       borderBottom: isExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
-                      border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left',
                     }}
