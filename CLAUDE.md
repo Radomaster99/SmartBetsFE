@@ -122,11 +122,6 @@ Current referral plumbing:
   - Temporary frontend-side bookmaker registry and slug mapping
   - This is a transitional solution, not the ideal long-term source of truth
 
-Current implementation assumption:
-
-- Bookmaker CTA behavior may currently depend on temporary registry-based mappings until richer backend bookmaker metadata exists.
-- If improving referrals, check whether the task should keep using `lib/bookmakers.ts` or move toward backend-driven bookmaker metadata.
-
 ## Widgets are a major subsystem
 
 This app mixes two data sources:
@@ -213,11 +208,6 @@ Most important ID rule:
   - `FixtureDto.id` is local
   - `FixtureDto.apiFixtureId` is external/API-facing
 
-Additional backend/product implication:
-
-- The current backend contract documents bookmaker listing data, but a mature referral product will likely need richer bookmaker metadata than the current minimal DTO shape.
-- Future work may require backend support for referral URLs, branding assets, trust indicators, and batched odds-related data.
-
 ## Environment variables to know about
 
 Common variables referenced by the frontend:
@@ -234,24 +224,6 @@ Common variables referenced by the frontend:
 - `API_SPORTS_WIDGET_KEY`
   - Widget auth keys for API-Sports embeds
 
-## Current architectural boundaries
-
-Frontend responsibilities:
-
-- Routing
-- Filter state in the URL
-- Rendering lists, details, odds tables, and admin screens
-- Calling local proxy routes
-- Managing widget lifecycle
-
-Backend responsibilities:
-
-- Data sync from API-Football
-- Database reads and writes
-- DTO generation
-- Sync freshness state
-- Odds and bookmaker aggregation
-
 ## Product principles for future changes
 
 - Optimize for bettor workflows, not generic sports browsing.
@@ -266,7 +238,6 @@ Backend responsibilities:
 
 ## Known quirks
 
-- `README.md` is still the default Next.js template and does not describe the real project.
 - Some UI strings show character encoding issues such as malformed dash symbols. Do not treat those as intentional.
 - `api-endpoints.md` is highly valuable context even though it sits outside the app folder.
 - There is at least one local team route under `app/api/teams/[teamId]/route.ts`, so do not assume the earlier route list is exhaustive without checking the tree.
@@ -279,18 +250,30 @@ Backend responsibilities:
 - Preserve the existing split between local proxy routes and the real backend unless the task explicitly asks to change it.
 - If a requested feature requires backend behavior that is not represented in `app/api/*` or `lib/api/*`, call that out clearly.
 
-## Useful file checklist for onboarding
+## Implementation decisions — read before touching these areas
 
-Read these first when starting a task:
+### Odds logic is centralised in one hook
+`lib/hooks/useFixtureOddsData.ts` is the single source of truth for all odds logic. Both the desktop side panel (`components/fixtures/FixtureDetailPanel.tsx`) and the mobile full page (`app/football/fixtures/[fixtureId]/page.tsx`) use it. Do not duplicate odds logic anywhere else. It handles:
+- `useLiveOdds` + `useLiveOddsSignalR` (Bet365 live odds, only when `stateBucket === 'Live'`)
+- Pre-match fallback when live odds are not yet available
+- `resolvedBestOdds`, `displayOdds`, movement tracking with auto-clear timeouts
+- Freshness label (`headerOddsLabel`)
 
-- `AGENTS.md`
-- `app/layout.tsx`
-- `app/football/page.tsx`
-- `app/football/fixtures/[fixtureId]/page.tsx`
-- `app/football/standings/page.tsx`
-- `components/layout/FootballSidebarContent.tsx`
-- `components/widgets/WidgetsProvider.tsx`
-- `components/widgets/ApiSportsWidget.tsx`
-- `lib/api/client.ts`
-- `lib/types/api.ts`
-- `../api-endpoints.md`
+### Desktop vs mobile fixture detail
+- **Desktop**: clicking a fixture row opens `FixtureDetailPanel` (380px side panel). Has an "Open full page ↗" link for URL sharing.
+- **Mobile**: clicking a fixture navigates to `/football/fixtures/[id]` (full page).
+- Both use `useFixtureOddsData` — they are guaranteed to show the same logic.
+
+### useFixtureWatchlist — do not reorder the effects
+`lib/hooks/useFixtureWatchlist.ts` has two `useEffect` calls. The **persist effect must be declared first**, the **sync effect second**. React runs effects in declaration order. Reversing them causes a race condition where the persist effect writes `[]` to localStorage on mount before the sync effect has loaded the real data, wiping all saved matches.
+
+### MobileSavedScreen receives entries as a prop
+`components/layout/MobileSavedScreen.tsx` does NOT call `useFixtureWatchlist()` internally. It receives `entries: WatchlistFixtureEntry[]` as a prop from `AppShell`. This is intentional — a third hook instance caused a race condition that wiped localStorage. Do not add the hook back.
+
+### CSS theme variables — known gotchas
+- `--t-bg` does **not** exist. Use `--t-page-bg` or `--t-topbar-bg`.
+- Dark mode values are semi-transparent (`rgba`). Full-screen overlays need an opaque fallback: `background: var(--t-page-bg, #07101a)`.
+- `--t-accent` is `#00e676` (green).
+
+### React 19 border shorthand warning
+Do not mix `border` shorthand with `borderBottom` (or any specific side) on the same element — React 19 warns and it causes styling bugs on re-render. Use explicit sides: `borderTop`, `borderRight`, `borderLeft`, `borderBottom`.
