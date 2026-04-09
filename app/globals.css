@@ -16,52 +16,60 @@
 /* ── Theme tokens (dark default) ─────────────────────── */
 :root {
   /* Layout */
-  --t-page-bg:    #0d0f17;
-  --t-topbar-bg:  #111420;
-  --t-sidebar-bg: #111420;
-  --t-surface:    #111420;
-  --t-surface-2:  #1e2130;
-  --t-surface-3:  #252840;
-  --t-border:     #1e2130;
-  --t-border-2:   #2a2d3e;
+  --t-page-bg:    rgba(7, 12, 22, 0.94);
+  --t-topbar-bg:  rgba(9, 14, 26, 0.84);
+  --t-sidebar-bg: rgba(8, 13, 24, 0.80);
+  --t-surface:    rgba(13, 20, 34, 0.74);
+  --t-surface-2:  rgba(20, 30, 52, 0.82);
+  --t-surface-3:  rgba(27, 39, 64, 0.90);
+  --t-border:     rgba(255, 255, 255, 0.08);
+  --t-border-2:   rgba(255, 255, 255, 0.12);
   /* Text */
-  --t-text-1: #ffffff;
-  --t-text-2: #c8cfe8;
-  --t-text-3: #8892b0;
-  --t-text-4: #6b7a99;
-  --t-text-5: #4b5563;
-  --t-text-6: #3d4563;
+  --t-text-1: #F9FAFB;
+  --t-text-2: #D1D5DB;
+  --t-text-3: #9CA3AF;
+  --t-text-4: #6B7280;
+  --t-text-5: #4B5563;
+  --t-text-6: #374151;
   /* Accent */
   --t-accent: #00e676;
-  --t-page-wash-1: rgba(0, 230, 118, 0.06);
-  --t-page-wash-2: rgba(59, 130, 246, 0.05);
-  --t-shadow-soft: 0 10px 30px rgba(5, 8, 18, 0.28);
-  --t-shadow-panel: 0 14px 36px rgba(5, 8, 18, 0.34);
+  --t-shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+  --t-shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.25);
+  /* Filter chip theming */
+  --filter-active-bg: rgba(0, 230, 118, 0.14);
+  --filter-active-color: #00e676;
+  --filter-active-border: rgba(0, 230, 118, 0.28);
+  --filter-date-active-bg: rgba(255, 255, 255, 0.12);
+  --filter-date-active-color: #F9FAFB;
 }
 
 html[data-theme="light"] {
-  /* Layout */
-  --t-page-bg:    #dbe3ed;
-  --t-topbar-bg:  #eef3f8;
-  --t-sidebar-bg: #eef3f8;
-  --t-surface:    #f4f7fb;
-  --t-surface-2:  #dde5ef;
-  --t-surface-3:  #cfd8e5;
-  --t-border:     #cad5e3;
-  --t-border-2:   #aab9cd;
+  /* Layout — fully solid, no transparency in light mode */
+  --t-page-bg:    #F0F4F9;
+  --t-topbar-bg:  #FFFFFF;
+  --t-sidebar-bg: #FFFFFF;
+  --t-surface:    #FFFFFF;
+  --t-surface-2:  #F1F5F9;
+  --t-surface-3:  #E8EEF5;
+  --t-border:     #E5E7EB;
+  --t-border-2:   #D1D5DB;
   /* Text */
-  --t-text-1: #0f172a;
-  --t-text-2: #182434;
-  --t-text-3: #31455d;
-  --t-text-4: #556a83;
-  --t-text-5: #73849a;
-  --t-text-6: #8d9db0;
+  --t-text-1: #111827;
+  --t-text-2: #1F2937;
+  --t-text-3: #374151;
+  --t-text-4: #6B7280;
+  --t-text-5: #9CA3AF;
+  --t-text-6: #D1D5DB;
   /* Accent */
-  --t-accent: #0f9a4a;
-  --t-page-wash-1: rgba(15, 154, 74, 0.07);
-  --t-page-wash-2: rgba(59, 130, 246, 0.08);
-  --t-shadow-soft: 0 10px 24px rgba(65, 84, 107, 0.08);
-  --t-shadow-panel: 0 14px 30px rgba(65, 84, 107, 0.1);
+  --t-accent: #059669;
+  --t-shadow-soft: 0 1px 3px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --t-shadow-panel: 0 4px 16px rgba(15, 23, 42, 0.08), 0 1px 4px rgba(15, 23, 42, 0.04);
+  /* Filter chip theming */
+  --filter-active-bg: #059669;
+  --filter-active-color: #ffffff;
+  --filter-active-border: #059669;
+  --filter-date-active-bg: #111827;
+  --filter-date-active-color: #ffffff;
 }
 
 /* ── Widget custom theme — dark (default) ────────────── */
@@ -70,15 +78,15 @@ api-sports-widget[data-theme="SmartBets"] {
   --success-color:   #00e676;
   --warning-color:   #f59e0b;
   --danger-color:    #ef5350;
-  --light-color:     #6b7a99;
+  --light-color:     #6B7280;
 
   --home-color: #00e676;
   --away-color: #f59e0b;
 
-  --text-color:      #c8cfe8;
-  --text-color-info: #6b7a99;
+  --text-color:      #D1D5DB;
+  --text-color-info: #6B7280;
 
-  --background-color: #111420;
+  --background-color: #111827;
 
   --primary-font-size:   0.72rem;
   --secondary-font-size: 0.70rem;
@@ -89,7 +97,7 @@ api-sports-widget[data-theme="SmartBets"] {
   --button-text-transform: uppercase;
   --title-text-transform:  uppercase;
 
-  --border:        1px solid #1e2130;
+  --border:        1px solid rgba(255, 255, 255, 0.07);
   --game-height:   2.3rem;
   --league-height: 2.35rem;
 
@@ -102,43 +110,79 @@ api-sports-widget[data-theme="SmartBets"] {
 
 /* ── Widget custom theme — light override ────────────── */
 html[data-theme="light"] api-sports-widget[data-theme="SmartBets"] {
-  --primary-color:   #0f9a4a;
-  --success-color:   #0f9a4a;
+  --primary-color:   #059669;
+  --success-color:   #059669;
   --warning-color:   #c47a10;
   --danger-color:    #d14343;
-  --light-color:     #5f728a;
+  --light-color:     #6B7280;
 
-  --home-color: #0f9a4a;
+  --home-color: #059669;
   --away-color: #c47a10;
 
-  --text-color:      #1b2738;
-  --text-color-info: #5f728a;
+  --text-color:      #1F2937;
+  --text-color-info: #6B7280;
 
-  --background-color: #f4f7fb;
+  --background-color: #FFFFFF;
 
-  --border: 1px solid #cad5e3;
-  --hover:  rgba(15,23,42,0.05);
+  --border: 1px solid #E5E7EB;
+  --hover:  rgba(15, 23, 42, 0.04);
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  background-color: var(--t-page-bg);
+/* ── Atmospheric gradient background — fixed, non-flat ──── */
+html {
+  background-color: #07101e;
   background-image:
-    radial-gradient(circle at top right, var(--t-page-wash-1), transparent 32%),
-    radial-gradient(circle at top left, var(--t-page-wash-2), transparent 28%);
+    radial-gradient(ellipse 65% 50% at 12% 5%,  rgba(99,  102, 241, 0.10) 0%, transparent 52%),
+    radial-gradient(ellipse 72% 62% at 88% 84%, rgba(14,  165, 233, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 38% at 48% 110%, rgba(6,  182, 212, 0.05) 0%, transparent 60%);
+  background-attachment: fixed;
+  min-height: 100%;
+}
+
+/* Light theme: flat, no gradient */
+html[data-theme="light"] {
+  background-color: #F0F4F9;
+  background-image: none;
+}
+
+body {
+  background: transparent;
   color: var(--t-text-2);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   font-size: 13px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--t-surface); }
-::-webkit-scrollbar-thumb { background: var(--t-border-2); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--t-surface-3); }
+::-webkit-scrollbar-track { background: rgba(10, 16, 28, 0.9); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* ── Glass panel effects ──────────────────────────────── */
+.layout-topbar {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.layout-sidebar {
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04), 4px 0 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Light theme: solid panels, no blur */
+html[data-theme="light"] .layout-topbar,
+html[data-theme="light"] .layout-sidebar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
 
 /* ── Odds display ──────────────────────────────────────── */
 .odds-cell {
@@ -152,24 +196,26 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 58px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  min-width: 60px;
+  padding: 8px 10px;
+  border-radius: 10px;
   background: var(--t-surface-2);
   border: 1px solid var(--t-border-2);
   cursor: pointer;
-  transition: all 0.1s;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 .odds-btn:hover {
   background: var(--t-surface-3);
   border-color: var(--t-accent);
+  transform: scale(1.03);
+  box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.18), 0 4px 14px rgba(0, 230, 118, 0.1);
 }
 .odds-btn .odds-label {
   font-size: 9px;
   color: var(--t-text-5);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-weight: 700;
 }
 .odds-btn .odds-value {
   font-family: 'Roboto Mono', ui-monospace, monospace;
@@ -179,17 +225,127 @@ body {
   letter-spacing: -0.02em;
 }
 .odds-btn .odds-value.na {
-  color: var(--t-text-5);
+  color: var(--t-text-6);
+  opacity: 0.5;
 }
 
 .odds-btn-grid {
   width: 100%;
   min-width: 0;
-  padding: 6px 4px;
+  padding: 5px 4px;
+  min-height: 38px;
 }
 
 .odds-btn-grid .odds-value {
-  font-size: 14px;
+  font-size: 13px;
+}
+
+/* Bookmaker label inside odds button */
+.odds-bk {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--t-text-5);
+}
+
+/* ── Light theme: odds buttons flip to dark navy for contrast ── */
+html[data-theme="light"] .odds-btn {
+  background: #1a2638;
+  border-color: #2a3a50;
+}
+html[data-theme="light"] .odds-btn:hover {
+  background: #1f2f47;
+  border-color: #059669;
+  transform: scale(1.03);
+  box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.32), 0 4px 14px rgba(5, 150, 105, 0.16);
+}
+html[data-theme="light"] .odds-btn .odds-value {
+  color: #e8f0fb;
+}
+html[data-theme="light"] .odds-btn .odds-value.na {
+  color: rgba(232, 240, 251, 0.28);
+}
+html[data-theme="light"] .odds-bk {
+  color: rgba(200, 218, 240, 0.48);
+}
+
+/* ── Fixture table: card-style rows ──────────────────── */
+.fixture-table {
+  border-collapse: separate;
+  border-spacing: 0 2px;
+}
+
+.fixture-table thead tr {
+  border-bottom: none;
+}
+
+.fixture-table thead th {
+  border-bottom: 1px solid var(--t-border);
+  padding-bottom: 10px;
+}
+
+.fixture-table tbody tr td {
+  background: var(--t-surface);
+  border-top: 1px solid var(--t-border);
+  border-bottom: 1px solid var(--t-border);
+  transition: background 0.16s ease;
+}
+
+.fixture-table tbody tr td:first-child {
+  border-left: 1px solid var(--t-border);
+  border-radius: 12px 0 0 12px;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.fixture-table tbody tr td:last-child {
+  border-right: 1px solid var(--t-border);
+  border-radius: 0 12px 12px 0;
+}
+
+.fixture-table tbody tr:hover td {
+  background: var(--t-surface-2);
+  border-color: rgba(255, 255, 255, 0.11);
+}
+
+.fixture-table tbody tr:hover td:first-child {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+/* Live rows */
+.fixture-table tbody tr[data-live="true"] td {
+  background: rgba(239, 83, 80, 0.03);
+  border-color: rgba(239, 83, 80, 0.12);
+}
+
+.fixture-table tbody tr[data-live="true"] td:first-child {
+  border-left: 3px solid rgba(239, 83, 80, 0.6);
+}
+
+.fixture-table tbody tr[data-live="true"]:hover td {
+  background: rgba(239, 83, 80, 0.06);
+}
+
+/* Light mode row card shadow for depth */
+html[data-theme="light"] .fixture-table tbody tr td {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .fixture-table tbody tr td:first-child {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .fixture-table tbody tr:hover td {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .fixture-table tbody tr:hover td:first-child {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 /* ── Live odds movement animations ─────────────────────── */
@@ -201,6 +357,13 @@ body {
 @keyframes odds-flash-down {
   0%   { background: rgba(239, 83, 80, 0.42); box-shadow: 0 0 0 2px rgba(239, 83, 80, 0.6); }
   100% { background: rgba(239, 83, 80, 0.14); box-shadow: 0 0 0 1px rgba(239, 83, 80, 0.14); }
+}
+
+/* Thin progress bar for data refetching */
+@keyframes fetching-slide {
+  0%   { left: -42%; width: 40%; }
+  50%  { left: 30%;  width: 60%; }
+  100% { left: 105%; width: 40%; }
 }
 
 /* Pulsing dot for live-connected status pills */
@@ -222,6 +385,15 @@ body {
 .panel-shell {
   background: var(--t-surface);
   border: 1px solid var(--t-border);
+  box-shadow: var(--t-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: box-shadow 0.18s ease;
+}
+
+html[data-theme="light"] .panel-shell {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   box-shadow: var(--t-shadow-soft);
 }
 
@@ -233,8 +405,8 @@ body {
   border-radius: 10px;
   border: 1px solid var(--t-border-2);
   background: var(--t-surface-2);
-  color: var(--t-text-2);
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+  color: var(--t-text-3);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .chrome-btn:hover,
@@ -251,9 +423,16 @@ body {
 }
 
 .chrome-btn-active {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.10);
   color: var(--t-text-1);
-  border-color: var(--t-border-2);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] .chrome-btn-active {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
 }
 
 .icon-btn {
@@ -267,32 +446,41 @@ body {
   gap: 6px;
   border-radius: 999px;
   border: 1px solid var(--t-border-2);
-  background: rgba(255,255,255,0.04);
-  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 5px 10px;
   font-size: 11px;
   font-weight: 600;
+}
+
+html[data-theme="light"] .status-chip {
+  background: var(--t-surface-2);
 }
 
 .cta-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--t-accent);
   color: #03150a;
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 6px 18px rgba(0, 230, 118, 0.18);
-  transition: filter 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 230, 118, 0.2);
+  transition: filter 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .cta-btn:hover {
-  filter: brightness(1.03);
-  box-shadow: 0 8px 22px rgba(0, 230, 118, 0.24);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 14px rgba(0, 230, 118, 0.28);
+  transform: translateY(-1px);
 }
 
 html[data-theme="light"] .cta-btn {
-  color: #f8fffb;
-  box-shadow: 0 8px 18px rgba(15, 154, 74, 0.18);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.22);
+}
+
+html[data-theme="light"] .cta-btn:hover {
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
 }
 
 .input-shell {
@@ -312,63 +500,63 @@ html[data-theme="light"] .cta-btn {
 /* ── Widget container ──────────────────────────────────── */
 .sidebar-hover-item {
   position: relative;
-  border-radius: 12px;
+  border-radius: 10px;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .sidebar-hover-item:hover,
 .sidebar-hover-item:focus-visible {
-  transform: translateX(2px);
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 230, 118, 0.18),
-    0 8px 18px rgba(2, 6, 23, 0.18);
+  transform: translateX(1.5px);
 }
 
 .sidebar-hover-item:hover {
-  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.05)) !important;
+  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.04)) !important;
 }
 
 .sidebar-hover-item:focus-visible {
   outline: none;
-  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.05)) !important;
+  background: var(--sidebar-hover-bg, rgba(255, 255, 255, 0.04)) !important;
 }
 
 .sidebar-hover-item[data-active="true"]:hover,
 .sidebar-hover-item[data-active="true"]:focus-visible {
-  background: var(--sidebar-active-hover-bg, rgba(255, 255, 255, 0.1)) !important;
+  background: var(--sidebar-active-hover-bg, rgba(0, 230, 118, 0.1)) !important;
+}
+
+html[data-theme="light"] .sidebar-hover-item:hover {
+  background: var(--sidebar-hover-bg, rgba(15, 23, 42, 0.04)) !important;
+}
+
+html[data-theme="light"] .sidebar-hover-item[data-active="true"]:hover {
+  background: var(--sidebar-active-hover-bg, rgba(5, 150, 105, 0.08)) !important;
 }
 
 .sidebar-hover-panel {
-  border-radius: 12px;
-  transition: box-shadow 0.16s ease;
-}
-
-.sidebar-hover-panel:hover,
-.sidebar-hover-panel:focus-within {
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 230, 118, 0.14),
-    0 8px 18px rgba(2, 6, 23, 0.14);
+  border-radius: 10px;
+  transition: background 0.18s ease;
 }
 
 .filter-hover-chip {
   transition:
-    background 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .filter-hover-chip:hover,
 .filter-hover-chip:focus-visible {
-  transform: translateY(-0.5px);
-  background: var(--filter-hover-bg, rgba(255, 255, 255, 0.08)) !important;
-  box-shadow: inset 0 0 0 1px rgba(0, 230, 118, 0.08);
+  background: var(--filter-hover-bg, rgba(255, 255, 255, 0.07)) !important;
   outline: none;
+}
+
+html[data-theme="light"] .filter-hover-chip:hover,
+html[data-theme="light"] .filter-hover-chip:focus-visible {
+  background: var(--filter-hover-bg, rgba(15, 23, 42, 0.06)) !important;
 }
 
 .filter-hover-chip[data-active="true"]:hover,

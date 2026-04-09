@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { FixtureDto } from '@/lib/types/api';
 import type { LiveOddsMovementByFixture } from '@/lib/hooks/useLiveOdds';
@@ -12,10 +12,65 @@ import { FixtureRow } from './FixtureRow';
 import { TableSkeleton } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import type { BestOddsDto } from '@/lib/types/api';
+import {
+  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
+  DEFAULT_POPULAR_LEAGUES_PRESET,
+  POPULAR_LEAGUES_UPDATED_EVENT,
+  USER_POPULAR_LEAGUES_STORAGE_KEY,
+  USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
+  mergePopularLeaguePresets,
+  readPopularLeaguePresets,
+  readPopularLeagueKeys,
+} from '@/lib/popular-leagues';
+
+function buildOrderMap(presets: typeof DEFAULT_POPULAR_LEAGUES_PRESET): Map<number, number> {
+  return new Map(presets.map((p, i) => [Number(p.leagueId), i]));
+}
+
+function readOrderMapFromStorage(): Map<number, number> {
+  const admin = readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET);
+  const user = readPopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, []);
+  const hidden = readPopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, []);
+  return buildOrderMap(mergePopularLeaguePresets(admin, user, hidden));
+}
+
+function usePopularLeagueOrder(): Map<number, number> {
+  // Read from localStorage immediately in the initializer so the very first render
+  // already has the correct user-customised order (avoids a visible re-sort flash).
+  // On SSR window is undefined → falls back to defaults, which is fine because no
+  // fixture rows are rendered server-side (isLoading = true shows skeleton instead).
+  const [orderMap, setOrderMap] = useState<Map<number, number>>(() =>
+    typeof window !== 'undefined' ? readOrderMapFromStorage() : buildOrderMap(DEFAULT_POPULAR_LEAGUES_PRESET),
+  );
+
+  useEffect(() => {
+    // Same-tab updates: fired by writePopularLeaguePresets / writePopularLeagueKeys.
+    const onUpdated = () => setOrderMap(readOrderMapFromStorage());
+    // Cross-tab updates: the native storage event only fires in other tabs.
+    const onStorage = (e: StorageEvent) => {
+      if (
+        e.key === ADMIN_POPULAR_LEAGUES_STORAGE_KEY ||
+        e.key === USER_POPULAR_LEAGUES_STORAGE_KEY ||
+        e.key === USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY
+      ) {
+        setOrderMap(readOrderMapFromStorage());
+      }
+    };
+    window.addEventListener(POPULAR_LEAGUES_UPDATED_EVENT, onUpdated);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(POPULAR_LEAGUES_UPDATED_EVENT, onUpdated);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  return orderMap;
+}
 
 interface Props {
   fixtures: FixtureDto[];
   isLoading?: boolean;
+  isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
   savedFixtureIds?: Set<number>;
   onToggleSave?: (fixtureId: number) => void;
@@ -70,7 +125,7 @@ function MobileOddsCell({
 }) {
   if (!odd) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[58px]">
+      <div className="odds-btn odds-btn-grid min-h-[48px]">
         <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -81,7 +136,7 @@ function MobileOddsCell({
 
   if (!bookmaker) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[58px]">
+      <div className="odds-btn odds-btn-grid min-h-[48px]">
         <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -98,12 +153,12 @@ function MobileOddsCell({
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="block" style={{ textDecoration: 'none' }}>
-      <div className="odds-btn odds-btn-grid min-h-[58px]">
+      <div className="odds-btn odds-btn-grid min-h-[48px]">
         <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value">{odd.toFixed(2)}</span>
-        <span className="truncate text-center text-[10px]" style={{ color: 'var(--t-text-5)' }}>
+        <span className="odds-bk">
           {truncateBookmaker(bookmaker)}
         </span>
       </div>
@@ -242,7 +297,24 @@ function MobileFixtureCard({
   );
 }
 
-export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureIds, onToggleSave }: Props) {
+function FetchingBar() {
+  return (
+    <div className="relative h-[2px] w-full overflow-hidden" style={{ background: 'var(--t-border)' }}>
+      <div
+        className="absolute inset-y-0 left-0 h-full"
+        style={{
+          width: '40%',
+          background: 'var(--t-accent)',
+          animation: 'fetching-slide 1.2s ease-in-out infinite',
+          opacity: 0.8,
+        }}
+      />
+    </div>
+  );
+}
+
+export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, savedFixtureIds, onToggleSave }: Props) {
+  const popularLeagueOrder = usePopularLeagueOrder();
   const fallbackFixtureIds = useMemo(
     () => fixtures.filter(needsBestOddsFallback).map((fixture) => fixture.apiFixtureId),
     [fixtures],
@@ -267,10 +339,10 @@ export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureI
 
   const byLeague = useMemo(
     () =>
-      fixtures.reduce<Record<string, { name: string; country: string; items: FixtureDto[] }>>((acc, fixture) => {
+      fixtures.reduce<Record<string, { name: string; country: string; leagueApiId: number; items: FixtureDto[] }>>((acc, fixture) => {
         const key = String(fixture.leagueApiId);
         if (!acc[key]) {
-          acc[key] = { name: fixture.leagueName, country: fixture.countryName, items: [] };
+          acc[key] = { name: fixture.leagueName, country: fixture.countryName, leagueApiId: Number(fixture.leagueApiId), items: [] };
         }
         acc[key].items.push(fixture);
         return acc;
@@ -278,9 +350,20 @@ export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureI
     [fixtures],
   );
 
+  const sortedLeagueEntries = useMemo(() => {
+    const entries = Object.entries(byLeague);
+    return entries.sort(([, a], [, b]) => {
+      const aRank = popularLeagueOrder.get(Number(a.leagueApiId)) ?? Number.MAX_SAFE_INTEGER;
+      const bRank = popularLeagueOrder.get(Number(b.leagueApiId)) ?? Number.MAX_SAFE_INTEGER;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.name.localeCompare(b.name);
+    });
+  }, [byLeague, popularLeagueOrder]);
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-auto">
+        <FetchingBar />
         <table className="w-full table-fixed">
           <tbody>
             <TableSkeleton rows={12} cols={5} />
@@ -290,17 +373,19 @@ export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureI
     );
   }
 
-  if (Object.keys(byLeague).length === 0) {
+  if (sortedLeagueEntries.length === 0) {
     return (
       <div className="flex-1 overflow-auto">
+        {isFetching ? <FetchingBar /> : null}
         <EmptyState title="No fixtures" description="No matches found for the selected date or filters." />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      {Object.entries(byLeague).map(([key, { name, country, items }]) => {
+    <div className="flex-1 overflow-auto" style={{ opacity: isFetching && !isLoading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
+      {isFetching && !isLoading ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
+      {sortedLeagueEntries.map(([key, { name, country, items }]) => {
         const oddsCount = items.filter((fixture) => {
           const liveSummary = fixture.liveOddsSummary ?? null;
           if (liveSummary?.bestHomeOdd || liveSummary?.bestDrawOdd || liveSummary?.bestAwayOdd) {
@@ -314,26 +399,33 @@ export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureI
         return (
           <div key={key}>
             <div
-              className="sticky top-0 z-10 flex items-center gap-2 px-3 py-1.5"
+              className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2"
               style={{
-                background: 'var(--t-surface)',
+                background: 'var(--t-page-bg)',
                 borderBottom: '1px solid var(--t-border)',
                 borderTop: '1px solid var(--t-border)',
               }}
             >
-              <span className="text-[11px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
+              <span
+                aria-hidden="true"
+                className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-sm"
+                style={{ background: 'var(--t-accent)', opacity: 0.65, transform: 'rotate(45deg)' }}
+              />
+              <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-5)' }}>
                 {country}
               </span>
-              <span style={{ color: 'var(--t-border-2)' }}>|</span>
-              <span className="text-[12px] font-bold" style={{ color: 'var(--t-text-2)' }}>
+              <span style={{ color: 'var(--t-border-2)', fontSize: 10 }}>/</span>
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--t-text-3)' }}>
                 {name}
               </span>
-              <span className="text-[10px]" style={{ color: 'var(--t-text-5)' }}>
-                {oddsCount}/{items.length} with odds
-              </span>
+              {oddsCount > 0 && (
+                <span className="text-[10px]" style={{ color: 'var(--t-text-6)' }}>
+                  {oddsCount}/{items.length} with odds
+                </span>
+              )}
               <span
-                className="ml-auto rounded px-1.5 py-0.5 text-[11px] font-mono"
-                style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-5)' }}
+                className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-5)', border: '1px solid var(--t-border)' }}
               >
                 {items.length}
               </span>
@@ -351,26 +443,26 @@ export function FixtureTable({ fixtures, isLoading, oddsMovements, savedFixtureI
               ))}
             </div>
 
-            <table className="hidden w-full table-fixed md:table">
+            <table className="fixture-table hidden w-full table-fixed md:table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--t-border)' }}>
+                <tr>
                   <th
-                    className="w-[80px] py-1.5 pl-3 pr-2 text-center text-[11px] font-semibold uppercase tracking-wider"
+                    className="w-[80px] py-1.5 pl-3 pr-2 text-center text-[10px] font-bold uppercase tracking-[0.12em]"
                     style={{ color: 'var(--t-text-6)' }}
                   >
                     Time
                   </th>
-                  <th className="px-2 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
+                  <th className="px-2 py-1.5 text-right text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
                     Home
                   </th>
-                  <th className="w-14 px-1 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
+                  <th className="w-14 px-1 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
                     Score
                   </th>
-                  <th className="px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
+                  <th className="px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
                     Away
                   </th>
-                  <th className="w-[210px] py-1.5 pl-1 pr-3" style={{ color: 'var(--t-text-5)' }}>
-                    <div className="grid grid-cols-3 gap-1 text-center text-[11px] font-semibold uppercase tracking-wider">
+                  <th className="w-[228px] py-1.5 pl-1 pr-3" style={{ color: 'var(--t-text-6)' }}>
+                    <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-bold uppercase tracking-[0.12em]">
                       <span>1</span>
                       <span>X</span>
                       <span>2</span>

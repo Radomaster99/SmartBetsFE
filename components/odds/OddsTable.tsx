@@ -19,8 +19,8 @@ interface Props {
   movements?: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
 }
 
-const BEST_BG = 'rgba(0,230,118,0.08)';
-const BEST_BORDER = '1px solid rgba(0,230,118,0.22)';
+const BEST_BG = 'rgba(0,230,118,0.1)';
+const BEST_BORDER = '1px solid rgba(0,230,118,0.3)';
 
 function BookmakerBadge({ bookmaker }: { bookmaker: string }) {
   const meta = getBookmakerMeta(bookmaker);
@@ -194,9 +194,9 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg panel-shell">
+    <div className="overflow-hidden rounded-xl panel-shell">
       <div
-        className="flex items-center justify-between px-4 py-2.5"
+        className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: '1px solid var(--t-border)', background: 'rgba(255,255,255,0.02)' }}
       >
         <div className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-5)' }}>
@@ -215,7 +215,7 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
                   <th
                     key={header.id}
                     onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
-                    className="select-none px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider"
+                    className="select-none px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.1em]"
                     style={{
                       color: 'var(--t-text-5)',
                       cursor: header.column.getCanSort() ? 'pointer' : 'default',
@@ -232,6 +232,7 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
+                className="transition-colors"
                 style={{ borderBottom: '1px solid var(--t-border)' }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLTableRowElement).style.background = 'var(--t-surface-2)';
@@ -241,7 +242,7 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-2">
+                  <td key={cell.id} className="px-4 py-3">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

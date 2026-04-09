@@ -41,7 +41,7 @@ function OddsRow({
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3"
+      className="flex items-center gap-3 px-4 py-3.5 transition-colors"
       style={{
         position: 'relative',
         borderBottom: isLast ? undefined : '1px solid var(--t-border)',
@@ -85,8 +85,8 @@ function OddsRow({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="cta-btn flex-shrink-0 rounded px-4 py-1.5 text-[12px] font-bold tracking-wide"
-        style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+        className="cta-btn flex-shrink-0 px-4 py-2 text-[12px] font-bold tracking-wide"
+        style={{ textDecoration: 'none', whiteSpace: 'nowrap', borderRadius: '8px' }}
         onClick={(e) => e.stopPropagation()}
       >
         BET
@@ -105,8 +105,8 @@ export function BestOddsBar({ bestOdds, fixtureId, movements }: Props) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-lg panel-shell">
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--t-border)', background: 'rgba(255,255,255,0.02)' }}>
+    <div className="overflow-hidden rounded-xl panel-shell">
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--t-border)', background: 'rgba(255,255,255,0.02)' }}>
         <div className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-5)' }}>
           Best 1X2 prices
         </div>

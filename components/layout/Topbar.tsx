@@ -66,11 +66,12 @@ export function Topbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
 
   return (
     <header
-      className="flex flex-shrink-0 items-center gap-3 px-3 md:px-4"
+      className="layout-topbar flex flex-shrink-0 items-center gap-3 px-3 md:px-4"
       style={{
         height: '52px',
         background: 'var(--t-topbar-bg)',
         borderBottom: '1px solid var(--t-border)',
+        boxShadow: '0 1px 0 rgba(0, 230, 118, 0.07)',
         zIndex: 50,
       }}
     >

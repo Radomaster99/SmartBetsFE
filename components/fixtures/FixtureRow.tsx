@@ -193,19 +193,7 @@ function OddsCell({
       <span className={`odds-value${!value ? ' na' : ''}`}>{value ? value.toFixed(2) : '-'}</span>
 
       {value && bookmaker ? (
-        <span
-          style={{
-            display: 'block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'center',
-            fontSize: '10px',
-            lineHeight: 1.2,
-            color: 'var(--t-text-5)',
-          }}
-        >
+        <span className="odds-bk">
           {truncateBookmaker(bookmaker)}
         </span>
       ) : null}
@@ -302,19 +290,10 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
   return (
     <tr
       onClick={() => router.push(detailHref)}
-      className="cursor-pointer transition-colors"
-      style={{
-        borderBottom: '1px solid var(--t-border)',
-        ...(isLive ? { boxShadow: 'inset 3px 0 0 rgba(239,83,80,0.65)', background: 'rgba(239,83,80,0.025)' } : null),
-      }}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.background = isLive ? 'rgba(239,83,80,0.06)' : 'var(--t-surface-2)';
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.background = isLive ? 'rgba(239,83,80,0.025)' : 'transparent';
-      }}
+      className="cursor-pointer"
+      data-live={isLive ? 'true' : 'false'}
     >
-      <td className="w-[80px] px-2 py-2 pl-3 text-center">
+      <td className="w-[80px] px-2 py-1.5 pl-3 text-center">
         <div className="flex flex-col items-center gap-1">
           {renderTimeCell(
             fixture.kickoffAt,
@@ -329,10 +308,10 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
         </div>
       </td>
 
-      <td className="px-2 py-2">
+      <td className="px-2 py-1.5">
         <div className="flex min-w-0 items-center justify-end gap-2">
           <span
-            className="block min-w-0 flex-1 truncate text-right text-[13px] font-medium"
+            className="block min-w-0 flex-1 truncate text-right text-[12px] font-semibold"
             style={{ color: isLive ? 'var(--t-text-1)' : 'var(--t-text-2)' }}
             title={fixture.homeTeamName}
           >
@@ -342,13 +321,14 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
         </div>
       </td>
 
-      <td className="w-14 px-1 py-2 text-center">
+      <td className="w-16 px-1 py-1.5 text-center">
         {hasScore ? (
           <div
-            className="odds-cell inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-bold"
+            className="odds-cell inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold"
             style={{
               background: isLive ? 'rgba(239,83,80,0.15)' : 'var(--t-surface-2)',
               color: isLive ? '#fca5a5' : 'var(--t-text-2)',
+              border: isLive ? '1px solid rgba(239,83,80,0.25)' : '1px solid var(--t-border-2)',
             }}
           >
             <span>{fixture.homeGoals}</span>
@@ -356,17 +336,17 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
             <span>{fixture.awayGoals}</span>
           </div>
         ) : (
-          <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-6)' }}>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-6)' }}>
             vs
           </span>
         )}
       </td>
 
-      <td className="px-2 py-2">
+      <td className="px-2 py-1.5">
         <div className="flex min-w-0 items-center gap-2">
           <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={16} />
           <span
-            className="block min-w-0 flex-1 truncate text-[13px] font-medium"
+            className="block min-w-0 flex-1 truncate text-[12px] font-semibold"
             style={{ color: isLive ? 'var(--t-text-1)' : 'var(--t-text-2)' }}
             title={fixture.awayTeamName}
           >
@@ -375,8 +355,8 @@ export function FixtureRow({ fixture, bestOddsFallback, oddsMovement, isSaved = 
         </div>
       </td>
 
-      <td className="w-[210px] py-2 pl-1 pr-3">
-        <div className="grid grid-cols-3 gap-1">
+      <td className="w-[228px] py-1.5 pl-1 pr-3">
+        <div className="grid grid-cols-3 gap-1.5">
           <OddsCell
             label="Home"
             value={homeOdd}

@@ -140,19 +140,21 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
     [allCountryGroups],
   );
 
-  const countryGroups = useMemo(() => {
-    if (!normalizedSearch) return allCountryGroups;
+  const countryGroups = useMemo(() => allCountryGroups, [allCountryGroups]);
 
+  const searchResults = useMemo(() => {
+    if (!normalizedSearch) return [];
     return allCountryGroups
-      .map((group) => ({
-        ...group,
-        leagues: group.leagues.filter(
-          (league) =>
-            league.name.toLowerCase().includes(normalizedSearch) ||
-            group.countryName.toLowerCase().includes(normalizedSearch),
-        ),
-      }))
-      .filter((group) => group.leagues.length > 0 || group.countryName.toLowerCase().includes(normalizedSearch));
+      .flatMap((group) =>
+        group.leagues
+          .filter(
+            (league) =>
+              league.name.toLowerCase().includes(normalizedSearch) ||
+              group.countryName.toLowerCase().includes(normalizedSearch),
+          )
+          .map((league) => ({ league, group })),
+      )
+      .slice(0, 20);
   }, [allCountryGroups, normalizedSearch]);
 
   const mergedPopularLeaguePresets = useMemo(
@@ -235,15 +237,15 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
         const hasActiveLeague = group.leagues.some((league) => league.apiLeagueId === activeLeagueId);
 
         if (typeof next[group.countryName] === 'undefined') {
-          next[group.countryName] = hasActiveLeague || Boolean(normalizedSearch);
-        } else if (hasActiveLeague || normalizedSearch) {
+          next[group.countryName] = hasActiveLeague;
+        } else if (hasActiveLeague) {
           next[group.countryName] = true;
         }
       });
 
       return next;
     });
-  }, [activeLeagueId, allCountryGroups, normalizedSearch]);
+  }, [activeLeagueId, allCountryGroups]);
 
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const standingsHref = buildStandingsHref(activeLeagueId, season);
@@ -355,8 +357,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                     key={`popular-${item.leagueId}-${item.targetSeason}`}
                     className="sidebar-hover-panel mt-1 flex items-center gap-1 rounded pr-1"
                     style={{
-                      background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
-                      borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
+                      background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
+                      borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
                     }}
                   >
                     <Link
@@ -444,8 +446,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
           data-active={isAllLeaguesActive ? 'true' : 'false'}
           style={{
             color: isAllLeaguesActive ? 'var(--t-text-1)' : 'var(--t-text-2)',
-            background: isAllLeaguesActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-            borderLeft: isAllLeaguesActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
+            background: isAllLeaguesActive ? 'rgba(0,230,118,0.06)' : 'transparent',
+            borderLeft: isAllLeaguesActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
             textDecoration: 'none',
             ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
             ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
@@ -458,13 +460,27 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
 
       <div className="flex-1 overflow-y-auto px-1 pb-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <div className="px-2 pt-2">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Filter leagues..."
-            className="input-shell w-full px-2.5 py-2 text-[12px]"
-          />
+          <div className="relative">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search leagues..."
+              className="input-shell w-full px-2.5 py-2 text-[12px]"
+              style={{ paddingRight: search ? '2rem' : undefined }}
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] leading-none"
+                style={{ color: 'var(--t-text-4)', cursor: 'pointer', background: 'none', border: 'none', padding: '2px 4px' }}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
         </div>
 
         {leaguesLoading ? (
@@ -475,12 +491,90 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
           <div className="px-3 py-3 text-[12px]" style={{ color: '#fca5a5' }}>
             Failed to load leagues.
           </div>
-        ) : countryGroups.length === 0 ? (
-          <div className="px-3 py-3 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-            No leagues match this filter.
-          </div>
         ) : null}
 
+        {/* ── Flat search results ── */}
+        {normalizedSearch ? (
+          <div className="mt-1">
+            {searchResults.length === 0 ? (
+              <div className="px-3 py-3 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+                No leagues match.
+              </div>
+            ) : (
+              <>
+                <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-5)' }}>
+                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                </div>
+                {searchResults.map(({ league, group }) => {
+                  const isActive = league.apiLeagueId === activeLeagueId;
+                  const leaguePopularKey = getPopularLeagueKey(league.apiLeagueId, league.season);
+                  const isAdminPopular = adminPopularLeagueKeys.has(leaguePopularKey);
+                  const isUserPopular = userPopularLeagueKeys.has(leaguePopularKey);
+                  const isHiddenPopular = hiddenPopularLeagueKeySet.has(leaguePopularKey);
+                  const isVisiblePopular = (isAdminPopular && !isHiddenPopular) || isUserPopular;
+
+                  return (
+                    <div
+                      key={`${league.apiLeagueId}-${league.season}`}
+                      className="sidebar-hover-panel mx-1 mt-0.5 flex items-center gap-1.5 rounded pr-1"
+                      style={{
+                        background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
+                        borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
+                      }}
+                    >
+                      {group.country?.flagUrl ? (
+                        <img
+                          src={group.country.flagUrl}
+                          alt={group.countryName}
+                          width={14}
+                          height={10}
+                          style={{ width: 14, height: 10, objectFit: 'cover', borderRadius: 1, flexShrink: 0, marginLeft: 6 }}
+                        />
+                      ) : (
+                        <span className="ml-1.5 w-[14px] flex-shrink-0 text-center text-[9px]" style={{ color: 'var(--t-text-6)' }}>○</span>
+                      )}
+                      <Link
+                        href={getLeagueHref(league)}
+                        onNavigate={() => { setSearch(''); onNavigate?.(); }}
+                        className="sidebar-hover-item min-w-0 flex-1 rounded px-1.5 py-1.5 transition-colors"
+                        data-active={isActive ? 'true' : 'false'}
+                        style={{
+                          textDecoration: 'none',
+                          ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.05)',
+                          ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+                        }}
+                      >
+                        <div className="truncate text-[12px] font-medium" style={{ color: isActive ? 'var(--t-text-1)' : 'var(--t-text-2)' }}>
+                          {league.name}
+                        </div>
+                        <div className="truncate text-[10px]" style={{ color: 'var(--t-text-5)' }}>
+                          {group.countryName}
+                        </div>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => togglePopularLeague(league)}
+                        className={`flex-shrink-0 rounded px-1.5 py-1 text-[10px] ${isVisiblePopular ? 'chrome-btn chrome-btn-active' : 'chrome-btn'}`}
+                        style={{ color: isVisiblePopular ? 'var(--t-text-1)' : 'var(--t-text-5)', cursor: 'pointer' }}
+                        aria-label={`${isVisiblePopular ? 'Remove' : 'Add'} ${league.name} ${isVisiblePopular ? 'from' : 'to'} popular leagues`}
+                      >
+                        {isVisiblePopular ? '−' : '+'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        ) : (
+
+        /* ── Country groups tree (normal mode) ── */
+        <>
+        {countryGroups.length === 0 && !leaguesLoading && !leaguesError ? (
+          <div className="px-3 py-3 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+            No leagues available.
+          </div>
+        ) : null}
         {countryGroups.map((group) => {
           const hasActiveLeague = group.leagues.some((league) => league.apiLeagueId === activeLeagueId);
           const isExpanded = expandedCountries[group.countryName] ?? false;
@@ -551,8 +645,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                         key={`${league.apiLeagueId}-${league.season}`}
                         className="sidebar-hover-panel ml-2 mr-1 mt-1 flex items-center gap-1 rounded pr-1"
                         style={{
-                          background: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
-                          borderLeft: isActive ? '2px solid rgba(255,255,255,0.2)' : '2px solid transparent',
+                          background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
+                          borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
                         }}
                       >
                         <Link
@@ -589,6 +683,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
             </div>
           );
         })}
+        </>
+        )}
       </div>
     </div>
   );

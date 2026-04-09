@@ -462,7 +462,7 @@ function FootballPageClient() {
     from: usesUpcomingRange ? today : undefined,
   };
 
-  const { data, isLoading, isError, refetch } = useFixtures(filters);
+  const { data, isLoading, isFetching, isError, refetch } = useFixtures(filters);
   const rawFixtures = data?.items ?? [];
   const visibleFixtureIds = state === 'Live' ? rawFixtures.map((fixture) => fixture.apiFixtureId) : [];
 
@@ -704,6 +704,7 @@ function FootballPageClient() {
         <FixtureTable
           fixtures={fixtures}
           isLoading={isLoading}
+          isFetching={isFetching}
           oddsMovements={liveOddsListRealtime.movements}
           savedFixtureIds={fixtureIdSet}
           onToggleSave={toggleFixture}

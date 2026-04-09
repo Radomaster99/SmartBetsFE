@@ -97,14 +97,15 @@ export function FixtureFilters({
             key={day}
             type="button"
             onClick={() => onDateChange(day)}
-            className="filter-hover-chip flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            className="filter-hover-chip flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all"
             data-active={active ? 'true' : 'false'}
             style={{
-              color: active ? 'var(--t-text-1)' : day === today ? 'var(--t-text-2)' : 'var(--t-text-4)',
-              background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+              color: active ? 'var(--filter-date-active-color)' : day === today ? 'var(--t-text-3)' : 'var(--t-text-5)',
+              background: active ? 'var(--filter-date-active-bg)' : 'transparent',
               fontWeight: active ? 700 : 500,
-              ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
-              ['--filter-active-hover-bg' as string]: 'rgba(255,255,255,0.14)',
+              borderRadius: '20px',
+              ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.07)',
+              ['--filter-active-hover-bg' as string]: 'rgba(255,255,255,0.16)',
             }}
           >
             {labelDate(day)}
@@ -132,19 +133,26 @@ export function FixtureFilters({
 
       {visibleStates.map((item) => {
         const active = item.value === state;
+        const isLiveBtn = item.value === 'Live';
         return (
           <button
             key={item.value}
             type="button"
             onClick={() => onStateChange(item.value)}
-            className="filter-hover-chip flex-shrink-0 rounded px-2.5 py-1 text-[12px] font-medium transition-all"
+            className="filter-hover-chip flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all"
             data-active={active ? 'true' : 'false'}
             style={{
-              color: active ? (item.value === 'Live' ? '#fff' : 'var(--t-text-1)') : 'var(--t-text-4)',
-              background: active ? (item.value === 'Live' ? '#ef5350' : 'rgba(255,255,255,0.1)') : 'transparent',
+              color: active
+                ? isLiveBtn ? '#fff' : 'var(--filter-active-color)'
+                : 'var(--t-text-4)',
+              background: active
+                ? isLiveBtn ? '#ef5350' : 'var(--filter-active-bg)'
+                : 'transparent',
+              borderRadius: '20px',
+              border: active && !isLiveBtn ? '1px solid var(--filter-active-border)' : '1px solid transparent',
               cursor: 'pointer',
-              ['--filter-hover-bg' as string]: active && item.value === 'Live' ? '#f26763' : 'rgba(255,255,255,0.08)',
-              ['--filter-active-hover-bg' as string]: active && item.value === 'Live' ? '#f26763' : 'rgba(255,255,255,0.14)',
+              ['--filter-hover-bg' as string]: active && isLiveBtn ? '#f26763' : 'rgba(255,255,255,0.07)',
+              ['--filter-active-hover-bg' as string]: active && isLiveBtn ? '#f26763' : 'rgba(255,255,255,0.16)',
             }}
           >
             {item.label}

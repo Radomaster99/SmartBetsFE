@@ -6,6 +6,8 @@ export interface PopularLeaguePreset {
   season?: number;
 }
 
+export const POPULAR_LEAGUES_UPDATED_EVENT = 'smartbets:popular-leagues-updated';
+
 export const ADMIN_POPULAR_LEAGUES_STORAGE_KEY = 'smartbets:popular-leagues:admin-defaults';
 export const USER_POPULAR_LEAGUES_STORAGE_KEY = 'smartbets:popular-leagues:user-custom';
 export const USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY = 'smartbets:popular-leagues:user-hidden';
@@ -92,6 +94,7 @@ export function writePopularLeaguePresets(storageKey: string, items: PopularLeag
   }
 
   window.localStorage.setItem(storageKey, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent(POPULAR_LEAGUES_UPDATED_EVENT));
 }
 
 export function mergePopularLeaguePresets(
@@ -155,4 +158,5 @@ export function writePopularLeagueKeys(storageKey: string, items: string[]) {
   }
 
   window.localStorage.setItem(storageKey, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent(POPULAR_LEAGUES_UPDATED_EVENT));
 }

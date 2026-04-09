@@ -23,11 +23,10 @@ export function Sidebar({
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-full w-64 max-w-[86vw] flex-col overflow-hidden md:static md:z-auto md:w-56 md:max-w-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`layout-sidebar fixed inset-y-0 left-0 z-40 flex h-full w-64 max-w-[86vw] flex-col overflow-hidden md:static md:z-auto md:w-56 md:max-w-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{
           background: 'var(--t-sidebar-bg)',
           borderRight: '1px solid var(--t-border)',
-          boxShadow: mobileOpen ? 'var(--t-shadow-panel)' : undefined,
           transition: 'transform 0.2s ease',
         }}
       >

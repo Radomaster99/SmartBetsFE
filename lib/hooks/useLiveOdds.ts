@@ -363,13 +363,19 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
 
         connectionRef.current = connection;
 
-        if (connection.state === HubConnectionState.Connected) {
-          await connection.invoke('JoinFixture', Number(fixtureId));
-          setStatus('connected');
+        if (connection.state === HubConnectionState.Connected && !disposed) {
+          try {
+            await connection.invoke('JoinFixture', Number(fixtureId));
+            if (!disposed) setStatus('connected');
+          } catch {
+            if (!disposed) setStatus('error');
+          }
         }
       } catch (err) {
-        console.error('[useLiveOddsSignalR] Failed to connect:', err);
-        setStatus('error');
+        if (!disposed) {
+          console.error('[useLiveOddsSignalR] Failed to connect:', err);
+          setStatus('error');
+        }
         // REST polling via useLiveOdds remains active as fallback.
       }
     };
@@ -521,13 +527,19 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
 
         connectionRef.current = connection;
 
-        if (connection.state === HubConnectionState.Connected) {
-          await connection.invoke('JoinFixtures', stableFixtureIds);
-          setStatus('connected');
+        if (connection.state === HubConnectionState.Connected && !disposed) {
+          try {
+            await connection.invoke('JoinFixtures', stableFixtureIds);
+            if (!disposed) setStatus('connected');
+          } catch {
+            if (!disposed) setStatus('error');
+          }
         }
       } catch (err) {
-        console.error('[useLiveOddsListSignalR] Failed to connect:', err);
-        setStatus('error');
+        if (!disposed) {
+          console.error('[useLiveOddsListSignalR] Failed to connect:', err);
+          setStatus('error');
+        }
       }
     };
 
