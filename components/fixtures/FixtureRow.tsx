@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import type { BestOddsDto, FixtureDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { TeamLogo } from '@/components/shared/TeamLogo';
@@ -128,6 +129,22 @@ function OddsButton({
   isBest: boolean;
   onFallbackClick: (event: React.MouseEvent) => void;
 }) {
+  const prevMovementRef = useRef<LiveOddsMovementDirection | undefined>(movement);
+  const [flashAnimation, setFlashAnimation] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (movement && movement !== prevMovementRef.current) {
+      const anim = movement === 'up'
+        ? 'odds-flash-up 0.6s ease-out forwards'
+        : 'odds-flash-down 0.6s ease-out forwards';
+      setFlashAnimation(anim);
+      const timer = window.setTimeout(() => setFlashAnimation(null), 650);
+      prevMovementRef.current = movement;
+      return () => window.clearTimeout(timer);
+    }
+    prevMovementRef.current = movement;
+  }, [movement]);
+
   const buttonStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -143,6 +160,7 @@ function OddsButton({
     textDecoration: 'none',
     padding: 0,
     width: '100%',
+    ...(flashAnimation ? { animation: flashAnimation } : {}),
   };
 
   const inner = (
@@ -239,6 +257,24 @@ export function FixtureRow({
   const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
   const awayBookmaker = resolveBookmaker(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
 
+  // Score flash: detect when live score changes
+  const prevScoreRef = useRef({ home: fixture.homeGoals, away: fixture.awayGoals });
+  const [scoreFlashActive, setScoreFlashActive] = useState(false);
+
+  useEffect(() => {
+    const prev = prevScoreRef.current;
+    if (
+      fixture.stateBucket === 'Live' &&
+      (prev.home !== fixture.homeGoals || prev.away !== fixture.awayGoals)
+    ) {
+      prevScoreRef.current = { home: fixture.homeGoals, away: fixture.awayGoals };
+      setScoreFlashActive(true);
+      const timer = window.setTimeout(() => setScoreFlashActive(false), 450);
+      return () => window.clearTimeout(timer);
+    }
+    prevScoreRef.current = { home: fixture.homeGoals, away: fixture.awayGoals };
+  }, [fixture.homeGoals, fixture.awayGoals, fixture.stateBucket]);
+
   // Highest value among the three = loosest market (gets green highlight)
   const allOdds = [homeOdd, drawOdd, awayOdd].filter((o): o is number => o !== null);
   const bestOddValue = allOdds.length > 0 ? Math.max(...allOdds) : null;
@@ -322,6 +358,7 @@ export function FixtureRow({
           <div style={{ flexShrink: 0, width: 48, textAlign: 'center' }}>
             {hasScore ? (
               <span
+                className={scoreFlashActive ? 'score-flash' : undefined}
                 style={{
                   fontSize: 14,
                   fontWeight: 900,
