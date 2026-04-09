@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { useLiveFixtureCount } from '@/lib/hooks/useLiveFixtureCount';
@@ -26,7 +26,9 @@ function MoonIcon() {
 export function Topbar() {
   const { theme, toggle } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const liveCount = useLiveFixtureCount();
+  const isAdminRoute = pathname.startsWith('/admin');
 
   return (
     <header
@@ -95,6 +97,23 @@ export function Topbar() {
             {liveCount} Live
           </button>
         ) : null}
+
+        <Link
+          href="/admin/sync"
+          className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+          style={{
+            textDecoration: 'none',
+            background: isAdminRoute ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.04)',
+            border: isAdminRoute
+              ? '1px solid rgba(0,230,118,0.26)'
+              : '1px solid rgba(255,255,255,0.08)',
+            color: isAdminRoute ? 'var(--t-accent)' : 'var(--t-text-2)',
+            boxShadow: isAdminRoute ? '0 0 0 1px rgba(0,230,118,0.04) inset' : 'none',
+          }}
+          aria-label="Open admin control panel"
+        >
+          Admin
+        </Link>
 
         {/* Theme toggle */}
         <button

@@ -7,13 +7,23 @@ import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
   DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+  DEFAULT_HERO_BANNER_HEIGHT_PX,
   DEFAULT_HERO_BANNER_IMAGE_ZOOM,
+  DEFAULT_HERO_BANNER_LAYOUT,
   DEFAULT_HERO_BANNERS,
+  HERO_BANNER_THEMES,
+  MAX_HERO_BANNER_HEIGHT_PX,
+  MIN_HERO_BANNER_HEIGHT_PX,
   normalizeHeroBannerFocusPercent,
+  normalizeHeroBannerHeight,
   normalizeHeroBannerImageOpacity,
   normalizeHeroBannerImageZoom,
+  readHeroBannerLayoutConfig,
   readHeroBannersConfig,
   type HeroBannerConfig,
+  type HeroBannerLayoutConfig,
+  type HeroBannerThemeId,
+  writeHeroBannerLayoutConfig,
   writeHeroBannersConfig,
 } from '@/lib/hero-banners';
 import { useSyncStatus } from '@/lib/hooks/useSyncStatus';
@@ -304,7 +314,9 @@ function AdminSyncPageContent() {
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
   const [heroBannersHydrated, setHeroBannersHydrated] = useState(false);
+  const [heroBannerLayoutHydrated, setHeroBannerLayoutHydrated] = useState(false);
   const [heroBanners, setHeroBanners] = useState<HeroBannerConfig[]>(DEFAULT_HERO_BANNERS);
+  const [heroBannerLayout, setHeroBannerLayout] = useState<HeroBannerLayoutConfig>(DEFAULT_HERO_BANNER_LAYOUT);
   const [sideAdsHydrated, setSideAdsHydrated] = useState(false);
   const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
   const [includeOdds, setIncludeOdds] = useState(false);
@@ -542,7 +554,7 @@ function AdminSyncPageContent() {
       : `Targeting ${leagueNameById.get(syncLeagueId) ?? 'one league'}${syncSeason ? ` for ${syncSeason}.` : '.'}`;
 
   const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues for new visitors in this browser profile.`;
-  const heroSummary = `${heroBanners.filter((banner) => banner.isClickable && banner.href).length}/3 hero ads clickable.`;
+  const heroSummary = `${heroBanners.filter((banner) => banner.isClickable && banner.href).length}/3 hero ads clickable • ${heroBannerLayout.heightPx}px tall.`;
   const configuredSideAdsCount = [sideAdsConfig.left, sideAdsConfig.right].filter(Boolean).length;
   const adsSummary = configuredSideAdsCount
     ? `${configuredSideAdsCount} side banner slot${configuredSideAdsCount === 1 ? '' : 's'} ready.`
@@ -561,6 +573,8 @@ function AdminSyncPageContent() {
     setPopularStorageHydrated(true);
     setHeroBanners(readHeroBannersConfig());
     setHeroBannersHydrated(true);
+    setHeroBannerLayout(readHeroBannerLayoutConfig());
+    setHeroBannerLayoutHydrated(true);
     setSideAdsConfig(readSideAdsConfig());
     setSideAdsHydrated(true);
   }, []);
@@ -586,6 +600,20 @@ function AdminSyncPageContent() {
       window.clearTimeout(timeoutId);
     };
   }, [heroBanners, heroBannersHydrated]);
+
+  useEffect(() => {
+    if (!heroBannerLayoutHydrated) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      writeHeroBannerLayoutConfig(heroBannerLayout);
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [heroBannerLayout, heroBannerLayoutHydrated]);
 
   useEffect(() => {
     if (!sideAdsHydrated) {
@@ -681,36 +709,89 @@ function AdminSyncPageContent() {
     setHeroBanners((current) =>
       current.map((banner) =>
         banner.id === id
-          ? {
-              ...banner,
-              ...updates,
-              backgroundImageOpacity:
-                'backgroundImageOpacity' in updates
-                  ? normalizeHeroBannerImageOpacity(updates.backgroundImageOpacity, banner.backgroundImageOpacity ?? 0.42)
-                  : banner.backgroundImageOpacity,
-              imageFocusXPercent:
-                'imageFocusXPercent' in updates
-                  ? normalizeHeroBannerFocusPercent(
-                      updates.imageFocusXPercent,
-                      banner.imageFocusXPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
-                    )
-                  : banner.imageFocusXPercent,
-              imageFocusYPercent:
-                'imageFocusYPercent' in updates
-                  ? normalizeHeroBannerFocusPercent(
-                      updates.imageFocusYPercent,
-                      banner.imageFocusYPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
-                    )
-                  : banner.imageFocusYPercent,
-              imageZoom:
-                'imageZoom' in updates
-                  ? normalizeHeroBannerImageZoom(
-                      updates.imageZoom,
-                      banner.imageZoom ?? DEFAULT_HERO_BANNER_IMAGE_ZOOM,
-                    )
-                  : banner.imageZoom,
-              updatedAtUtc: new Date().toISOString(),
-            }
+          ? (() => {
+              const nextThemeId = (updates.themeId ?? banner.themeId ?? 'graphite') as HeroBannerThemeId;
+              const nextTheme = HERO_BANNER_THEMES[nextThemeId];
+
+              return {
+                ...banner,
+                ...updates,
+                backgroundFrom:
+                  'themeId' in updates
+                    ? nextTheme.backgroundFrom
+                    : 'backgroundFrom' in updates
+                      ? updates.backgroundFrom
+                      : banner.backgroundFrom,
+                backgroundTo:
+                  'themeId' in updates
+                    ? nextTheme.backgroundTo
+                    : 'backgroundTo' in updates
+                      ? updates.backgroundTo
+                      : banner.backgroundTo,
+                borderColor:
+                  'themeId' in updates
+                    ? nextTheme.borderColor
+                    : 'borderColor' in updates
+                      ? updates.borderColor
+                      : banner.borderColor,
+                eyebrowColor:
+                  'themeId' in updates
+                    ? nextTheme.eyebrowColor
+                    : 'eyebrowColor' in updates
+                      ? updates.eyebrowColor
+                      : banner.eyebrowColor,
+                titleColor:
+                  'themeId' in updates
+                    ? nextTheme.titleColor
+                    : 'titleColor' in updates
+                      ? updates.titleColor
+                      : banner.titleColor,
+                offerColor:
+                  'themeId' in updates
+                    ? nextTheme.offerColor
+                    : 'offerColor' in updates
+                      ? updates.offerColor
+                      : banner.offerColor,
+                ctaBackground:
+                  'themeId' in updates
+                    ? nextTheme.buttonBackground
+                    : 'ctaBackground' in updates
+                      ? updates.ctaBackground
+                      : banner.ctaBackground,
+                ctaColor:
+                  'themeId' in updates
+                    ? nextTheme.buttonColor
+                    : 'ctaColor' in updates
+                      ? updates.ctaColor
+                      : banner.ctaColor,
+                backgroundImageOpacity:
+                  'backgroundImageOpacity' in updates
+                    ? normalizeHeroBannerImageOpacity(updates.backgroundImageOpacity, banner.backgroundImageOpacity ?? 0.42)
+                    : banner.backgroundImageOpacity,
+                imageFocusXPercent:
+                  'imageFocusXPercent' in updates
+                    ? normalizeHeroBannerFocusPercent(
+                        updates.imageFocusXPercent,
+                        banner.imageFocusXPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                      )
+                    : banner.imageFocusXPercent,
+                imageFocusYPercent:
+                  'imageFocusYPercent' in updates
+                    ? normalizeHeroBannerFocusPercent(
+                        updates.imageFocusYPercent,
+                        banner.imageFocusYPercent ?? DEFAULT_HERO_BANNER_FOCUS_PERCENT,
+                      )
+                    : banner.imageFocusYPercent,
+                imageZoom:
+                  'imageZoom' in updates
+                    ? normalizeHeroBannerImageZoom(
+                        updates.imageZoom,
+                        banner.imageZoom ?? DEFAULT_HERO_BANNER_IMAGE_ZOOM,
+                      )
+                    : banner.imageZoom,
+                updatedAtUtc: new Date().toISOString(),
+              };
+            })()
           : banner,
       ),
     );
@@ -722,6 +803,15 @@ function AdminSyncPageContent() {
       action: 'hero-banners-reset',
       ok: true,
       message: 'Hero banner slots were reset to the default preset.',
+    });
+  }
+
+  function resetHeroBannerLayout() {
+    setHeroBannerLayout(DEFAULT_HERO_BANNER_LAYOUT);
+    setResult({
+      action: 'hero-banner-layout-reset',
+      ok: true,
+      message: 'Hero banner height was reset to the default size.',
     });
   }
 
@@ -1140,6 +1230,52 @@ function AdminSyncPageContent() {
                 Control the three promo cards at the top of the football board: text, theme, font family, font scale, alignment, color palette, CTA, destination URL, and whether each slot is clickable.
               </InfoStrip>
 
+            <div
+              className="rounded-lg px-3 py-3"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--t-border)' }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
+                    Hero strip height
+                  </div>
+                  <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    One shared controller for all 3 hero ad tiles. Lower values shrink the strip and the page immediately consumes the freed space.
+                  </div>
+                </div>
+                <div className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: 'rgba(0,230,118,0.08)', color: 'var(--t-accent)', border: '1px solid rgba(0,230,118,0.16)' }}>
+                  {heroBannerLayout.heightPx}px
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <input
+                  type="range"
+                  min={String(MIN_HERO_BANNER_HEIGHT_PX)}
+                  max={String(MAX_HERO_BANNER_HEIGHT_PX)}
+                  step="2"
+                  value={heroBannerLayout.heightPx}
+                  onChange={(event) =>
+                    setHeroBannerLayout({
+                      heightPx: normalizeHeroBannerHeight(
+                        Number(event.target.value),
+                        DEFAULT_HERO_BANNER_HEIGHT_PX,
+                      ),
+                    })
+                  }
+                  className="min-w-[220px] flex-1 accent-green-400"
+                />
+
+                <button
+                  type="button"
+                  onClick={resetHeroBannerLayout}
+                  className="chrome-btn rounded px-3 py-1.5 text-[12px] font-bold transition-all"
+                >
+                  Reset Height
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -1155,6 +1291,7 @@ function AdminSyncPageContent() {
                   <HeroBannerSlotEditor
                     key={banner.id}
                     banner={banner}
+                    heightPx={heroBannerLayout.heightPx}
                     onChange={updateHeroBanner}
                     onUploadImage={handleHeroBannerFileChange}
                     onClearImage={clearHeroBannerImage}

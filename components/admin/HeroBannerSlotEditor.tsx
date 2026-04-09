@@ -20,6 +20,7 @@ import {
 
 type Props = {
   banner: HeroBannerConfig;
+  heightPx: number;
   onChange: (id: HeroBannerConfig['id'], updates: Partial<HeroBannerConfig>) => void;
   onUploadImage: (id: HeroBannerConfig['id'], file: File) => Promise<void>;
   onClearImage: (id: HeroBannerConfig['id']) => void;
@@ -62,6 +63,7 @@ function ColorField({
 
 export function HeroBannerSlotEditor({
   banner,
+  heightPx,
   onChange,
   onUploadImage,
   onClearImage,
@@ -182,7 +184,7 @@ export function HeroBannerSlotEditor({
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}
       >
-        <HeroBannerCard banner={banner} className="pointer-events-none select-none" />
+        <HeroBannerCard banner={banner} heightPx={heightPx} className="pointer-events-none select-none" />
       </div>
 
       <div className="grid gap-2 md:grid-cols-2">

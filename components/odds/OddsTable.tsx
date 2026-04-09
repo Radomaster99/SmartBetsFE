@@ -17,24 +17,25 @@ interface Props {
   odds: OddDto[];
   fixtureId?: number;
   movements?: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
+  variant?: 'default' | 'compact';
 }
 
 const BEST_BG = 'rgba(0,230,118,0.1)';
 const BEST_BORDER = '1px solid rgba(0,230,118,0.3)';
 
-function BookmakerBadge({ bookmaker }: { bookmaker: string }) {
+function BookmakerBadge({ bookmaker, compact = false }: { bookmaker: string; compact?: boolean }) {
   const meta = getBookmakerMeta(bookmaker);
 
   return (
     <div className="flex items-center gap-2">
       <span
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-black tracking-[0.08em]"
+        className={`inline-flex items-center justify-center rounded-full font-black tracking-[0.08em] ${compact ? 'h-7 w-7 text-[9px]' : 'h-8 w-8 text-[10px]'}`}
         style={{ background: `${meta.accent}18`, color: meta.accent, border: `1px solid ${meta.accent}33` }}
       >
         {meta.logoText}
       </span>
       <div className="min-w-0">
-        <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
+        <div className={`truncate font-semibold ${compact ? 'text-[12px]' : 'text-[13px]'}`} style={{ color: 'var(--t-text-2)' }}>
           {bookmaker}
         </div>
         <div className="mt-0.5 text-[10px]" style={{ color: 'var(--t-text-5)' }}>
@@ -49,10 +50,12 @@ function OddsCell({
   value,
   isBest,
   movement,
+  label,
 }: {
   value: number;
   isBest: boolean;
   movement?: LiveOddsMovementDirection;
+  label?: string;
 }) {
   return (
     <div
@@ -63,6 +66,7 @@ function OddsCell({
         ...(isBest ? { background: BEST_BG, border: BEST_BORDER } : {}),
       }}
     >
+      {label ? <span className="odds-label">{label}</span> : null}
       {movement ? (
         <span
           aria-hidden="true"
@@ -79,7 +83,67 @@ function OddsCell({
   );
 }
 
-export function OddsTable({ odds, fixtureId, movements }: Props) {
+function CompactOutcomeButton({
+  bookmaker,
+  fixtureId,
+  apiFixtureId,
+  outcome,
+  label,
+  value,
+  isBest,
+  movement,
+}: {
+  bookmaker: string;
+  fixtureId?: number;
+  apiFixtureId: number;
+  outcome: 'home' | 'draw' | 'away';
+  label: string;
+  value: number;
+  isBest: boolean;
+  movement?: LiveOddsMovementDirection;
+}) {
+  const href = buildBookmakerHref(bookmaker, {
+    fixture: fixtureId ?? apiFixtureId,
+    outcome,
+    source: 'odds-panel',
+  });
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="odds-btn"
+      style={{
+        minWidth: 0,
+        width: '100%',
+        padding: '8px 6px',
+        textDecoration: 'none',
+        position: 'relative',
+        ...(isBest ? { background: BEST_BG, border: BEST_BORDER } : {}),
+      }}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={`Bet ${label} with ${bookmaker}`}
+      title={`Bet ${label} with ${bookmaker}`}
+    >
+      <span className="odds-label">{label}</span>
+      {movement ? (
+        <span
+          aria-hidden="true"
+          className="absolute right-1.5 top-1.5 text-[10px] font-bold leading-none"
+          style={{ color: movement === 'up' ? 'var(--t-accent)' : '#f87171' }}
+        >
+          {movement === 'up' ? '\u2191' : '\u2193'}
+        </span>
+      ) : null}
+      <span className="odds-value" style={{ color: isBest ? 'var(--t-accent)' : undefined }}>
+        {value.toFixed(2)}
+      </span>
+    </a>
+  );
+}
+
+export function OddsTable({ odds, fixtureId, movements, variant = 'default' }: Props) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'homeOdd', desc: true }]);
   const orderedOdds = useMemo(
     () => [...odds].sort((a, b) => getBookmakerOrder(a.bookmaker) - getBookmakerOrder(b.bookmaker) || a.bookmaker.localeCompare(b.bookmaker)),
@@ -189,6 +253,90 @@ export function OddsTable({ odds, fixtureId, movements }: Props) {
     return (
       <div className="py-10 text-center text-[13px]" style={{ color: 'var(--t-text-5)' }}>
         No odds available for this fixture.
+      </div>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <div className="overflow-hidden rounded-xl panel-shell">
+        <div
+          className="flex items-center justify-between px-3 py-2.5"
+          style={{ borderBottom: '1px solid var(--t-border)', background: 'rgba(255,255,255,0.02)' }}
+        >
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--t-text-5)' }}>
+            Comparing {orderedOdds.length}
+          </div>
+          <div className="text-[10px]" style={{ color: 'var(--t-text-5)' }}>
+            Green = best
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 p-2.5">
+          {orderedOdds.map((odd) => {
+            const generalHref = buildBookmakerHref(odd.bookmaker, {
+              fixture: fixtureId ?? odd.apiFixtureId,
+              source: 'odds-panel',
+            });
+
+            return (
+              <div
+                key={odd.bookmaker}
+                className="rounded-xl"
+                style={{
+                  border: '1px solid var(--t-border)',
+                  background: 'rgba(255,255,255,0.02)',
+                  padding: 10,
+                }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <BookmakerBadge bookmaker={odd.bookmaker} compact />
+                  <a
+                    href={generalHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="chrome-btn flex-shrink-0 rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                    style={{ textDecoration: 'none' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Open
+                  </a>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <CompactOutcomeButton
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="home"
+                    label="1"
+                    value={odd.homeOdd}
+                    isBest={odd.homeOdd === maxHome}
+                    movement={movements?.[odd.bookmaker]?.home}
+                  />
+                  <CompactOutcomeButton
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="draw"
+                    label="X"
+                    value={odd.drawOdd}
+                    isBest={odd.drawOdd === maxDraw}
+                    movement={movements?.[odd.bookmaker]?.draw}
+                  />
+                  <CompactOutcomeButton
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="away"
+                    label="2"
+                    value={odd.awayOdd}
+                    isBest={odd.awayOdd === maxAway}
+                    movement={movements?.[odd.bookmaker]?.away}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }

@@ -335,7 +335,7 @@ export function FixtureRow({
         : 'var(--t-text-2)';
 
   const trStyle: React.CSSProperties = {
-    opacity: isFinished ? 0.65 : 1,
+    opacity: isFinished ? 0.85 : 1,
     cursor: 'pointer',
     borderLeft: isLive
       ? '2px solid rgba(239,83,80,0.35)'
