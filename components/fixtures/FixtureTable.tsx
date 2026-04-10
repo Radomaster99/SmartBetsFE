@@ -466,7 +466,7 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
                       <span>AWAY</span>
                     </div>
                   </th>
-                  <th style={{ width: 22 }} />
+                  <th style={{ width: 52 }} />
                 </tr>
               </thead>
               <tbody>

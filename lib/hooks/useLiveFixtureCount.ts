@@ -9,7 +9,9 @@ function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
+
 export function useLiveFixtureCount(): number {
-  const { data } = useFixtures({ state: 'Live', pageSize: 1, date: todayISO() });
+  const { data } = useFixtures({ state: 'Live', pageSize: 1, date: todayISO(), season: DEFAULT_SEASON });
   return data?.totalItems ?? 0;
 }
