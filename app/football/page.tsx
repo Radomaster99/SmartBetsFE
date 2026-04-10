@@ -480,15 +480,45 @@ function FootballPageClient() {
             </a>
           </div>
 
+          {/* All upcoming scope toggle — only when state=Upcoming */}
+          {state === 'Upcoming' && !isFutureDate ? (
+            <div
+              className="inline-flex items-center rounded-md p-0.5"
+              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
+            >
+              {([
+                { value: 'today' as const, label: 'Today' },
+                { value: 'all' as const, label: 'All upcoming' },
+              ] as const).map((option) => {
+                const active = upcomingScope === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleUpcomingScopeChange(option.value)}
+                    className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
+                    style={{
+                      color: active ? 'var(--t-text-1)' : 'var(--t-text-4)',
+                      background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, DEFAULT_SEASON, 'today'))}
-            className="rounded px-2 py-1 text-[11px] font-medium"
+            className="rounded px-2.5 py-1 text-[11px] font-medium"
             style={{
-              color: 'var(--t-text-4)',
+              color: 'var(--t-text-3)',
               cursor: 'pointer',
-              background: 'none',
-              border: 'none',
+              background: 'var(--t-surface-2)',
+              border: '1px solid var(--t-border-2)',
               flexShrink: 0,
             }}
           >
