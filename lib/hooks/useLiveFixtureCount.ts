@@ -12,6 +12,6 @@ function todayISO(): string {
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
 export function useLiveFixtureCount(): number {
-  const { data } = useFixtures({ state: 'Live', pageSize: 1, date: todayISO(), season: DEFAULT_SEASON });
+  const { data } = useFixtures({ state: 'Live', pageSize: 1, date: todayISO(), season: DEFAULT_SEASON, includeLiveOddsSummary: true });
   return data?.totalItems ?? 0;
 }

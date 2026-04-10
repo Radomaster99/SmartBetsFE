@@ -473,7 +473,7 @@ export function FixtureRow({
       </td>
 
       {/* Save column */}
-      <td style={{ width: 52, padding: '6px 0', verticalAlign: 'middle', textAlign: 'center' }}>
+      <td style={{ width: 30, padding: '6px 7px 6px 1px', verticalAlign: 'middle' }}>
         <button
           type="button"
           onClick={handleToggleSave}
