@@ -2,7 +2,9 @@
 
 import type { CSSProperties } from 'react';
 import {
+  DEFAULT_HERO_BANNER_HEIGHT_PX,
   buildHeroBannerImageStyle,
+  normalizeHeroBannerHeight,
   resolveHeroBannerAppearance,
   type HeroBannerConfig,
 } from '@/lib/hero-banners';
@@ -14,6 +16,7 @@ type Props = {
   className?: string;
   title?: string;
   ariaLabel?: string;
+  heightPx?: number;
 };
 
 function cx(...values: Array<string | false | null | undefined>) {
@@ -27,13 +30,18 @@ export function HeroBannerCard({
   className,
   title,
   ariaLabel,
+  heightPx,
 }: Props) {
   const appearance = resolveHeroBannerAppearance(banner);
+  const resolvedHeightPx = normalizeHeroBannerHeight(heightPx, DEFAULT_HERO_BANNER_HEIGHT_PX);
+  const isCompact = resolvedHeightPx <= 100;
+  const isUltraCompact = resolvedHeightPx <= 92;
+  const effectiveFontScale = appearance.fontScale * (isUltraCompact ? 0.82 : isCompact ? 0.9 : 1);
   const isLeftAligned = appearance.contentAlign === 'left';
-  const titleFontSize = `clamp(${11 * appearance.fontScale}px, ${1.05 * appearance.fontScale}vw, ${13 * appearance.fontScale}px)`;
-  const offerFontSize = `clamp(${8 * appearance.fontScale}px, ${0.72 * appearance.fontScale}vw, ${9.5 * appearance.fontScale}px)`;
-  const eyebrowFontSize = `${Math.max(6.5, 7 * appearance.fontScale).toFixed(2)}px`;
-  const ctaFontSize = `clamp(${8 * appearance.fontScale}px, ${0.72 * appearance.fontScale}vw, ${9 * appearance.fontScale}px)`;
+  const titleFontSize = `clamp(${10.5 * effectiveFontScale}px, ${1.0 * effectiveFontScale}vw, ${13 * effectiveFontScale}px)`;
+  const offerFontSize = `clamp(${7.2 * effectiveFontScale}px, ${0.68 * effectiveFontScale}vw, ${9.2 * effectiveFontScale}px)`;
+  const eyebrowFontSize = `${Math.max(6, 6.8 * effectiveFontScale).toFixed(2)}px`;
+  const ctaFontSize = `clamp(${7.4 * effectiveFontScale}px, ${0.68 * effectiveFontScale}vw, ${8.8 * effectiveFontScale}px)`;
   const rootStyle: CSSProperties = {
     textDecoration: 'none',
     background: appearance.background,
@@ -41,20 +49,21 @@ export function HeroBannerCard({
     textAlign: appearance.contentAlign,
     fontFamily: appearance.fontFamily,
     overflow: 'hidden',
+    height: `${resolvedHeightPx}px`,
   };
   const content = (
     <>
-      <div className="flex items-start justify-between gap-1">
+      <div className={cx('flex items-start justify-between', isCompact ? 'gap-0.5' : 'gap-1')}>
         <div
           className="text-left font-bold uppercase tracking-[0.14em]"
           style={{ color: appearance.eyebrowColor, fontSize: eyebrowFontSize }}
         >
-          {banner.eyebrow}
+          {isUltraCompact ? '' : banner.eyebrow}
         </div>
         <svg
           viewBox="0 0 24 24"
-          width="10"
-          height="10"
+          width={isCompact ? '9' : '10'}
+          height={isCompact ? '9' : '10'}
           aria-hidden="true"
           fill="none"
           stroke={appearance.titleColor}
@@ -68,12 +77,12 @@ export function HeroBannerCard({
 
       <div
         className={cx(
-          'flex flex-1 flex-col justify-center',
+          'flex min-h-0 flex-1 flex-col justify-center',
           isLeftAligned ? 'items-start' : 'items-center',
         )}
       >
         <div
-          className="mt-0.5 font-black tracking-[-0.02em]"
+          className={cx(isCompact ? 'mt-0 font-black tracking-[-0.02em]' : 'mt-0.5 font-black tracking-[-0.02em]')}
           style={{ color: appearance.titleColor, fontSize: titleFontSize, lineHeight: 1.1 }}
         >
           {banner.bookmaker}
@@ -81,14 +90,19 @@ export function HeroBannerCard({
 
         <div
           className={cx(
-            'mt-1 min-h-[24px] leading-3 md:min-h-[28px]',
+            isCompact ? 'mt-0.5 leading-[1.25]' : 'mt-1 leading-3 md:min-h-[28px]',
             isLeftAligned ? 'max-w-[170px]' : 'mx-auto max-w-[180px]',
           )}
           style={{
             color: appearance.offerColor,
             fontSize: offerFontSize,
-            lineHeight: 1.35,
+            lineHeight: isCompact ? 1.2 : 1.35,
             fontWeight: 600,
+            minHeight: isCompact ? undefined : 24,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: isUltraCompact ? 1 : 2,
+            overflow: 'hidden',
           }}
         >
           {banner.offer}
@@ -97,7 +111,9 @@ export function HeroBannerCard({
 
       <div
         className={cx(
-          'mt-1 rounded-full px-2 py-1 font-black uppercase tracking-[0.08em]',
+          isCompact
+            ? 'mt-0.5 rounded-full px-2 py-0.5 font-black uppercase tracking-[0.08em]'
+            : 'mt-1 rounded-full px-2 py-1 font-black uppercase tracking-[0.08em]',
           clickable ? 'transition-transform duration-150 group-hover:translate-y-[-1px]' : undefined,
         )}
         style={{
@@ -105,7 +121,9 @@ export function HeroBannerCard({
           color: appearance.ctaColor,
           fontSize: ctaFontSize,
           alignSelf: isLeftAligned ? 'flex-start' : 'center',
-          minWidth: isLeftAligned ? 'auto' : '88px',
+          minWidth: isLeftAligned ? 'auto' : isCompact ? '72px' : '88px',
+          maxWidth: '100%',
+          flexShrink: 0,
         }}
       >
         {banner.cta}
@@ -114,7 +132,9 @@ export function HeroBannerCard({
   );
 
   const wrapperClassName = cx(
-    'relative flex h-[104px] flex-col rounded-[8px] px-2 py-2 md:h-[112px] md:px-3',
+    isCompact
+      ? 'relative flex flex-col rounded-[8px] px-2 py-1.5 md:px-2.5'
+      : 'relative flex flex-col rounded-[8px] px-2 py-2 md:px-3',
     clickable ? 'group' : '',
     className,
   );

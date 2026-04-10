@@ -1,9 +1,13 @@
 export const HERO_BANNERS_STORAGE_KEY = 'smartbets:hero-banners';
+export const HERO_BANNER_LAYOUT_STORAGE_KEY = 'smartbets:hero-banner-layout';
 export const HERO_BANNERS_UPDATED_EVENT = 'smartbets:hero-banners-updated';
 export const DEFAULT_HERO_BANNER_FOCUS_PERCENT = 50;
 export const DEFAULT_HERO_BANNER_IMAGE_ZOOM = 1;
 export const MIN_HERO_BANNER_IMAGE_ZOOM = 0.7;
 export const MAX_HERO_BANNER_IMAGE_ZOOM = 2.5;
+export const DEFAULT_HERO_BANNER_HEIGHT_PX = 112;
+export const MIN_HERO_BANNER_HEIGHT_PX = 88;
+export const MAX_HERO_BANNER_HEIGHT_PX = 140;
 
 export type HeroBannerSlotId = 'slot-1' | 'slot-2' | 'slot-3';
 export type HeroBannerThemeId =
@@ -17,6 +21,10 @@ export type HeroBannerThemeId =
   | 'slate';
 export type HeroBannerFontPresetId = 'modern' | 'condensed' | 'editorial' | 'mono';
 export type HeroBannerContentAlign = 'left' | 'center';
+
+export type HeroBannerLayoutConfig = {
+  heightPx: number;
+};
 
 export type HeroBannerConfig = {
   id: HeroBannerSlotId;
@@ -217,6 +225,10 @@ export const DEFAULT_HERO_BANNERS: HeroBannerConfig[] = [
   },
 ];
 
+export const DEFAULT_HERO_BANNER_LAYOUT: HeroBannerLayoutConfig = {
+  heightPx: DEFAULT_HERO_BANNER_HEIGHT_PX,
+};
+
 function normalizeString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value : fallback;
 }
@@ -231,6 +243,10 @@ function clampPercent(value: number): number {
 
 function clampImageZoom(value: number): number {
   return Math.min(MAX_HERO_BANNER_IMAGE_ZOOM, Math.max(MIN_HERO_BANNER_IMAGE_ZOOM, value));
+}
+
+function clampHeroBannerHeight(value: number): number {
+  return Math.min(MAX_HERO_BANNER_HEIGHT_PX, Math.max(MIN_HERO_BANNER_HEIGHT_PX, value));
 }
 
 export function normalizeHeroBannerFontScale(value: unknown, fallback = 1): number {
@@ -269,6 +285,17 @@ export function normalizeHeroBannerImageZoom(
   }
 
   return clampImageZoom(value);
+}
+
+export function normalizeHeroBannerHeight(
+  value: unknown,
+  fallback = DEFAULT_HERO_BANNER_HEIGHT_PX,
+): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return clampHeroBannerHeight(Math.round(value));
 }
 
 function normalizeHeroBanner(candidate: unknown, fallback: HeroBannerConfig): HeroBannerConfig {
@@ -433,5 +460,38 @@ export function writeHeroBannersConfig(config: HeroBannerConfig[]) {
   }
 
   window.localStorage.setItem(HERO_BANNERS_STORAGE_KEY, JSON.stringify(config));
+  window.dispatchEvent(new CustomEvent(HERO_BANNERS_UPDATED_EVENT));
+}
+
+export function readHeroBannerLayoutConfig(): HeroBannerLayoutConfig {
+  if (typeof window === 'undefined') {
+    return DEFAULT_HERO_BANNER_LAYOUT;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(HERO_BANNER_LAYOUT_STORAGE_KEY);
+
+    if (!raw) {
+      return DEFAULT_HERO_BANNER_LAYOUT;
+    }
+
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    return {
+      heightPx: normalizeHeroBannerHeight(parsed.heightPx, DEFAULT_HERO_BANNER_HEIGHT_PX),
+    };
+  } catch {
+    return DEFAULT_HERO_BANNER_LAYOUT;
+  }
+}
+
+export function writeHeroBannerLayoutConfig(config: HeroBannerLayoutConfig) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(HERO_BANNER_LAYOUT_STORAGE_KEY, JSON.stringify({
+    heightPx: normalizeHeroBannerHeight(config.heightPx, DEFAULT_HERO_BANNER_HEIGHT_PX),
+  }));
   window.dispatchEvent(new CustomEvent(HERO_BANNERS_UPDATED_EVENT));
 }

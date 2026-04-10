@@ -334,6 +334,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
                       bestOdds={resolvedBestOdds}
                       fixtureId={detail.fixture.apiFixtureId}
                       movements={isLive ? bestOddsMovements : undefined}
+                      variant="compact"
                     />
                   </div>
                 ) : null}
@@ -355,6 +356,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
                       odds={displayOdds}
                       fixtureId={detail.fixture.apiFixtureId}
                       movements={isLive ? oddsTableMovements : undefined}
+                      variant="compact"
                     />
                   </div>
                 ) : null}

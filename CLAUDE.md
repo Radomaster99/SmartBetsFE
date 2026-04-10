@@ -276,4 +276,8 @@ Common variables referenced by the frontend:
 - `--t-accent` is `#00e676` (green).
 
 ### React 19 border shorthand warning
+<<<<<<< HEAD
 Do not mix `border` shorthand with `borderBottom` (or any specific side) on the same element — React 19 warns and it causes styling bugs on re-render. Use explicit sides: `borderTop`, `borderRight`, `borderLeft`, `borderBottom`.
+=======
+Do not mix `border` shorthand with `borderBottom` (or any specific side) on the same element — React 19 warns and it causes styling bugs on re-render. Use explicit sides: `borderTop`, `borderRight`, `borderLeft`, `borderBottom`.
+>>>>>>> ac69a65fa95139fb3be72a9f3c0b1326e28ca2a2
