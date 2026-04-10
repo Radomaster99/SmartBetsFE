@@ -4,87 +4,9 @@ import { useState } from 'react';
 import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
 import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
-import { BestOddsBar } from '@/components/odds/BestOddsBar';
-import { OddsTable } from '@/components/odds/OddsTable';
-import { type LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
+import { OddsComparison } from '@/components/odds/OddsComparison';
 
 type PanelTab = 'odds' | 'match' | 'h2h';
-
-function LiveStatusPill({
-  status,
-  hasLiveOdds,
-  usingPreMatchFallback,
-}: {
-  status: LiveOddsRealtimeStatus;
-  hasLiveOdds: boolean;
-  usingPreMatchFallback: boolean;
-}) {
-  let copy = 'Live odds idle';
-  let styles = {
-    background: 'rgba(148,163,184,0.12)',
-    border: '1px solid rgba(148,163,184,0.22)',
-    color: 'var(--t-text-3)',
-  };
-
-  if (usingPreMatchFallback) {
-    copy = 'Pre-match fallback';
-    styles = {
-      background: 'rgba(245,158,11,0.12)',
-      border: '1px solid rgba(245,158,11,0.26)',
-      color: '#fbbf24',
-    };
-  } else if (hasLiveOdds && status === 'connected') {
-    copy = 'Live odds';
-    styles = {
-      background: 'rgba(0,230,118,0.12)',
-      border: '1px solid rgba(0,230,118,0.28)',
-      color: 'var(--t-accent)',
-    };
-  } else if (hasLiveOdds && (status === 'connecting' || status === 'reconnecting')) {
-    copy = 'Syncing…';
-    styles = {
-      background: 'rgba(245,158,11,0.12)',
-      border: '1px solid rgba(245,158,11,0.26)',
-      color: '#fbbf24',
-    };
-  } else if (status === 'error') {
-    copy = 'Realtime unavailable';
-    styles = {
-      background: 'rgba(239,83,80,0.12)',
-      border: '1px solid rgba(239,83,80,0.24)',
-      color: '#fca5a5',
-    };
-  }
-
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        borderRadius: 20,
-        padding: '3px 8px',
-        fontSize: 10,
-        fontWeight: 600,
-        ...styles,
-      }}
-    >
-      {hasLiveOdds && status === 'connected' && !usingPreMatchFallback && (
-        <span
-          style={{
-            display: 'inline-block',
-            width: 5,
-            height: 5,
-            borderRadius: '50%',
-            background: 'var(--t-accent)',
-            animation: 'live-pulse 1.4s ease-in-out infinite',
-          }}
-        />
-      )}
-      {copy}
-    </div>
-  );
-}
 
 interface Props {
   fixtureId: number;
@@ -109,7 +31,6 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
     liveOddsRealtimeStatus,
     bestOddsMovements,
     oddsTableMovements,
-    headerOddsLabel,
   } = useFixtureOddsData(fixtureIdStr, activeTab === 'odds');
 
   const tabs: { id: PanelTab; label: string }[] = [
@@ -129,7 +50,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
         overflow: 'hidden',
       }}
     >
-      {/* Panel header: close + open full page */}
+      {/* Panel header: match page link + close */}
       <div
         style={{
           display: 'flex',
@@ -248,118 +169,29 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
             {tab.label}
           </button>
         ))}
-        {activeTab === 'odds' && headerOddsLabel ? (
-          <span
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              paddingRight: 8,
-              fontSize: 9,
-              color: 'var(--t-text-5)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: 120,
-            }}
-          >
-            {headerOddsLabel}
-          </span>
-        ) : null}
       </div>
 
       {/* Tab content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {activeTab === 'odds' ? (
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: 12 }}>
             {isLoading ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>
                 Loading odds…
               </div>
-            ) : hasAnyOdds ? (
-              <>
-                {isLive ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <LiveStatusPill
-                      status={liveOddsRealtimeStatus}
-                      hasLiveOdds={hasLiveOdds}
-                      usingPreMatchFallback={usingPreMatchFallback}
-                    />
-                    {usingPreMatchFallback ? (
-                      <div
-                        style={{
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontSize: 10,
-                          background: 'rgba(245,158,11,0.1)',
-                          border: '1px solid rgba(245,158,11,0.24)',
-                          color: '#fbbf24',
-                        }}
-                      >
-                        Live odds not yet available. Showing latest pre-match prices.
-                      </div>
-                    ) : null}
-                    {liveOddsRealtimeStatus === 'connected' && shouldUseLiveBookmakerView ? (
-                      <div
-                        style={{
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          fontSize: 10,
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid var(--t-border)',
-                          color: 'var(--t-text-4)',
-                        }}
-                      >
-                        Live prices flash as the provider updates the market.
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {resolvedBestOdds && detail ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.14em',
-                        color: 'var(--t-text-5)',
-                      }}
-                    >
-                      Best odds
-                    </span>
-                    <BestOddsBar
-                      bestOdds={resolvedBestOdds}
-                      fixtureId={detail.fixture.apiFixtureId}
-                      movements={isLive ? bestOddsMovements : undefined}
-                      variant="compact"
-                    />
-                  </div>
-                ) : null}
-
-                {displayOdds.length > 0 && detail ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.14em',
-                        color: 'var(--t-text-5)',
-                      }}
-                    >
-                      All bookmakers
-                    </span>
-                    <OddsTable
-                      odds={displayOdds}
-                      fixtureId={detail.fixture.apiFixtureId}
-                      movements={isLive ? oddsTableMovements : undefined}
-                      variant="compact"
-                    />
-                  </div>
-                ) : null}
-              </>
+            ) : hasAnyOdds && detail ? (
+              <OddsComparison
+                bestOdds={resolvedBestOdds ?? null}
+                odds={displayOdds}
+                fixtureId={detail.fixture.apiFixtureId}
+                isLive={isLive}
+                liveOddsRealtimeStatus={liveOddsRealtimeStatus}
+                hasLiveOdds={hasLiveOdds}
+                usingPreMatchFallback={usingPreMatchFallback}
+                shouldUseLiveBookmakerView={shouldUseLiveBookmakerView}
+                bestOddsMovements={isLive ? bestOddsMovements : undefined}
+                oddsMovements={isLive ? oddsTableMovements : undefined}
+              />
             ) : (
               <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>
                 No odds available for this fixture.
