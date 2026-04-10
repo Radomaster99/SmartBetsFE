@@ -457,15 +457,15 @@ function FootballPageClient() {
 
           {/* Center: Matches / Standings toggle */}
           <div
-            className="inline-flex items-center rounded-full p-0.5"
+            className="inline-flex items-center rounded-md p-0.5"
             style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
           >
             <a
-              href={buildFootballHref(date, state, activeLeague.apiLeagueId, season, upcomingScope)}
-              className="px-3 py-1 rounded-full text-[11px] font-bold transition-all"
+              href={buildFootballHref(date, state, activeLeague.apiLeagueId, season, 'today')}
+              className="px-2.5 py-1 rounded text-[11px] font-bold transition-all"
               style={{
                 color: 'var(--t-text-1)',
-                background: 'rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.1)',
                 textDecoration: 'none',
               }}
             >
@@ -473,43 +473,12 @@ function FootballPageClient() {
             </a>
             <a
               href={buildStandingsHref(activeLeague.apiLeagueId, season)}
-              className="px-3 py-1 rounded-full text-[11px] font-medium transition-all"
+              className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
               style={{ color: 'var(--t-text-4)', textDecoration: 'none' }}
             >
               Standings
             </a>
           </div>
-
-          {/* Right: scope toggle (upcoming) or × clear */}
-          {state === 'Upcoming' && !isFutureDate ? (
-            <div
-              className="inline-flex items-center rounded-md p-0.5"
-              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
-            >
-              {[
-                { value: 'today' as const, label: 'Today' },
-                { value: 'all' as const, label: 'All upcoming' },
-              ].map((option) => {
-                const active = upcomingScope === option.value;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleUpcomingScopeChange(option.value)}
-                    className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
-                    style={{
-                      color: active ? 'var(--t-text-1)' : 'var(--t-text-4)',
-                      background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
 
           <button
             type="button"
