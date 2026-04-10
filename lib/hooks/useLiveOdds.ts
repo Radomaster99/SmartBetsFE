@@ -22,6 +22,7 @@ import type {
 import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://smartbets-fqzk.onrender.com';
+const LIVE_VIEWER_HEARTBEAT_INTERVAL_MS = 25_000;
 
 export type LiveOddsRealtimeStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 export type LiveOddsMovementDirection = 'up' | 'down';
@@ -210,19 +211,30 @@ async function stopConnectionQuietly(connection: HubConnection | null): Promise<
   }
 }
 
-export function useLiveOdds(fixtureId: string, enabled = true) {
+interface LiveOddsQueryOptions {
+  staleTime?: number;
+  refetchInterval?: number | false;
+  refetchOnWindowFocus?: boolean;
+}
+
+export function useLiveOdds(fixtureId: string, enabled = true, options?: LiveOddsQueryOptions) {
   return useQuery({
     queryKey: ['live-odds', fixtureId],
     queryFn: () => fetchLiveOdds(fixtureId),
-    staleTime: 0,
-    refetchInterval: enabled ? 30_000 : false,
+    staleTime: options?.staleTime ?? 15_000,
+    refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     enabled: enabled && !!fixtureId,
   });
 }
 
 type VisibleLiveFixtureSeed = Pick<FixtureDto, 'apiFixtureId' | 'homeTeamName' | 'awayTeamName'>;
 
-export function useVisibleLiveOddsByFixture(fixtures: VisibleLiveFixtureSeed[], enabled = true) {
+export function useVisibleLiveOddsByFixture(
+  fixtures: VisibleLiveFixtureSeed[],
+  enabled = true,
+  options?: LiveOddsQueryOptions,
+) {
   const stableFixtures = Array.from(
     new Map(
       fixtures
@@ -238,9 +250,9 @@ export function useVisibleLiveOddsByFixture(fixtures: VisibleLiveFixtureSeed[], 
   return useQuery({
     queryKey: ['visible-live-odds', fixtureIdsKey],
     enabled: enabled && stableFixtures.length > 0,
-    staleTime: 10_000,
-    refetchInterval: enabled ? 30_000 : false,
-    refetchOnWindowFocus: false,
+    staleTime: options?.staleTime ?? 30_000,
+    refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const results = await Promise.all(
@@ -307,7 +319,7 @@ export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
     void sendHeartbeat();
     const interval = window.setInterval(() => {
       void sendHeartbeat();
-    }, 25_000);
+    }, LIVE_VIEWER_HEARTBEAT_INTERVAL_MS);
 
     return () => {
       cancelled = true;
