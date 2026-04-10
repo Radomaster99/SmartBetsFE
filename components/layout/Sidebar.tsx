@@ -19,31 +19,63 @@ export function Sidebar() {
       }}
     >
         {!isAdmin ? (
-          <div className="flex-shrink-0 pt-1">
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              padding: '8px 8px 4px',
+              flexShrink: 0,
+            }}
+          >
             <Link
               href="/football"
-              className={`sidebar-hover-item mx-2 mt-1 flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${isFootball ? 'chrome-btn-active' : ''}`}
-              data-active={isFootball ? 'true' : 'false'}
               style={{
-                color: isFootball ? 'var(--t-text-1)' : 'var(--t-text-3)',
-                background: isFootball ? undefined : 'transparent',
-                borderLeft: 'none',
+                flex: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: '6px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
                 textDecoration: 'none',
-                ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.07)',
-                ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.12)',
+                ...(isFootball
+                  ? {
+                      background: 'rgba(0,230,118,0.12)',
+                      border: '1px solid rgba(0,230,118,0.3)',
+                      color: 'var(--t-accent)',
+                    }
+                  : {
+                      background: 'var(--t-surface-2)',
+                      border: '1px solid var(--t-border)',
+                      color: 'var(--t-text-4)',
+                    }),
               }}
             >
-              <span
-                className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold leading-none"
-                style={{
-                  background: isFootball ? 'rgba(0,230,118,0.12)' : 'var(--t-surface-2)',
-                  color: isFootball ? 'var(--t-accent)' : 'var(--t-text-4)',
-                }}
-              >
-                F
-              </span>
-              <span>Football</span>
+              ⚽ Football
             </Link>
+            <span
+              title="Coming soon"
+              style={{
+                flex: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: '6px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                background: 'var(--t-surface-2)',
+                border: '1px solid var(--t-border)',
+                color: 'var(--t-text-5)',
+                cursor: 'default',
+                opacity: 0.6,
+              }}
+            >
+              🎾 Tennis
+            </span>
           </div>
         ) : null}
 
