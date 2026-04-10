@@ -117,7 +117,6 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const normalizedSearch = search.trim().toLowerCase();
-  const [popularExpanded, setPopularExpanded] = useState(true);
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
@@ -301,142 +300,113 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       ? buildStandingsHref(league.apiLeagueId, league.season)
       : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
-  const popularSection = (
-    <div className="flex-shrink-0 px-1 pt-1">
-      <div className="panel-shell overflow-hidden rounded-lg">
-        <button
-          type="button"
-          onClick={() => setPopularExpanded((current) => !current)}
-          className="sidebar-hover-item flex w-full items-center justify-between px-2.5 py-2.5 text-left"
-          data-active={popularExpanded ? 'true' : 'false'}
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            borderBottom: popularExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
-            cursor: 'pointer',
-            ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
-            ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.08)',
-          }}
-        >
-          <span className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{
-                background: 'var(--t-accent)',
-                boxShadow: '0 0 10px rgba(0, 230, 118, 0.55)',
-                transform: 'rotate(45deg)',
-              }}
-            />
-            <span className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: 'var(--t-text-2)' }}>
-              Popular leagues
-            </span>
-          </span>
-          <span
-            className="text-[10px]"
-            style={{
-              color: 'var(--t-text-4)',
-              transform: popularExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.15s ease',
-            }}
-          >
-            {'>'}
-          </span>
-        </button>
-
-        {popularExpanded ? (
-          <div className="px-1 pb-1">
-            {popularLeagues.length ? (
-              popularLeagues.map((item) => {
-                const href = isStandingsPage
-                  ? buildStandingsHref(item.leagueId, item.targetSeason)
-                  : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
-                const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
-
-                return (
-                  <div
-                    key={`popular-${item.leagueId}-${item.targetSeason}`}
-                    className="sidebar-hover-panel mt-1 flex items-center gap-1 rounded pr-1"
-                    style={{
-                      background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
-                      borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
-                    }}
-                  >
-                    <Link
-                      href={href}
-                      onNavigate={onNavigate}
-                      className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px] transition-colors"
-                      data-active={isActive ? 'true' : 'false'}
-                      style={{
-                        color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
-                        textDecoration: 'none',
-                        ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
-                        ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      <span className="block truncate">{item.displayName}</span>
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      {item.league ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (item.league) {
-                              togglePopularLeague(item.league);
-                            }
-                          }}
-                          className="chrome-btn rounded px-1.5 py-1 text-[10px]"
-                          style={{
-                            color: 'var(--t-text-3)',
-                            cursor: 'pointer',
-                          }}
-                          aria-label={`Remove ${item.displayName} from popular leagues`}
-                        >
-                          -
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="px-2 py-2 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-                No popular leagues yet.
-              </div>
-            )}
-          </div>
-        ) : null}
+  const pinnedSection = (
+    <div style={{ flexShrink: 0, padding: '8px 4px 4px', borderBottom: '1px solid var(--t-border)' }}>
+      <div
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.14em',
+          color: 'var(--t-text-5)',
+          padding: '0 8px 4px',
+        }}
+      >
+        Pinned
       </div>
+      {popularLeagues.length ? (
+        popularLeagues.map((item) => {
+          const href = isStandingsPage
+            ? buildStandingsHref(item.leagueId, item.targetSeason)
+            : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
+          const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
+
+          return (
+            <div
+              key={`pinned-${item.leagueId}-${item.targetSeason}`}
+              className="sidebar-hover-panel mx-1 mt-0.5 flex items-center gap-1 rounded pr-1"
+              style={{
+                background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
+                borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
+              }}
+            >
+              <Link
+                href={href}
+                onNavigate={onNavigate}
+                className="sidebar-hover-item min-w-0 flex-1 rounded px-2 py-1.5 text-[12px] transition-colors"
+                data-active={isActive ? 'true' : 'false'}
+                style={{
+                  color: isActive ? 'var(--t-text-1)' : 'var(--t-text-3)',
+                  textDecoration: 'none',
+                  ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
+                  ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <span className="block truncate">{item.displayName}</span>
+              </Link>
+              {item.league ? (
+                <button
+                  type="button"
+                  onClick={() => { if (item.league) togglePopularLeague(item.league); }}
+                  className="chrome-btn rounded px-1.5 py-1 text-[10px]"
+                  style={{ color: 'var(--t-text-3)', cursor: 'pointer' }}
+                  aria-label={`Remove ${item.displayName} from pinned leagues`}
+                >
+                  −
+                </button>
+              ) : null}
+            </div>
+          );
+        })
+      ) : (
+        <div style={{ padding: '4px 8px 4px', fontSize: 11, color: 'var(--t-text-5)' }}>
+          No pinned leagues. Use + to pin any league below.
+        </div>
+      )}
     </div>
   );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {popularSection}
-
-      <div className="mt-1 flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
+      {/* Zone 2: Matches / Standings view toggle */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          gap: 2,
+          padding: '4px 8px 6px',
+          borderBottom: '1px solid var(--t-border)',
+        }}
+      >
         {[
-          { label: 'Matches', href: matchesHref, active: pathname === '/football' },
-          { label: 'Standings', href: standingsHref, active: pathname.startsWith('/football/standings') },
+          { label: 'Matches', href: matchesHref, active: !isStandingsPage },
+          { label: 'Standings', href: standingsHref, active: isStandingsPage },
         ].map((item) => (
           <Link
             key={item.label}
             href={item.href}
             onNavigate={onNavigate}
-            className="sidebar-hover-item flex items-center rounded px-2 py-2 text-[12px] transition-colors"
-            data-active={item.active ? 'true' : 'false'}
             style={{
-              color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
-              background: item.active ? 'rgba(255,255,255,0.06)' : 'transparent',
+              flex: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '5px 8px',
+              borderRadius: 5,
+              fontSize: 12,
+              fontWeight: item.active ? 700 : 500,
               textDecoration: 'none',
-              marginTop: item.label === 'Standings' ? '4px' : undefined,
-              ['--sidebar-hover-bg' as string]: 'rgba(255,255,255,0.06)',
-              ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
+              background: item.active ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
             }}
           >
             {item.label}
           </Link>
         ))}
       </div>
+
+      {/* Zone 3: Pinned leagues */}
+      {pinnedSection}
 
       <div className="flex-shrink-0 px-2 py-2" style={{ borderTop: '1px solid var(--t-border)' }}>
         <Link
