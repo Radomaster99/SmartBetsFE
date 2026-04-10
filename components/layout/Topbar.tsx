@@ -3,28 +3,10 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
-import { useTheme } from '@/lib/contexts/ThemeContext';
 import { useLiveFixtureCount } from '@/lib/hooks/useLiveFixtureCount';
 
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 export function Topbar() {
-  const { theme, toggle } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const liveCount = useLiveFixtureCount();
@@ -42,7 +24,7 @@ export function Topbar() {
       }}
     >
       {/* Logo — icon + SmartBets (no Football sub-label) */}
-      <div className="flex min-w-0 flex-shrink-0 items-center md:w-56 md:min-w-56">
+      <div className="flex min-w-0 flex-shrink-0 items-center" style={{ width: 280, minWidth: 280 }}>
         <Link href="/football" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
           <div
             className="flex h-8 w-8 items-center justify-center rounded-full"
@@ -115,16 +97,6 @@ export function Topbar() {
           Admin
         </Link>
 
-        {/* Theme toggle */}
-        <button
-          type="button"
-          onClick={toggle}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="icon-btn"
-          style={{ cursor: 'pointer' }}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
       </div>
     </header>
   );

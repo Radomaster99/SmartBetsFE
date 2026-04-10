@@ -8,6 +8,7 @@ import { MobileBottomNav, type MobileOverlay } from '@/components/layout/MobileB
 import { MobileSavedScreen } from '@/components/layout/MobileSavedScreen';
 import { MobileSearchOverlay } from '@/components/layout/MobileSearchOverlay';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { SportSwitcherPanel } from '@/components/layout/SportSwitcherPanel';
 import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
@@ -39,7 +40,6 @@ function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const DESKTOP_SHELL_GUTTER_PX = 280;
   const [mobileOverlay, setMobileOverlay] = useState<MobileOverlay>('none');
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
@@ -137,7 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const shellGutter = isMobileViewport ? '5px' : `${DESKTOP_SHELL_GUTTER_PX}px`;
+  const shellGutter = isMobileViewport ? '5px' : `${DESKTOP_SIDE_AD_WIDTH_PX}px`;
 
   function renderSideAd(slot: SideAdSlotConfig | null, side: 'left' | 'right') {
     if (isMobileViewport || !slot?.imageSrc) {
@@ -187,6 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <Topbar />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+          <SportSwitcherPanel />
           <Sidebar />
           <main style={{ flex: 1, overflowY: 'auto' }}>{children}</main>
         </div>
