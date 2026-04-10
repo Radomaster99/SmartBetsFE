@@ -147,19 +147,18 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 5,
               fontSize: 11,
-              fontWeight: 600,
-              color: 'var(--t-text-4)',
+              fontWeight: 700,
+              color: 'var(--t-accent)',
               textDecoration: 'none',
-              padding: '3px 6px',
-              borderRadius: 5,
-              border: '1px solid var(--t-border)',
-              background: 'var(--t-surface-2)',
+              padding: '5px 10px',
+              borderRadius: 6,
+              border: '1px solid rgba(0,230,118,0.28)',
+              background: 'rgba(0,230,118,0.1)',
             }}
           >
-            Open full page
-            <span style={{ fontSize: 10 }}>↗</span>
+            Match page ⤢
           </a>
         ) : (
           <div />
