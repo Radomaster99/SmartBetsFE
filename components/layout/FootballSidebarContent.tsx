@@ -119,7 +119,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const normalizedSearch = search.trim().toLowerCase();
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
-  const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
+  const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [userPopularLeaguePresets, setUserPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [hiddenPopularLeagueKeys, setHiddenPopularLeagueKeys] = useState<string[]>([]);
 
@@ -314,7 +314,22 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       >
         Pinned
       </div>
-      {popularLeagues.length ? (
+      {!popularStorageHydrated ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '2px 4px 2px' }}>
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: 26,
+                borderRadius: 6,
+                background: 'var(--t-surface-3)',
+                animation: 'skeleton-pulse 1.4s ease-in-out infinite',
+                animationDelay: `${i * 0.15}s`,
+              }}
+            />
+          ))}
+        </div>
+      ) : popularLeagues.length ? (
         popularLeagues.map((item) => {
           const href = isStandingsPage
             ? buildStandingsHref(item.leagueId, item.targetSeason)

@@ -377,6 +377,11 @@ html[data-theme="light"] .fixture-table tbody tr:hover td:first-child {
   100% { left: 105%; width: 40%; }
 }
 
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 /* Pulsing dot for live-connected status pills */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }

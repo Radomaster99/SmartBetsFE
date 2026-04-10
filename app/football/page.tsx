@@ -448,18 +448,16 @@ function FootballPageClient() {
         <PromoStrip />
       </div>
 
-      {view === 'matches' ? (
-        <FixtureFilters
-          state={state}
-          onStateChange={handleStateChange}
-          date={date}
-          onDateChange={handleDateChange}
-          showLiveFilter={isToday}
-          showFinishedFilter={!isFutureDate}
-          futureOnlyUpcoming={isFutureDate}
-          pastOnlyFinished={isPastDate}
-        />
-      ) : null}
+      <FixtureFilters
+        state={state}
+        onStateChange={handleStateChange}
+        date={date}
+        onDateChange={handleDateChange}
+        showLiveFilter={isToday}
+        showFinishedFilter={!isFutureDate}
+        futureOnlyUpcoming={isFutureDate}
+        pastOnlyFinished={isPastDate}
+      />
 
       {activeLeague ? (
         <div
@@ -534,10 +532,10 @@ function FootballPageClient() {
             onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, DEFAULT_SEASON, 'today'))}
             className="rounded px-2.5 py-1 text-[11px] font-medium"
             style={{
-              color: 'var(--t-text-3)',
+              color: 'var(--t-accent)',
               cursor: 'pointer',
-              background: 'var(--t-surface-2)',
-              border: '1px solid var(--t-border-2)',
+              background: 'rgba(0,230,118,0.1)',
+              border: '1px solid rgba(0,230,118,0.28)',
               flexShrink: 0,
             }}
           >
