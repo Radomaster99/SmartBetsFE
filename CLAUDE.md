@@ -253,31 +253,33 @@ Common variables referenced by the frontend:
 ## Implementation decisions — read before touching these areas
 
 ### Odds logic is centralised in one hook
+
 `lib/hooks/useFixtureOddsData.ts` is the single source of truth for all odds logic. Both the desktop side panel (`components/fixtures/FixtureDetailPanel.tsx`) and the mobile full page (`app/football/fixtures/[fixtureId]/page.tsx`) use it. Do not duplicate odds logic anywhere else. It handles:
+
 - `useLiveOdds` + `useLiveOddsSignalR` (Bet365 live odds, only when `stateBucket === 'Live'`)
 - Pre-match fallback when live odds are not yet available
 - `resolvedBestOdds`, `displayOdds`, movement tracking with auto-clear timeouts
 - Freshness label (`headerOddsLabel`)
 
 ### Desktop vs mobile fixture detail
+
 - **Desktop**: clicking a fixture row opens `FixtureDetailPanel` (380px side panel). Has an "Open full page ↗" link for URL sharing.
 - **Mobile**: clicking a fixture navigates to `/football/fixtures/[id]` (full page).
 - Both use `useFixtureOddsData` — they are guaranteed to show the same logic.
 
 ### useFixtureWatchlist — do not reorder the effects
+
 `lib/hooks/useFixtureWatchlist.ts` has two `useEffect` calls. The **persist effect must be declared first**, the **sync effect second**. React runs effects in declaration order. Reversing them causes a race condition where the persist effect writes `[]` to localStorage on mount before the sync effect has loaded the real data, wiping all saved matches.
 
 ### MobileSavedScreen receives entries as a prop
+
 `components/layout/MobileSavedScreen.tsx` does NOT call `useFixtureWatchlist()` internally. It receives `entries: WatchlistFixtureEntry[]` as a prop from `AppShell`. This is intentional — a third hook instance caused a race condition that wiped localStorage. Do not add the hook back.
 
 ### CSS theme variables — known gotchas
+
 - `--t-bg` does **not** exist. Use `--t-page-bg` or `--t-topbar-bg`.
 - Dark mode values are semi-transparent (`rgba`). Full-screen overlays need an opaque fallback: `background: var(--t-page-bg, #07101a)`.
 - `--t-accent` is `#00e676` (green).
 
 ### React 19 border shorthand warning
-<<<<<<< HEAD
 Do not mix `border` shorthand with `borderBottom` (or any specific side) on the same element — React 19 warns and it causes styling bugs on re-render. Use explicit sides: `borderTop`, `borderRight`, `borderLeft`, `borderBottom`.
-=======
-Do not mix `border` shorthand with `borderBottom` (or any specific side) on the same element — React 19 warns and it causes styling bugs on re-render. Use explicit sides: `borderTop`, `borderRight`, `borderLeft`, `borderBottom`.
->>>>>>> ac69a65fa95139fb3be72a9f3c0b1326e28ca2a2
