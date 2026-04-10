@@ -88,6 +88,13 @@ function buildFootballHref(
   return query ? `/football?${query}` : '/football';
 }
 
+function buildStandingsHref(leagueId: number, season: number): string {
+  const params = new URLSearchParams();
+  params.set('leagueId', String(leagueId));
+  if (season !== DEFAULT_SEASON) params.set('season', String(season));
+  return `/football/standings?${params.toString()}`;
+}
+
 function formatUpcomingScopeLabel(scope: UpcomingScope): string {
   return scope === 'all' ? 'All upcoming fixtures' : 'Today upcoming fixtures';
 }
@@ -437,23 +444,47 @@ function FootballPageClient() {
 
       {activeLeague ? (
         <div
-          className="flex items-center justify-between gap-3 px-4 py-2 text-[12px]"
+          className="flex items-center gap-3 px-4 py-2 text-[12px]"
           style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
         >
-          <div className="min-w-0">
+          {/* Left: league name + season */}
+          <div className="min-w-0 flex-1">
             <span className="font-semibold" style={{ color: 'var(--t-text-2)' }}>
-              {activeLeague.name} {season}
+              {activeLeague.name}
             </span>
-            {state === 'Upcoming' && !isFutureDate ? (
-              <span style={{ color: 'var(--t-text-5)' }}>
-                {' '} - {formatUpcomingScopeLabel(upcomingScope)}
-              </span>
-            ) : null}
+            <span style={{ color: 'var(--t-text-4)', marginLeft: 4 }}>{season}</span>
           </div>
+
+          {/* Center: Matches / Standings toggle */}
+          <div
+            className="inline-flex items-center rounded-full p-0.5"
+            style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
+          >
+            <a
+              href={buildFootballHref(date, state, activeLeague.apiLeagueId, season, upcomingScope)}
+              className="px-3 py-1 rounded-full text-[11px] font-bold transition-all"
+              style={{
+                color: 'var(--t-text-1)',
+                background: 'rgba(255,255,255,0.08)',
+                textDecoration: 'none',
+              }}
+            >
+              Matches
+            </a>
+            <a
+              href={buildStandingsHref(activeLeague.apiLeagueId, season)}
+              className="px-3 py-1 rounded-full text-[11px] font-medium transition-all"
+              style={{ color: 'var(--t-text-4)', textDecoration: 'none' }}
+            >
+              Standings
+            </a>
+          </div>
+
+          {/* Right: scope toggle (upcoming) or × clear */}
           {state === 'Upcoming' && !isFutureDate ? (
             <div
               className="inline-flex items-center rounded-md p-0.5"
-              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)' }}
+              style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
             >
               {[
                 { value: 'today' as const, label: 'Today' },
@@ -478,21 +509,22 @@ function FootballPageClient() {
                 );
               })}
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, season, 'today'))}
-              className="rounded px-2.5 py-1 text-[11px] font-medium"
-              style={{
-                background: 'var(--t-surface-2)',
-                border: '1px solid var(--t-border-2)',
-                color: 'var(--t-text-3)',
-                cursor: 'pointer',
-              }}
-            >
-              Clear filter
-            </button>
-          )}
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, DEFAULT_SEASON, 'today'))}
+            className="rounded px-2 py-1 text-[11px] font-medium"
+            style={{
+              color: 'var(--t-text-4)',
+              cursor: 'pointer',
+              background: 'none',
+              border: 'none',
+              flexShrink: 0,
+            }}
+          >
+            × clear
+          </button>
         </div>
       ) : null}
 
