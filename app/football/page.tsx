@@ -10,7 +10,10 @@ import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import type { FixtureDto, LiveOddsSummaryDto, StateBucket } from '@/lib/types/api';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { useStandings } from '@/lib/hooks/useStandings';
+import { StandingsTable } from '@/components/standings/StandingsTable';
+import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -88,11 +91,9 @@ function buildFootballHref(
   return query ? `/football?${query}` : '/football';
 }
 
-function buildStandingsHref(leagueId: number, season: number): string {
-  const params = new URLSearchParams();
-  params.set('leagueId', String(leagueId));
-  if (season !== DEFAULT_SEASON) params.set('season', String(season));
-  return `/football/standings?${params.toString()}`;
+function buildTeamHref(apiTeamId: number, leagueId: number, season: number): string {
+  const params = new URLSearchParams({ leagueId: String(leagueId), season: String(season) });
+  return `/football/teams/${apiTeamId}?${params.toString()}`;
 }
 
 function formatUpcomingScopeLabel(scope: UpcomingScope): string {
@@ -256,6 +257,22 @@ function FootballPageClient() {
   const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
   const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
+  const view = searchParams.get('view') === 'standings' ? 'standings' : 'matches';
+
+  // View toggle hrefs — preserve all current params, just swap view
+  const matchesViewHref = (() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.delete('view');
+    const q = p.toString();
+    return q ? `/football?${q}` : '/football';
+  })();
+  const standingsViewHref = (() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('view', 'standings');
+    return `/football?${p.toString()}`;
+  })();
+
+  const { data: standings, isLoading: standingsLoading, isError: standingsError } = useStandings(leagueId, season);
 
   useEffect(() => {
     if (shouldCanonicalize && canonicalHref !== currentHref) {
@@ -431,16 +448,18 @@ function FootballPageClient() {
         <PromoStrip />
       </div>
 
-      <FixtureFilters
-        state={state}
-        onStateChange={handleStateChange}
-        date={date}
-        onDateChange={handleDateChange}
-        showLiveFilter={isToday}
-        showFinishedFilter={!isFutureDate}
-        futureOnlyUpcoming={isFutureDate}
-        pastOnlyFinished={isPastDate}
-      />
+      {view === 'matches' ? (
+        <FixtureFilters
+          state={state}
+          onStateChange={handleStateChange}
+          date={date}
+          onDateChange={handleDateChange}
+          showLiveFilter={isToday}
+          showFinishedFilter={!isFutureDate}
+          futureOnlyUpcoming={isFutureDate}
+          pastOnlyFinished={isPastDate}
+        />
+      ) : null}
 
       {activeLeague ? (
         <div
@@ -460,24 +479,24 @@ function FootballPageClient() {
             className="inline-flex items-center rounded-md p-0.5"
             style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', flexShrink: 0 }}
           >
-            <a
-              href={buildFootballHref(date, state, activeLeague.apiLeagueId, season, 'today')}
-              className="px-2.5 py-1 rounded text-[11px] font-bold transition-all"
-              style={{
-                color: 'var(--t-text-1)',
-                background: 'rgba(255,255,255,0.1)',
-                textDecoration: 'none',
-              }}
-            >
-              Matches
-            </a>
-            <a
-              href={buildStandingsHref(activeLeague.apiLeagueId, season)}
-              className="px-2.5 py-1 rounded text-[11px] font-medium transition-all"
-              style={{ color: 'var(--t-text-4)', textDecoration: 'none' }}
-            >
-              Standings
-            </a>
+            {([
+              { label: 'Matches', href: matchesViewHref, active: view === 'matches' },
+              { label: 'Standings', href: standingsViewHref, active: view === 'standings' },
+            ] as const).map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                className="px-2.5 py-1 rounded text-[11px] transition-all"
+                style={{
+                  fontWeight: item.active ? 700 : 500,
+                  color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
+                  background: item.active ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  textDecoration: 'none',
+                }}
+              >
+                {item.label}
+              </a>
+            ))}
           </div>
 
           {/* All upcoming scope toggle — only when state=Upcoming */}
@@ -527,55 +546,78 @@ function FootballPageClient() {
         </div>
       ) : null}
 
-      {state === 'Live' ? (
-        <div className="flex items-center gap-3 px-4 py-2 text-[12px]" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
-          <LiveListStatusPill
-            status={liveOddsListRealtime.status}
-            count={liveFixtureIds.length}
-            providerCount={liveProviderCount}
-            fallbackCount={liveFallbackCount}
-          />
-          <div className="flex flex-wrap items-center gap-1.5">
-            <FeedLegendPill label="live prices" count={liveProviderCount} tone="provider" />
-            <FeedLegendPill label="pre-match" count={liveFallbackCount} tone="fallback" />
-          </div>
-          <span style={{ color: 'var(--t-text-5)' }}>
-            Live-price rows can flash and move in real time. Pre-match rows stay on the latest snapshot until provider markets appear.
-          </span>
-        </div>
-      ) : null}
-
-      {isError ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-red-400 mb-3">Failed to load fixtures.</p>
-          <button
-            onClick={() => refetch()}
-            className="px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded text-sm hover:bg-accent/30"
-          >
-            Retry
-          </button>
+      {view === 'standings' ? (
+        <div className="flex-1 overflow-auto p-4">
+          {standingsLoading ? (
+            <LoadingSpinner />
+          ) : standingsError ? (
+            <EmptyState title="Failed to load standings" description="Try again or choose another league." />
+          ) : !standings?.length ? (
+            <EmptyState title="No standings available" description="There is no standings data for this league yet." />
+          ) : (
+            <StandingsTable
+              standings={standings}
+              resolveTeamHref={(standing: StandingDto) =>
+                leagueId && standing.apiTeamId
+                  ? buildTeamHref(standing.apiTeamId, leagueId, season)
+                  : null
+              }
+            />
+          )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-            <FixtureTable
-              fixtures={fixtures}
-              isLoading={isLoading}
-              isFetching={isFetching}
-              oddsMovements={liveOddsListRealtime.movements}
-              savedFixtureIds={fixtureIdSet}
-              onToggleSave={toggleFixture}
-              selectedFixtureId={selectedFixtureId ?? undefined}
-              onRowClick={handleRowClick}
-            />
-          </div>
-          {selectedFixtureId != null ? (
-            <FixtureDetailPanel
-              fixtureId={selectedFixtureId}
-              onClose={() => setSelectedFixtureId(null)}
-            />
+        <>
+          {state === 'Live' ? (
+            <div className="flex items-center gap-3 px-4 py-2 text-[12px]" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
+              <LiveListStatusPill
+                status={liveOddsListRealtime.status}
+                count={liveFixtureIds.length}
+                providerCount={liveProviderCount}
+                fallbackCount={liveFallbackCount}
+              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <FeedLegendPill label="live prices" count={liveProviderCount} tone="provider" />
+                <FeedLegendPill label="pre-match" count={liveFallbackCount} tone="fallback" />
+              </div>
+              <span style={{ color: 'var(--t-text-5)' }}>
+                Live-price rows can flash and move in real time. Pre-match rows stay on the latest snapshot until provider markets appear.
+              </span>
+            </div>
           ) : null}
-        </div>
+
+          {isError ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <p className="text-red-400 mb-3">Failed to load fixtures.</p>
+              <button
+                onClick={() => refetch()}
+                className="px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded text-sm hover:bg-accent/30"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                <FixtureTable
+                  fixtures={fixtures}
+                  isLoading={isLoading}
+                  isFetching={isFetching}
+                  oddsMovements={liveOddsListRealtime.movements}
+                  savedFixtureIds={fixtureIdSet}
+                  onToggleSave={toggleFixture}
+                  selectedFixtureId={selectedFixtureId ?? undefined}
+                  onRowClick={handleRowClick}
+                />
+              </div>
+              {selectedFixtureId != null ? (
+                <FixtureDetailPanel
+                  fixtureId={selectedFixtureId}
+                  onClose={() => setSelectedFixtureId(null)}
+                />
+              ) : null}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
