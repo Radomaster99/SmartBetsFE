@@ -12,9 +12,11 @@ import {
 import type {
   FixtureDto,
   LiveOddsMarketDto,
+  LiveOddsViewersHeartbeatDto,
   LiveOddsSummaryDto,
   LiveOddsSummaryUpdatedDto,
   LiveOddsUpdatedDto,
+  OddDto,
   PagedResultDto,
 } from '@/lib/types/api';
 import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
@@ -84,6 +86,24 @@ async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
   return res.json();
 }
 
+async function postLiveViewersHeartbeat(fixtureIds: number[]): Promise<LiveOddsViewersHeartbeatDto | null> {
+  const res = await fetch('/api/odds/live/viewers/heartbeat', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fixtureIds }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to send live viewers heartbeat');
+  }
+
+  return res.json();
+}
+
 function mapSummaryPayload(payload: LiveOddsSummaryUpdatedDto): LiveOddsSummaryDto {
   return {
     source: payload.source,
@@ -97,8 +117,11 @@ function mapSummaryPayload(payload: LiveOddsSummaryUpdatedDto): LiveOddsSummaryD
   };
 }
 
-function mapMarketsToSummary(markets: LiveOddsMarketDto[]): LiveOddsSummaryDto | null {
-  const odds = mapLiveOddsToMainMatchOdds(markets);
+export function mapMarketsToSummary(
+  markets: LiveOddsMarketDto[],
+  options?: { homeTeamName?: string | null; awayTeamName?: string | null },
+): LiveOddsSummaryDto | null {
+  const odds = mapLiveOddsToMainMatchOdds(markets, options);
   const bestOdds = deriveBestOddsFromOdds(odds);
 
   if (!bestOdds) {
@@ -156,6 +179,20 @@ function findFixtureSummaryInCache(
   return null;
 }
 
+function findFixtureInCache(
+  fixtureId: number,
+  cachedQueries: Array<[unknown, PagedResultDto<FixtureDto> | undefined]>,
+): FixtureDto | null {
+  for (const [, cachedResult] of cachedQueries) {
+    const fixture = cachedResult?.items.find((item) => item.apiFixtureId === fixtureId);
+    if (fixture) {
+      return fixture;
+    }
+  }
+
+  return null;
+}
+
 function isConnectedState(connection: HubConnection): boolean {
   return connection.state === HubConnectionState.Connected || connection.state === HubConnectionState.Connecting;
 }
@@ -181,6 +218,102 @@ export function useLiveOdds(fixtureId: string, enabled = true) {
     refetchInterval: enabled ? 30_000 : false,
     enabled: enabled && !!fixtureId,
   });
+}
+
+type VisibleLiveFixtureSeed = Pick<FixtureDto, 'apiFixtureId' | 'homeTeamName' | 'awayTeamName'>;
+
+export function useVisibleLiveOddsByFixture(fixtures: VisibleLiveFixtureSeed[], enabled = true) {
+  const stableFixtures = Array.from(
+    new Map(
+      fixtures
+        .filter((fixture) => Number.isFinite(fixture.apiFixtureId) && fixture.apiFixtureId > 0)
+        .map((fixture) => [fixture.apiFixtureId, fixture]),
+    ).values(),
+  ).sort((left, right) => left.apiFixtureId - right.apiFixtureId);
+
+  const fixtureIdsKey = stableFixtures
+    .map((fixture) => `${fixture.apiFixtureId}:${fixture.homeTeamName}:${fixture.awayTeamName}`)
+    .join('|');
+
+  return useQuery({
+    queryKey: ['visible-live-odds', fixtureIdsKey],
+    enabled: enabled && stableFixtures.length > 0,
+    staleTime: 10_000,
+    refetchInterval: enabled ? 30_000 : false,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      const results = await Promise.all(
+        stableFixtures.map(async (fixture) => {
+          try {
+            const markets = await fetchLiveOdds(String(fixture.apiFixtureId));
+            const odds = mapLiveOddsToMainMatchOdds(markets, {
+              homeTeamName: fixture.homeTeamName,
+              awayTeamName: fixture.awayTeamName,
+            });
+            return [fixture.apiFixtureId, odds] as const;
+          } catch (error) {
+            console.error(
+              `[useVisibleLiveOddsByFixture] Failed to fetch live odds for fixture ${fixture.apiFixtureId}:`,
+              error,
+            );
+            return [fixture.apiFixtureId, [] as OddDto[]] as const;
+          }
+        }),
+      );
+
+      return Object.fromEntries(results) as Record<number, OddDto[]>;
+    },
+  });
+}
+
+export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
+  const stableFixtureIds = Array.from(
+    new Set(fixtureIds.filter((fixtureId) => Number.isFinite(fixtureId) && fixtureId > 0)),
+  ).sort((left, right) => left - right);
+  const fixtureIdsKey = stableFixtureIds.join(',');
+  const [isPageVisible, setIsPageVisible] = useState(() =>
+    typeof document === 'undefined' ? true : !document.hidden,
+  );
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || !isPageVisible || stableFixtureIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const sendHeartbeat = async () => {
+      try {
+        await postLiveViewersHeartbeat(stableFixtureIds);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('[useLiveViewersHeartbeat] Failed to send heartbeat:', error);
+        }
+      }
+    };
+
+    void sendHeartbeat();
+    const interval = window.setInterval(() => {
+      void sendHeartbeat();
+    }, 25_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [enabled, fixtureIdsKey, isPageVisible]);
 }
 
 function applyFixtureSummaryUpdate(
@@ -505,7 +638,12 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
             return;
           }
 
-          const nextSummary = mapMarketsToSummary(payload.markets ?? []);
+          const cachedQueries = queryClient.getQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] });
+          const fixture = findFixtureInCache(Number(payload.apiFixtureId), cachedQueries);
+          const nextSummary = mapMarketsToSummary(payload.markets ?? [], {
+            homeTeamName: fixture?.homeTeamName,
+            awayTeamName: fixture?.awayTeamName,
+          });
           if (!nextSummary) {
             return;
           }

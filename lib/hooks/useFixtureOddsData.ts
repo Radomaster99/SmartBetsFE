@@ -6,10 +6,11 @@ import { useOdds } from '@/lib/hooks/useOdds';
 import {
   useLiveOdds,
   useLiveOddsSignalR,
+  useLiveViewersHeartbeat,
   type LiveOddsMovementDirection,
   type LiveOddsRealtimeStatus,
 } from '@/lib/hooks/useLiveOdds';
-import { deriveBestOddsFromOdds, mapLiveOddsToOdds } from '@/lib/live-odds';
+import { deriveBestOddsFromOdds, getOddIdentityKey, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
 import type { BestOddsDto, LiveOddsSummaryDto, OddDto } from '@/lib/types/api';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ export interface FixtureOddsData {
   hasLiveOdds: boolean;
   hasPerMarketLiveOdds: boolean;
   shouldUseLiveBookmakerView: boolean;
+  isLiveBookmakerRowsPending: boolean;
   liveOddsRealtimeStatus: LiveOddsRealtimeStatus;
   bestOddsMovements: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   oddsTableMovements: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
@@ -98,12 +100,22 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
 
   const isLive = detail?.fixture.stateBucket === 'Live';
   const liveOddsEnabled = Boolean(isLive);
+  const liveFixtureId = Number(fixtureId);
+  const heartbeatFixtureIds =
+    liveOddsEnabled && Number.isFinite(liveFixtureId) && liveFixtureId > 0 ? [liveFixtureId] : [];
   const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
   const liveOddsRealtimeStatus = useLiveOddsSignalR(fixtureId, liveOddsEnabled);
+  useLiveViewersHeartbeat(heartbeatFixtureIds, liveOddsEnabled);
 
   const mappedLiveOdds = useMemo(
-    () => (isLive ? mapLiveOddsToOdds(liveOddsQuery.data ?? []) : []),
-    [isLive, liveOddsQuery.data],
+    () =>
+      isLive
+        ? mapLiveOddsToMainMatchOdds(liveOddsQuery.data ?? [], {
+            homeTeamName: detail?.fixture.homeTeamName,
+            awayTeamName: detail?.fixture.awayTeamName,
+          })
+        : [],
+    [detail?.fixture.awayTeamName, detail?.fixture.homeTeamName, isLive, liveOddsQuery.data],
   );
   const derivedLiveBestOdds = useMemo(
     () => (isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null),
@@ -115,18 +127,31 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
     return summaryToBestOdds(s, { id: detail.fixture.id, apiFixtureId: detail.fixture.apiFixtureId });
   }, [detail, isLive]);
 
-  const hasLiveOdds = mappedLiveOdds.length > 0 || Boolean(summaryLiveBestOdds);
+  const liveSummarySource = isLive ? (detail?.liveOddsSummary?.source ?? null) : null;
+  const hasLiveOdds = mappedLiveOdds.length > 0 || liveSummarySource === 'live' || Boolean(summaryLiveBestOdds);
   const hasPerMarketLiveOdds = mappedLiveOdds.length > 0;
-  const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds);
+  const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || liveSummarySource === 'prematch');
   const shouldUseLiveBookmakerView = Boolean(isLive && hasPerMarketLiveOdds);
+  const isLiveBookmakerRowsPending = Boolean(isLive && liveSummarySource === 'live' && !hasPerMarketLiveOdds);
   const usingPreMatchFallback = Boolean(
-    isLive && !shouldUseLiveBookmakerView && !summaryLiveBestOdds && hasPreMatchFallback,
+    isLive && !shouldUseLiveBookmakerView && liveSummarySource !== 'live' && hasPreMatchFallback,
   );
 
-  const displayOdds = useMemo(
-    () => (isLive ? (shouldUseLiveBookmakerView ? mappedLiveOdds : (odds ?? [])) : (odds ?? [])),
-    [isLive, mappedLiveOdds, odds, shouldUseLiveBookmakerView],
-  );
+  const displayOdds = useMemo(() => {
+    if (!isLive) {
+      return odds ?? [];
+    }
+
+    if (shouldUseLiveBookmakerView) {
+      return mappedLiveOdds;
+    }
+
+    if (liveSummarySource === 'live') {
+      return [];
+    }
+
+    return odds ?? [];
+  }, [isLive, liveSummarySource, mappedLiveOdds, odds, shouldUseLiveBookmakerView]);
 
   const resolvedBestOdds = isLive
     ? shouldUseLiveBookmakerView
@@ -262,11 +287,12 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
     }
 
     if (previousDisplayOdds) {
-      const previousByBookmaker = new Map(previousDisplayOdds.map((o) => [o.bookmaker, o]));
+      const previousByBookmaker = new Map(previousDisplayOdds.map((o) => [getOddIdentityKey(o), o]));
       const nextTableMovements: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>> =
         {};
       for (const odd of displayOdds) {
-        const prev = previousByBookmaker.get(odd.bookmaker);
+        const oddIdentityKey = getOddIdentityKey(odd);
+        const prev = previousByBookmaker.get(oddIdentityKey);
         if (!prev) continue;
         const hm = getMovementDirection(prev.homeOdd, odd.homeOdd);
         const dm = getMovementDirection(prev.drawOdd, odd.drawOdd);
@@ -275,7 +301,7 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
         if (hm) bm.home = hm;
         if (dm) bm.draw = dm;
         if (am) bm.away = am;
-        if (Object.keys(bm).length > 0) nextTableMovements[odd.bookmaker] = bm;
+        if (Object.keys(bm).length > 0) nextTableMovements[oddIdentityKey] = bm;
       }
       if (Object.keys(nextTableMovements).length > 0) {
         setOddsTableMovements((c) => {
@@ -310,6 +336,7 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
     hasLiveOdds,
     hasPerMarketLiveOdds,
     shouldUseLiveBookmakerView,
+    isLiveBookmakerRowsPending,
     liveOddsRealtimeStatus,
     bestOddsMovements,
     oddsTableMovements,

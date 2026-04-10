@@ -1,6 +1,6 @@
 export type StateBucket = 'Upcoming' | 'Live' | 'Finished' | 'Postponed' | 'Cancelled' | 'Other' | 'Unknown';
 export type LiveOddsSummarySource = 'live' | 'prematch' | 'none';
-export type BookmakerIdentityType = 'real' | 'synthetic';
+export type BookmakerIdentityType = 'real' | 'synthetic' | 'external';
 
 export interface LiveOddsSummaryDto {
   apiFixtureId?: number;
@@ -63,6 +63,12 @@ export interface OddDto {
   bookmakerId: number;
   apiBookmakerId: number;
   bookmaker: string;
+  bookmakerIdentityType?: BookmakerIdentityType | null;
+  sourceProvider?: 'api-football' | 'the-odds-api' | null;
+  externalEventId?: string | null;
+  externalBookmakerKey?: string | null;
+  externalMarketKey?: string | null;
+  bookmakerStableKey?: string | null;
   marketName: string;
   homeOdd: number;
   drawOdd: number;
@@ -100,6 +106,10 @@ export interface LiveOddsMarketDto {
   apiBookmakerId: number;
   bookmaker: string;
   bookmakerIdentityType?: BookmakerIdentityType | null;
+  sourceProvider?: 'api-football' | 'the-odds-api' | null;
+  externalEventId?: string | null;
+  externalBookmakerKey?: string | null;
+  externalMarketKey?: string | null;
   apiBetId: number;
   betName: string;
   collectedAtUtc?: string | null;
@@ -120,6 +130,14 @@ export interface LiveOddsSummaryUpdatedDto extends LiveOddsSummaryDto {
   fixtureId: number;
   apiFixtureId: number;
   leagueApiId: number;
+}
+
+export interface LiveOddsViewersHeartbeatDto {
+  receivedFixtureIds: number[];
+  acceptedFixtureIds: number[];
+  activeFixtureIds: number[];
+  touchedAtUtc: string;
+  viewerHeartbeatTtlSeconds: number;
 }
 
 export interface FixtureFreshnessDto {

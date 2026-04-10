@@ -1,10 +1,14 @@
 'use client';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PromoStrip } from '@/components/ads/PromoStrip';
 import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures } from '@/lib/hooks/useFixtures';
-import { useLiveOddsListSignalR } from '@/lib/hooks/useLiveOdds';
+import {
+  useLiveOddsListSignalR,
+  useLiveViewersHeartbeat,
+  useVisibleLiveOddsByFixture,
+} from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
@@ -14,6 +18,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useStandings } from '@/lib/hooks/useStandings';
 import { StandingsTable } from '@/components/standings/StandingsTable';
 import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
+import { deriveBestOddsFromOdds } from '@/lib/live-odds';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -106,6 +111,23 @@ function isUsableLiveSummary(summary: LiveOddsSummaryDto | null | undefined): su
   }
 
   return Boolean(summary.bestHomeOdd || summary.bestDrawOdd || summary.bestAwayOdd);
+}
+
+function buildLiveSummaryFromOddsSummary(bestOdds: ReturnType<typeof deriveBestOddsFromOdds>): LiveOddsSummaryDto | null {
+  if (!bestOdds) {
+    return null;
+  }
+
+  return {
+    source: 'live',
+    collectedAtUtc: bestOdds.collectedAtUtc,
+    bestHomeOdd: bestOdds.bestHomeOdd,
+    bestHomeBookmaker: bestOdds.bestHomeBookmaker,
+    bestDrawOdd: bestOdds.bestDrawOdd,
+    bestDrawBookmaker: bestOdds.bestDrawBookmaker,
+    bestAwayOdd: bestOdds.bestAwayOdd,
+    bestAwayBookmaker: bestOdds.bestAwayBookmaker,
+  };
 }
 
 function LiveListStatusPill({
@@ -255,6 +277,7 @@ function FootballPageClient() {
   const { data: leagues } = useLeagues(season);
   const { fixtureIdSet, toggleFixture, upsertFixtures } = useFixtureWatchlist();
   const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
+  const [visibleLiveFixtureIds, setVisibleLiveFixtureIds] = useState<number[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
   const view = searchParams.get('view') === 'standings' ? 'standings' : 'matches';
@@ -351,15 +374,56 @@ function FootballPageClient() {
 
   const { data, isLoading, isFetching, isError, refetch } = useFixtures(filters);
   const rawFixtures = data?.items ?? [];
-  const visibleFixtureIds = state === 'Live' ? rawFixtures.map((fixture) => fixture.apiFixtureId) : [];
+  const visibleLiveFixtureIdSet = useMemo(
+    () => new Set(visibleLiveFixtureIds),
+    [visibleLiveFixtureIds],
+  );
+  const visibleLiveFixtures = useMemo(
+    () =>
+      state === 'Live'
+        ? rawFixtures
+            .filter((fixture) => visibleLiveFixtureIdSet.has(fixture.apiFixtureId))
+            .map((fixture) => ({
+              apiFixtureId: fixture.apiFixtureId,
+              homeTeamName: fixture.homeTeamName,
+              awayTeamName: fixture.awayTeamName,
+            }))
+        : [],
+    [rawFixtures, state, visibleLiveFixtureIdSet],
+  );
+  const { data: visibleLiveOddsByFixture = {} } = useVisibleLiveOddsByFixture(
+    visibleLiveFixtures,
+    state === 'Live',
+  );
+  useLiveViewersHeartbeat(visibleLiveFixtureIds, state === 'Live');
+  const visibleLiveSummaries = useMemo(() => {
+    const entries = Object.entries(visibleLiveOddsByFixture)
+      .map(([fixtureId, odds]) => {
+        if (!odds.length) {
+          return null;
+        }
+
+        const bestOdds = deriveBestOddsFromOdds(odds);
+        const summary = buildLiveSummaryFromOddsSummary(bestOdds);
+        if (!summary) {
+          return null;
+        }
+
+        return [Number(fixtureId), summary] as const;
+      })
+      .filter((entry): entry is readonly [number, LiveOddsSummaryDto] => entry !== null);
+
+    return Object.fromEntries(entries) as Record<number, LiveOddsSummaryDto>;
+  }, [visibleLiveOddsByFixture]);
 
   useEffect(() => {
     if (state !== 'Live') {
       setStickyLiveSummaries((current) => (Object.keys(current).length === 0 ? current : {}));
+      setVisibleLiveFixtureIds((current) => (current.length === 0 ? current : []));
       return;
     }
 
-    const visibleFixtureIdSet = new Set(visibleFixtureIds);
+    const currentLiveFixtureIds = new Set(rawFixtures.map((fixture) => fixture.apiFixtureId));
 
     setStickyLiveSummaries((current) => {
       const next: Record<number, LiveOddsSummaryDto> = {};
@@ -394,7 +458,7 @@ function FootballPageClient() {
 
       for (const fixtureId of Object.keys(current)) {
         const numericFixtureId = Number(fixtureId);
-        if (!visibleFixtureIdSet.has(numericFixtureId)) {
+        if (!currentLiveFixtureIds.has(numericFixtureId)) {
           changed = true;
         }
       }
@@ -405,24 +469,33 @@ function FootballPageClient() {
 
       return next;
     });
-  }, [rawFixtures, state, visibleFixtureIds]);
+  }, [rawFixtures, state]);
 
-  const hydratedFixtures = rawFixtures.map((fixture): FixtureDto => {
-    if (state !== 'Live') {
-      return fixture;
-    }
-
-    const liveSummary = fixture.liveOddsSummary ?? null;
-    const stickyLiveSummary = stickyLiveSummaries[fixture.apiFixtureId] ?? null;
-    const preferredLiveSummary = liveSummary?.source === 'live' ? liveSummary : stickyLiveSummary;
-
-    return preferredLiveSummary
-      ? {
-          ...fixture,
-          liveOddsSummary: preferredLiveSummary,
+  const hydratedFixtures = useMemo(
+    () =>
+      rawFixtures.map((fixture): FixtureDto => {
+        if (state !== 'Live') {
+          return fixture;
         }
-      : fixture;
-  });
+
+        const directLiveSummary = visibleLiveSummaries[fixture.apiFixtureId] ?? null;
+        const liveSummary = fixture.liveOddsSummary ?? null;
+        const stickyLiveSummary = stickyLiveSummaries[fixture.apiFixtureId] ?? null;
+        const preferredLiveSummary =
+          directLiveSummary ??
+          (liveSummary?.source === 'live' ? liveSummary : null) ??
+          stickyLiveSummary ??
+          liveSummary;
+
+        return preferredLiveSummary
+          ? {
+              ...fixture,
+              liveOddsSummary: preferredLiveSummary,
+            }
+          : fixture;
+      }),
+    [rawFixtures, state, stickyLiveSummaries, visibleLiveSummaries],
+  );
   const fixtures = hydratedFixtures;
   const liveFixtureIds = state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [];
   const liveOddsListRealtime = useLiveOddsListSignalR(liveFixtureIds, state === 'Live');
@@ -601,10 +674,12 @@ function FootballPageClient() {
                   isLoading={isLoading}
                   isFetching={isFetching}
                   oddsMovements={liveOddsListRealtime.movements}
+                  liveOddsByFixture={visibleLiveOddsByFixture}
                   savedFixtureIds={fixtureIdSet}
                   onToggleSave={toggleFixture}
                   selectedFixtureId={selectedFixtureId ?? undefined}
                   onRowClick={handleRowClick}
+                  onVisibleLiveFixtureIdsChange={setVisibleLiveFixtureIds}
                 />
               </div>
               {selectedFixtureId != null ? (

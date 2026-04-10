@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { FixtureDto } from '@/lib/types/api';
+import type { FixtureDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementByFixture } from '@/lib/hooks/useLiveOdds';
 import { fetchBestOddsBatch } from '@/lib/hooks/useOdds';
 import { buildBookmakerHref } from '@/lib/bookmakers';
@@ -72,10 +72,12 @@ interface Props {
   isLoading?: boolean;
   isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
+  liveOddsByFixture?: Record<number, OddDto[]>;
   savedFixtureIds?: Set<number>;
   onToggleSave?: (fixture: FixtureDto) => void;
   selectedFixtureId?: number;
   onRowClick?: (fixture: FixtureDto) => void;
+  onVisibleLiveFixtureIdsChange?: (fixtureIds: number[]) => void;
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
@@ -172,11 +174,13 @@ function MobileOddsCell({
 function MobileFixtureCard({
   fixture,
   bestOddsFallback,
+  liveOddsRows,
   isSaved,
   onToggleSave,
 }: {
   fixture: FixtureDto;
   bestOddsFallback: BestOddsDto | null;
+  liveOddsRows: OddDto[];
   isSaved: boolean;
   onToggleSave?: (fixture: FixtureDto) => void;
 }) {
@@ -184,16 +188,33 @@ function MobileFixtureCard({
   const isLive = fixture.stateBucket === 'Live';
   const liveSummary = fixture.liveOddsSummary ?? null;
   const liveSource = liveSummary?.source ?? 'none';
+  const liveBestOdds = liveOddsRows.length > 0 ? {
+    homeOdd: Math.max(...liveOddsRows.map((odd) => odd.homeOdd)),
+    drawOdd: Math.max(...liveOddsRows.map((odd) => odd.drawOdd)),
+    awayOdd: Math.max(...liveOddsRows.map((odd) => odd.awayOdd)),
+    homeBookmaker:
+      liveOddsRows.reduce((best, odd) => (odd.homeOdd > best.homeOdd ? odd : best), liveOddsRows[0]).bookmaker,
+    drawBookmaker:
+      liveOddsRows.reduce((best, odd) => (odd.drawOdd > best.drawOdd ? odd : best), liveOddsRows[0]).bookmaker,
+    awayBookmaker:
+      liveOddsRows.reduce((best, odd) => (odd.awayOdd > best.awayOdd ? odd : best), liveOddsRows[0]).bookmaker,
+  } : null;
   const scoreReady = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
   // Use liveOddsSummary for both live and upcoming (backend populates it via includeLiveOddsSummary).
   // Fall back to bestOddsFallback (batch call) when the summary is absent.
-  const homeOdd = liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
-  const drawOdd = liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
-  const awayOdd = liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
-  const homeBookmaker = resolveBookmakerForDisplay(liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker);
-  const drawBookmaker = resolveBookmakerForDisplay(liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker);
-  const awayBookmaker = resolveBookmakerForDisplay(liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker);
+  const homeOdd = liveBestOdds?.homeOdd ?? liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
+  const drawOdd = liveBestOdds?.drawOdd ?? liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
+  const awayOdd = liveBestOdds?.awayOdd ?? liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const homeBookmaker = resolveBookmakerForDisplay(
+    liveBestOdds?.homeBookmaker ?? liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker,
+  );
+  const drawBookmaker = resolveBookmakerForDisplay(
+    liveBestOdds?.drawBookmaker ?? liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker,
+  );
+  const awayBookmaker = resolveBookmakerForDisplay(
+    liveBestOdds?.awayBookmaker ?? liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker,
+  );
 
   const statusTone =
     liveSource === 'live'
@@ -316,7 +337,21 @@ function FetchingBar() {
   );
 }
 
-export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, savedFixtureIds, onToggleSave, selectedFixtureId, onRowClick }: Props) {
+export function FixtureTable({
+  fixtures,
+  isLoading,
+  isFetching,
+  oddsMovements,
+  liveOddsByFixture = {},
+  savedFixtureIds,
+  onToggleSave,
+  selectedFixtureId,
+  onRowClick,
+  onVisibleLiveFixtureIdsChange,
+}: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const callbackRef = useRef<Props['onVisibleLiveFixtureIdsChange']>(onVisibleLiveFixtureIdsChange);
+  const lastVisibleIdsKeyRef = useRef('');
   const popularLeagueOrder = usePopularLeagueOrder();
   const fallbackFixtureIds = useMemo(
     () => fixtures.filter(needsBestOddsFallback).map((fixture) => fixture.apiFixtureId),
@@ -363,6 +398,76 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
     });
   }, [byLeague, popularLeagueOrder]);
 
+  useEffect(() => {
+    callbackRef.current = onVisibleLiveFixtureIdsChange;
+  }, [onVisibleLiveFixtureIdsChange]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !callbackRef.current) {
+      return;
+    }
+
+    const liveRows = Array.from(container.querySelectorAll<HTMLElement>('[data-live-fixture-id]'));
+    if (liveRows.length === 0) {
+      if (lastVisibleIdsKeyRef.current !== '') {
+        lastVisibleIdsKeyRef.current = '';
+        callbackRef.current([]);
+      }
+      return;
+    }
+
+    const visibleIds = new Set<number>();
+    const emit = () => {
+      const nextIds = Array.from(visibleIds).sort((left, right) => left - right);
+      const nextKey = nextIds.join(',');
+      if (nextKey === lastVisibleIdsKeyRef.current) {
+        return;
+      }
+
+      lastVisibleIdsKeyRef.current = nextKey;
+      callbackRef.current?.(nextIds);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        let changed = false;
+
+        for (const entry of entries) {
+          const fixtureId = Number(entry.target.getAttribute('data-live-fixture-id'));
+          if (!Number.isFinite(fixtureId) || fixtureId <= 0) {
+            continue;
+          }
+
+          if (entry.isIntersecting) {
+            if (!visibleIds.has(fixtureId)) {
+              visibleIds.add(fixtureId);
+              changed = true;
+            }
+          } else if (visibleIds.delete(fixtureId)) {
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          emit();
+        }
+      },
+      {
+        root: container,
+        threshold: 0.35,
+      },
+    );
+
+    for (const row of liveRows) {
+      observer.observe(row);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fixtures]);
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-auto">
@@ -386,7 +491,7 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div ref={containerRef} className="flex-1 overflow-auto">
       {isLoading ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
       {sortedLeagueEntries.map(([key, { name, country, items }]) => {
         const oddsCount = items.filter((fixture) => {
@@ -440,6 +545,7 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
                   key={`mobile-${fixture.apiFixtureId}`}
                   fixture={fixture}
                   bestOddsFallback={bestOddsMap.get(fixture.apiFixtureId) ?? null}
+                  liveOddsRows={liveOddsByFixture[fixture.apiFixtureId] ?? []}
                   isSaved={savedFixtureIds?.has(fixture.apiFixtureId) ?? false}
                   onToggleSave={onToggleSave}
                 />
@@ -475,6 +581,7 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
                     key={String(fixture.apiFixtureId)}
                     fixture={fixture}
                     bestOddsFallback={bestOddsMap.get(fixture.apiFixtureId) ?? null}
+                    liveOddsRows={liveOddsByFixture[fixture.apiFixtureId] ?? []}
                     oddsMovement={oddsMovements?.[fixture.apiFixtureId]}
                     isSaved={savedFixtureIds?.has(fixture.apiFixtureId) ?? false}
                     onToggleSave={onToggleSave}

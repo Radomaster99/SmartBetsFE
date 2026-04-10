@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { BestOddsDto, FixtureDto } from '@/lib/types/api';
+import type { BestOddsDto, FixtureDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import { buildBookmakerHref } from '@/lib/bookmakers';
+import { deriveBestOddsFromOdds, sortOddsByStrength } from '@/lib/live-odds';
 
 interface Props {
   fixture: FixtureDto;
   bestOddsFallback?: BestOddsDto | null;
+  liveOddsRows?: OddDto[];
   oddsMovement?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   isSaved?: boolean;
   onToggleSave?: (fixture: FixtureDto) => void;
@@ -243,6 +245,7 @@ function OddsButton({
 export function FixtureRow({
   fixture,
   bestOddsFallback,
+  liveOddsRows = [],
   oddsMovement,
   isSaved = false,
   onToggleSave,
@@ -252,48 +255,64 @@ export function FixtureRow({
   const isLive = fixture.stateBucket === 'Live';
   const isFinished = fixture.stateBucket === 'Finished';
   const liveSummary = fixture.liveOddsSummary ?? null;
+  const sortedLiveOddsRows = sortOddsByStrength(liveOddsRows);
+  const liveBestOdds = sortedLiveOddsRows.length > 0 ? deriveBestOddsFromOdds(sortedLiveOddsRows) : null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  // For live fixtures: use any summary (live or prematch fallback).
-  // For non-live fixtures: use summary or bestOddsFallback.
+  // Priority:
+  // 1. live bookmaker rows from any live provider
+  // 2. backend list summary (live or prematch fallback)
+  // 3. pre-match batch fallback for non-live rows
   const hasSummary = liveSummary !== null;
   const usePreMatch = !isLive;
 
-  const homeOdd = hasSummary
-    ? (liveSummary?.bestHomeOdd ?? null)
-    : usePreMatch
-      ? (bestOddsFallback?.bestHomeOdd ?? null)
-      : null;
+  const homeOdd = liveBestOdds
+    ? liveBestOdds.bestHomeOdd
+    : hasSummary
+      ? (liveSummary?.bestHomeOdd ?? null)
+      : usePreMatch
+        ? (bestOddsFallback?.bestHomeOdd ?? null)
+        : null;
   const homeBookmaker = resolveBookmaker(
-    hasSummary
-      ? liveSummary?.bestHomeBookmaker
-      : usePreMatch
-        ? bestOddsFallback?.bestHomeBookmaker
-        : null,
+    liveBestOdds
+      ? liveBestOdds.bestHomeBookmaker
+      : hasSummary
+        ? liveSummary?.bestHomeBookmaker
+        : usePreMatch
+          ? bestOddsFallback?.bestHomeBookmaker
+          : null,
   );
-  const drawOdd = hasSummary
-    ? (liveSummary?.bestDrawOdd ?? null)
-    : usePreMatch
-      ? (bestOddsFallback?.bestDrawOdd ?? null)
-      : null;
+  const drawOdd = liveBestOdds
+    ? liveBestOdds.bestDrawOdd
+    : hasSummary
+      ? (liveSummary?.bestDrawOdd ?? null)
+      : usePreMatch
+        ? (bestOddsFallback?.bestDrawOdd ?? null)
+        : null;
   const drawBookmaker = resolveBookmaker(
-    hasSummary
-      ? liveSummary?.bestDrawBookmaker
-      : usePreMatch
-        ? bestOddsFallback?.bestDrawBookmaker
-        : null,
+    liveBestOdds
+      ? liveBestOdds.bestDrawBookmaker
+      : hasSummary
+        ? liveSummary?.bestDrawBookmaker
+        : usePreMatch
+          ? bestOddsFallback?.bestDrawBookmaker
+          : null,
   );
-  const awayOdd = hasSummary
-    ? (liveSummary?.bestAwayOdd ?? null)
-    : usePreMatch
-      ? (bestOddsFallback?.bestAwayOdd ?? null)
-      : null;
-  const awayBookmaker = resolveBookmaker(
-    hasSummary
-      ? liveSummary?.bestAwayBookmaker
+  const awayOdd = liveBestOdds
+    ? liveBestOdds.bestAwayOdd
+    : hasSummary
+      ? (liveSummary?.bestAwayOdd ?? null)
       : usePreMatch
-        ? bestOddsFallback?.bestAwayBookmaker
-        : null,
+        ? (bestOddsFallback?.bestAwayOdd ?? null)
+        : null;
+  const awayBookmaker = resolveBookmaker(
+    liveBestOdds
+      ? liveBestOdds.bestAwayBookmaker
+      : hasSummary
+        ? liveSummary?.bestAwayBookmaker
+        : usePreMatch
+          ? bestOddsFallback?.bestAwayBookmaker
+          : null,
   );
 
   // Score flash: detect when live score changes
@@ -365,7 +384,13 @@ export function FixtureRow({
   };
 
   return (
-    <tr onClick={handleRowClick} style={trStyle} data-live={isLive ? 'true' : 'false'} data-selected={isSelected ? 'true' : 'false'}>
+    <tr
+      onClick={handleRowClick}
+      style={trStyle}
+      data-live={isLive ? 'true' : 'false'}
+      data-live-fixture-id={isLive ? fixture.apiFixtureId : undefined}
+      data-selected={isSelected ? 'true' : 'false'}
+    >
       {/* Status column — 62px */}
       <td style={{ width: 62, padding: '8px 6px 8px 10px', verticalAlign: 'middle' }}>
         <StatusCell fixture={fixture} />

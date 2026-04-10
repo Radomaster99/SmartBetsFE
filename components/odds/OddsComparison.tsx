@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import type { BestOddsDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection, LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
-import { buildBookmakerHref, getBookmakerMeta, getBookmakerOrder } from '@/lib/bookmakers';
+import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
+import { getOddIdentityKey, sortOddsByStrength } from '@/lib/live-odds';
 
 export interface OddsComparisonProps {
   bestOdds: BestOddsDto | null;
@@ -56,7 +57,7 @@ function LiveStatusPill({
       color: 'var(--t-accent)',
     };
   } else if (hasLiveOdds && (status === 'connecting' || status === 'reconnecting')) {
-    copy = 'Syncing…';
+    copy = 'Syncing...';
     styles = {
       background: 'rgba(245,158,11,0.12)',
       border: '1px solid rgba(245,158,11,0.26)',
@@ -110,7 +111,7 @@ function OddPill({
   apiFixtureId,
   outcome,
 }: {
-  value: number;
+  value: number | null | undefined;
   isBest: boolean;
   movement?: LiveOddsMovementDirection;
   bookmaker: string;
@@ -123,38 +124,35 @@ function OddPill({
     outcome,
     source: 'odds-comparison',
   });
+  const displayValue = typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '3px 7px',
-        borderRadius: 5,
-        fontSize: 12,
-        fontWeight: isBest ? 700 : 500,
-        textDecoration: 'none',
-        minWidth: 44,
-        textAlign: 'center',
-        ...(isBest
-          ? {
-              background: 'rgba(0,230,118,0.1)',
-              border: '1px solid rgba(0,230,118,0.3)',
-              color: 'var(--t-accent)',
-            }
-          : {
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid var(--t-border)',
-              color: 'var(--t-text-3)',
-            }),
-      }}
-    >
+  const commonStyle: CSSProperties = {
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '3px 7px',
+    borderRadius: 5,
+    fontSize: 12,
+    fontWeight: isBest ? 700 : 500,
+    textDecoration: 'none',
+    minWidth: 44,
+    textAlign: 'center',
+    ...(isBest
+      ? {
+          background: 'rgba(0,230,118,0.1)',
+          border: '1px solid rgba(0,230,118,0.3)',
+          color: 'var(--t-accent)',
+        }
+      : {
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid var(--t-border)',
+          color: 'var(--t-text-3)',
+        }),
+  };
+
+  const inner = (
+    <>
       {movement ? (
         <span
           aria-hidden="true"
@@ -168,10 +166,26 @@ function OddPill({
             color: movement === 'up' ? 'var(--t-accent)' : '#f87171',
           }}
         >
-          {movement === 'up' ? '↑' : '↓'}
+          {movement === 'up' ? '^' : 'v'}
         </span>
       ) : null}
-      {value.toFixed(2)}
+      {displayValue != null ? displayValue.toFixed(2) : '-'}
+    </>
+  );
+
+  if (displayValue == null) {
+    return <span style={commonStyle}>{inner}</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      style={commonStyle}
+    >
+      {inner}
     </a>
   );
 }
@@ -188,26 +202,18 @@ export function OddsComparison({
   bestOddsMovements,
   oddsMovements,
 }: OddsComparisonProps) {
-  const orderedOdds = useMemo(
-    () =>
-      [...odds].sort(
-        (a, b) =>
-          getBookmakerOrder(a.bookmaker) - getBookmakerOrder(b.bookmaker) ||
-          a.bookmaker.localeCompare(b.bookmaker),
-      ),
-    [odds],
-  );
+  const orderedOdds = useMemo(() => sortOddsByStrength(odds), [odds]);
 
   const maxHome = useMemo(
-    () => (orderedOdds.length > 1 ? Math.max(...orderedOdds.map((o) => o.homeOdd)) : -1),
+    () => (orderedOdds.length > 0 ? Math.max(...orderedOdds.map((o) => o.homeOdd)) : -1),
     [orderedOdds],
   );
   const maxDraw = useMemo(
-    () => (orderedOdds.length > 1 ? Math.max(...orderedOdds.map((o) => o.drawOdd)) : -1),
+    () => (orderedOdds.length > 0 ? Math.max(...orderedOdds.map((o) => o.drawOdd)) : -1),
     [orderedOdds],
   );
   const maxAway = useMemo(
-    () => (orderedOdds.length > 1 ? Math.max(...orderedOdds.map((o) => o.awayOdd)) : -1),
+    () => (orderedOdds.length > 0 ? Math.max(...orderedOdds.map((o) => o.awayOdd)) : -1),
     [orderedOdds],
   );
 
@@ -229,7 +235,6 @@ export function OddsComparison({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Live status pill */}
       {isLive ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <LiveStatusPill
@@ -268,7 +273,6 @@ export function OddsComparison({
         </div>
       ) : null}
 
-      {/* Best odds 3-column header */}
       {bestOutcomes.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {bestOutcomes.map((row) => {
@@ -311,7 +315,7 @@ export function OddsComparison({
                       color: movement === 'up' ? 'var(--t-accent)' : '#f87171',
                     }}
                   >
-                    {movement === 'up' ? '↑' : '↓'}
+                    {movement === 'up' ? '^' : 'v'}
                   </span>
                 ) : null}
                 <span
@@ -337,7 +341,6 @@ export function OddsComparison({
         </div>
       ) : null}
 
-      {/* Per-bookmaker slim rows */}
       <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--t-border)' }}>
         <div
           style={{
@@ -374,15 +377,16 @@ export function OddsComparison({
 
         {orderedOdds.map((odd, index) => {
           const meta = getBookmakerMeta(odd.bookmaker);
+          const oddIdentityKey = getOddIdentityKey(odd);
           const generalHref = buildBookmakerHref(odd.bookmaker, {
             fixture: fixtureId ?? odd.apiFixtureId,
             source: 'odds-comparison-row',
           });
-          const rowMovements = oddsMovements?.[odd.bookmaker];
+          const rowMovements = oddsMovements?.[oddIdentityKey];
 
           return (
             <div
-              key={odd.bookmaker}
+              key={oddIdentityKey}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -463,7 +467,6 @@ export function OddsComparison({
         })}
       </div>
 
-      {/* Footer */}
       {bestOdds ? (
         <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--t-text-5)' }}>
           Prices updated {minutesAgo(bestOdds.collectedAtUtc)}
