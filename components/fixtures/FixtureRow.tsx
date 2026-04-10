@@ -196,14 +196,18 @@ function OddsButton({
       <span
         style={{
           fontSize: 7,
-          fontWeight: 700,
+          fontWeight: 600,
           textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: isBest ? 'var(--t-accent)' : 'var(--t-text-6)',
+          letterSpacing: '0.06em',
+          color: isBest ? 'rgba(0,230,118,0.7)' : 'var(--t-text-5)',
           lineHeight: 1,
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}
       >
-        {label}
+        {bookmaker ?? label}
       </span>
     </>
   );
@@ -250,46 +254,45 @@ export function FixtureRow({
   const liveSummary = fixture.liveOddsSummary ?? null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
 
-  // Live rows: only show odds from the live odds summary (currently bet365 only).
-  // Never fall back to pre-match batch odds so we don't display stale prices
-  // from bookmakers that don't provide live feeds yet.
-  const hasLiveSummary = isLive && liveSummary?.source === 'live';
+  // For live fixtures: use any summary (live or prematch fallback).
+  // For non-live fixtures: use summary or bestOddsFallback.
+  const hasSummary = liveSummary !== null;
   const usePreMatch = !isLive;
 
-  const homeOdd = hasLiveSummary
+  const homeOdd = hasSummary
     ? (liveSummary?.bestHomeOdd ?? null)
     : usePreMatch
-      ? (liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null)
+      ? (bestOddsFallback?.bestHomeOdd ?? null)
       : null;
   const homeBookmaker = resolveBookmaker(
-    hasLiveSummary
+    hasSummary
       ? liveSummary?.bestHomeBookmaker
       : usePreMatch
-        ? (liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker)
+        ? bestOddsFallback?.bestHomeBookmaker
         : null,
   );
-  const drawOdd = hasLiveSummary
+  const drawOdd = hasSummary
     ? (liveSummary?.bestDrawOdd ?? null)
     : usePreMatch
-      ? (liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null)
+      ? (bestOddsFallback?.bestDrawOdd ?? null)
       : null;
   const drawBookmaker = resolveBookmaker(
-    hasLiveSummary
+    hasSummary
       ? liveSummary?.bestDrawBookmaker
       : usePreMatch
-        ? (liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker)
+        ? bestOddsFallback?.bestDrawBookmaker
         : null,
   );
-  const awayOdd = hasLiveSummary
+  const awayOdd = hasSummary
     ? (liveSummary?.bestAwayOdd ?? null)
     : usePreMatch
-      ? (liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null)
+      ? (bestOddsFallback?.bestAwayOdd ?? null)
       : null;
   const awayBookmaker = resolveBookmaker(
-    hasLiveSummary
+    hasSummary
       ? liveSummary?.bestAwayBookmaker
       : usePreMatch
-        ? (liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker)
+        ? bestOddsFallback?.bestAwayBookmaker
         : null,
   );
 
@@ -469,8 +472,8 @@ export function FixtureRow({
         </div>
       </td>
 
-      {/* Save column — 22px */}
-      <td style={{ width: 22, padding: '6px 8px 6px 2px', verticalAlign: 'middle' }}>
+      {/* Save column */}
+      <td style={{ width: 36, padding: '6px 14px 6px 4px', verticalAlign: 'middle' }}>
         <button
           type="button"
           onClick={handleToggleSave}

@@ -145,27 +145,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
 
     const content = (
-      <div
-        className="overflow-hidden rounded-[12px]"
-        style={{
-          height: '100%',
-          width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`,
-          border: '1px solid var(--t-border)',
-          background: 'rgba(255,255,255,0.02)',
-          boxShadow: 'var(--t-shadow-soft)',
-        }}
-      >
+      <div style={{ height: '100%', width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`, overflow: 'hidden' }}>
         <SideAdArtwork slot={slot} alt={slot.alt || `${side} sidebar banner`} />
       </div>
     );
 
     const wrapperStyle = {
       position: 'fixed' as const,
-      top: 4,
-      bottom: 4,
+      top: 0,
+      bottom: 0,
       width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`,
       zIndex: 1,
-      [side]: 12,
+      [side]: 0,
     };
 
     if (slot.isClickable && slot.href) {

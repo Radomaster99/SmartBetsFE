@@ -386,8 +386,8 @@ export function FixtureTable({ fixtures, isLoading, isFetching, oddsMovements, s
   }
 
   return (
-    <div className="flex-1 overflow-auto" style={{ opacity: isFetching && !isLoading ? 0.55 : 1, transition: 'opacity 0.15s ease' }}>
-      {isFetching && !isLoading ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
+    <div className="flex-1 overflow-auto">
+      {isLoading ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
       {sortedLeagueEntries.map(([key, { name, country, items }]) => {
         const oddsCount = items.filter((fixture) => {
           const liveSummary = fixture.liveOddsSummary ?? null;
