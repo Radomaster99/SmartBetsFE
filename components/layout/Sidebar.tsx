@@ -63,6 +63,8 @@ export function Sidebar() {
   const isFootball = pathname.startsWith('/football');
   const isAdmin = pathname.startsWith('/admin');
 
+  if (!isFootball && !isAdmin) return null;
+
   return (
     <aside
       className="layout-sidebar hidden md:flex md:w-56 md:flex-shrink-0 md:flex-col md:overflow-hidden"

@@ -9,26 +9,90 @@ import {
   readBonusCodesPageConfig,
   sortBonusCodeEntries,
   type BonusCodeEntry,
+  type BonusCodeToneId,
 } from '@/lib/bonus-codes';
 
-function StatPill({ label, value }: { label: string; value: string }) {
+// ── Tone helpers ──────────────────────────────────────────────────────────────
+
+const CARD_TOP_GRADIENTS: Record<BonusCodeToneId, { from: string; to: string; glow: string; orb: string }> = {
+  emerald: { from: '#051a12', to: '#0e4430', glow: 'rgba(0,230,118,0.22)',    orb: '#00e676' },
+  amber:   { from: '#211508', to: '#623814', glow: 'rgba(251,191,36,0.22)',   orb: '#fbbf24' },
+  sky:     { from: '#071626', to: '#164065', glow: 'rgba(56,189,248,0.18)',   orb: '#38bdf8' },
+  violet:  { from: '#180c26', to: '#4a1e82', glow: 'rgba(168,85,247,0.20)',  orb: '#a855f7' },
+  rose:    { from: '#200c14', to: '#6a1f3c', glow: 'rgba(244,114,182,0.20)', orb: '#f472b6' },
+  slate:   { from: '#111927', to: '#253245', glow: 'rgba(148,163,184,0.16)', orb: '#94a3b8' },
+};
+
+const CTA_STYLES: Record<BonusCodeToneId, { background: string; color: string; shadow: string }> = {
+  emerald: { background: 'linear-gradient(135deg,#4fffac,#00e676)', color: '#02200d', shadow: 'rgba(0,230,118,0.35)' },
+  amber:   { background: 'linear-gradient(135deg,#ffe8a0,#fbbf24)', color: '#3d2000', shadow: 'rgba(251,191,36,0.35)' },
+  sky:     { background: 'linear-gradient(135deg,#b8ecff,#38bdf8)', color: '#05263e', shadow: 'rgba(56,189,248,0.30)' },
+  violet:  { background: 'linear-gradient(135deg,#ddb8ff,#a855f7)', color: '#250050', shadow: 'rgba(168,85,247,0.30)' },
+  rose:    { background: 'linear-gradient(135deg,#ffc8e0,#f472b6)', color: '#400020', shadow: 'rgba(244,114,182,0.30)' },
+  slate:   { background: 'linear-gradient(135deg,#d0dce8,#94a3b8)', color: '#1a2532', shadow: 'rgba(148,163,184,0.25)' },
+};
+
+// ── StatCard ──────────────────────────────────────────────────────────────────
+
+function StatCard({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
     <div
-      className="rounded-full px-3 py-2"
+      className="relative overflow-hidden rounded-[14px] px-4 py-3"
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--t-surface-2)',
+        border: '1px solid var(--t-border)',
       }}
     >
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: 'var(--t-text-5)' }}>
-        {label}
-      </div>
-      <div className="mt-1 text-[13px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+          background: 'linear-gradient(90deg,transparent,var(--t-border-2),transparent)',
+        }}
+      />
+      <div
+        className="text-[22px] font-black leading-none tracking-[-0.04em]"
+        style={{ color: accent ? 'var(--t-accent)' : 'var(--t-text-1)' }}
+      >
         {value}
+      </div>
+      <div
+        className="mt-[5px] text-[10px] font-bold uppercase tracking-[0.14em]"
+        style={{ color: 'var(--t-text-5)' }}
+      >
+        {label}
       </div>
     </div>
   );
 }
+
+// ── SectionRow ────────────────────────────────────────────────────────────────
+
+function SectionRow({ label, count, accent }: { label: string; count: number; accent?: boolean }) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <span
+        className="flex-shrink-0 text-[10px] font-black uppercase tracking-[0.22em]"
+        style={{ color: accent ? 'var(--t-accent)' : 'var(--t-text-5)' }}
+      >
+        {label}
+      </span>
+      <div className="h-px flex-1" style={{ background: 'var(--t-border)' }} />
+      <span
+        className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+        style={{
+          background: 'var(--t-surface-2)',
+          border: '1px solid var(--t-border)',
+          color: 'var(--t-text-5)',
+        }}
+      >
+        {count}
+      </span>
+    </div>
+  );
+}
+
+// ── BonusCodeCard ─────────────────────────────────────────────────────────────
 
 function BonusCodeCard({
   entry,
@@ -40,39 +104,68 @@ function BonusCodeCard({
   onCopy: (entry: BonusCodeEntry) => void;
 }) {
   const tone = BONUS_CODE_TONES[entry.toneId];
+  const grad = CARD_TOP_GRADIENTS[entry.toneId];
+  const ctaStyle = CTA_STYLES[entry.toneId];
 
   return (
     <article
-      className="panel-shell relative overflow-hidden rounded-[24px] p-5"
+      className="relative overflow-hidden rounded-[20px]"
       style={{
-        background: `linear-gradient(145deg, ${tone.backgroundFrom} 0%, ${tone.backgroundTo} 100%)`,
-        borderColor: tone.borderColor,
-        boxShadow: `0 20px 55px ${tone.glow}`,
+        border: `1px solid ${tone.borderColor}`,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = 'translateY(-2px)';
+        el.style.boxShadow = `0 14px 44px ${grad.glow}, 0 2px 8px rgba(0,0,0,0.5)`;
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.transform = '';
+        el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.4)';
       }}
     >
+      {/* Colored gradient top zone */}
       <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 'auto -40px -70px auto',
-          width: 180,
-          height: 180,
-          borderRadius: '50%',
-          background: `radial-gradient(circle at center, ${tone.accentColor} 0%, transparent 70%)`,
-          opacity: 0.18,
-          pointerEvents: 'none',
-        }}
-      />
+        className="relative overflow-hidden px-5 pb-4 pt-5"
+        style={{ background: `linear-gradient(145deg, ${grad.from} 0%, ${grad.to} 100%)` }}
+      >
+        {/* Glow orb */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', bottom: -50, right: -50,
+            width: 140, height: 140, borderRadius: '50%',
+            background: `radial-gradient(circle, ${grad.orb}, transparent 70%)`,
+            opacity: 0.22, pointerEvents: 'none',
+          }}
+        />
 
-      <div className="relative z-10 flex h-full flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: tone.accentColor }}>
+        <div className="relative z-10 flex flex-col gap-2">
+          {/* Bookmaker + badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.22em]"
+              style={{ color: tone.accentColor }}
+            >
               {entry.bookmaker}
-            </div>
-            {entry.badge ? (
+            </span>
+            {entry.isFeatured ? (
               <span
-                className="mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+                className="rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em]"
+                style={{
+                  background: 'rgba(0,230,118,0.15)',
+                  border: '1px solid rgba(0,230,118,0.28)',
+                  color: 'var(--t-accent)',
+                }}
+              >
+                Featured
+              </span>
+            ) : null}
+            {entry.badge && !entry.isFeatured ? (
+              <span
+                className="rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em]"
                 style={{ background: tone.chipBackground, color: tone.chipColor }}
               >
                 {entry.badge}
@@ -80,142 +173,147 @@ function BonusCodeCard({
             ) : null}
           </div>
 
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Bonus code
-          </span>
-        </div>
-
-        <div>
-          <h2 className="max-w-[22ch] text-[24px] font-black leading-[1.05] tracking-[-0.03em]" style={{ color: '#f8fbff' }}>
+          {/* Offer headline */}
+          <h2
+            className="text-[20px] font-black leading-[1.08] tracking-[-0.03em]"
+            style={{ color: '#f4f8ff' }}
+          >
             {entry.offer}
           </h2>
-          <p className="mt-3 max-w-[52ch] text-[13px] leading-6" style={{ color: 'rgba(242,246,255,0.78)' }}>
-            {entry.description}
-          </p>
-        </div>
 
-        <div
-          className="rounded-[18px] p-3"
-          style={{
-            background: tone.codeBackground,
-            border: `1px solid ${tone.codeBorder}`,
-          }}
-        >
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            Code
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div
-              className="min-w-0 flex-1 rounded-xl px-3 py-2 text-[18px] font-black tracking-[0.18em]"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px dashed rgba(255,255,255,0.14)',
-                color: '#ffffff',
-              }}
-            >
-              {entry.code}
-            </div>
-            <button
-              type="button"
-              onClick={() => onCopy(entry)}
-              className="chrome-btn rounded-xl px-3 py-2 text-[11px] font-bold uppercase tracking-[0.16em]"
-              style={{
-                background: copied ? 'rgba(0,230,118,0.16)' : 'rgba(255,255,255,0.06)',
-                borderColor: copied ? 'rgba(0,230,118,0.28)' : 'rgba(255,255,255,0.12)',
-                color: copied ? '#9effcf' : '#eef4ff',
-              }}
-            >
-              {copied ? 'Copied' : 'Copy code'}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-auto flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0 flex-1 text-[11px] leading-5" style={{ color: 'rgba(242,246,255,0.58)' }}>
-            {entry.terms || 'Add short terms text from the admin panel.'}
-          </div>
-
-          {entry.href ? (
-            <a
-              href={entry.href}
-              className="inline-flex items-center rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em]"
-              style={{
-                textDecoration: 'none',
-                background: tone.buttonBackground,
-                color: tone.buttonColor,
-                boxShadow: '0 10px 24px rgba(0,0,0,0.18)',
-              }}
-            >
-              {entry.ctaLabel}
-            </a>
-          ) : (
-            <span
-              className="inline-flex items-center rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em]"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.55)',
-              }}
-            >
-              Add landing URL
-            </span>
-          )}
+          {/* Description */}
+          {entry.description ? (
+            <p className="text-[11px] leading-[1.55]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              {entry.description}
+            </p>
+          ) : null}
         </div>
       </div>
+
+      {/* Action strip */}
+      <div
+        className="flex flex-wrap items-center gap-2 px-4 py-3"
+        style={{
+          background: 'var(--t-surface)',
+          borderTop: '1px solid var(--t-border)',
+        }}
+      >
+        {/* Code pill */}
+        <div
+          className="min-w-0 flex-1 rounded-[9px] px-3 py-[7px] font-mono text-[14px] font-black tracking-[0.2em]"
+          style={{
+            background: 'var(--t-surface-2)',
+            border: '1px dashed var(--t-border-2)',
+            color: 'var(--t-text-1)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {entry.code}
+        </div>
+
+        {/* Copy */}
+        <button
+          type="button"
+          onClick={() => onCopy(entry)}
+          className="chrome-btn flex-shrink-0 rounded-[9px] px-3 py-[7px] text-[10px] font-bold uppercase tracking-[0.1em]"
+          style={{
+            background: copied ? 'rgba(0,230,118,0.14)' : undefined,
+            borderColor: copied ? 'rgba(0,230,118,0.3)' : undefined,
+            color: copied ? '#9effcf' : undefined,
+          }}
+        >
+          {copied ? 'Copied ✓' : 'Copy'}
+        </button>
+
+        {/* CTA */}
+        {entry.href ? (
+          <a
+            href={entry.href}
+            className="flex-shrink-0 rounded-[9px] px-3 py-[7px] text-[10px] font-black uppercase tracking-[0.1em]"
+            style={{
+              textDecoration: 'none',
+              background: ctaStyle.background,
+              color: ctaStyle.color,
+              boxShadow: `0 4px 14px ${ctaStyle.shadow}`,
+              transition: 'filter 0.15s, transform 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.filter = 'brightness(1.08)';
+              el.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.filter = '';
+              el.style.transform = '';
+            }}
+          >
+            {entry.ctaLabel}
+          </a>
+        ) : (
+          <span
+            className="flex-shrink-0 rounded-[9px] px-3 py-[7px] text-[10px] font-black uppercase tracking-[0.1em]"
+            style={{
+              background: 'var(--t-surface-2)',
+              border: '1px solid var(--t-border)',
+              color: 'var(--t-text-5)',
+            }}
+          >
+            {entry.ctaLabel}
+          </span>
+        )}
+      </div>
+
+      {/* Terms */}
+      {entry.terms ? (
+        <div
+          className="px-4 pb-3 pt-1 text-[10px] leading-[1.5]"
+          style={{
+            background: 'var(--t-surface)',
+            color: 'var(--t-text-5)',
+          }}
+        >
+          {entry.terms}
+        </div>
+      ) : null}
     </article>
   );
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BonusCodesPage() {
   const [config, setConfig] = useState(DEFAULT_BONUS_CODES_PAGE_CONFIG);
   const [copiedEntryId, setCopiedEntryId] = useState<string | null>(null);
 
   useEffect(() => {
-    const sync = () => {
-      setConfig(readBonusCodesPageConfig());
-    };
+    const sync = () => setConfig(readBonusCodesPageConfig());
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === BONUS_CODES_STORAGE_KEY) {
-        sync();
-      }
+      if (event.key === BONUS_CODES_STORAGE_KEY) sync();
     };
-
     sync();
     window.addEventListener('storage', handleStorage);
     window.addEventListener(BONUS_CODES_UPDATED_EVENT, sync);
-
     return () => {
-      window.removeEventListener(BONUS_CODES_UPDATED_EVENT, sync);
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(BONUS_CODES_UPDATED_EVENT, sync);
     };
   }, []);
 
   useEffect(() => {
-    if (!copiedEntryId) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setCopiedEntryId(null);
-    }, 1800);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    if (!copiedEntryId) return;
+    const id = window.setTimeout(() => setCopiedEntryId(null), 1800);
+    return () => window.clearTimeout(id);
   }, [copiedEntryId]);
 
   const activeEntries = useMemo(
-    () => sortBonusCodeEntries(config.entries.filter((entry) => entry.isActive)),
+    () => sortBonusCodeEntries(config.entries.filter((e) => e.isActive)),
     [config.entries],
   );
-  const featuredEntries = useMemo(
-    () => activeEntries.filter((entry) => entry.isFeatured),
-    [activeEntries],
-  );
-  const standardEntries = useMemo(
-    () => activeEntries.filter((entry) => !entry.isFeatured),
-    [activeEntries],
-  );
+  const featuredEntries = useMemo(() => activeEntries.filter((e) => e.isFeatured), [activeEntries]);
+  const standardEntries = useMemo(() => activeEntries.filter((e) => !e.isFeatured), [activeEntries]);
 
   async function handleCopy(entry: BonusCodeEntry) {
     try {
@@ -227,79 +325,99 @@ export default function BonusCodesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-5 md:px-5 md:py-6">
+    <div className="px-4 py-5 md:px-5 md:py-6">
+
+      {/* ── Hero ── */}
       <section
-        className="panel-shell relative overflow-hidden rounded-[28px] px-5 py-6 md:px-7 md:py-7"
+        className="relative mb-7 overflow-hidden rounded-[24px] px-7 py-5 md:px-9"
         style={{
-          background:
-            'radial-gradient(circle at top left, rgba(0,230,118,0.14), transparent 34%), radial-gradient(circle at bottom right, rgba(245,158,11,0.14), transparent 32%), linear-gradient(145deg, rgba(10,18,34,0.96), rgba(15,26,47,0.92))',
+          background: [
+            'radial-gradient(ellipse at 0% 0%, rgba(0,230,118,0.12) 0%, transparent 50%)',
+            'radial-gradient(ellipse at 100% 100%, rgba(99,102,241,0.10) 0%, transparent 50%)',
+            'var(--t-surface)',
+          ].join(', '),
+          border: '1px solid var(--t-border)',
+          boxShadow: 'var(--t-shadow-panel)',
         }}
       >
+        {/* Top-right glow orb */}
         <div
           aria-hidden="true"
           style={{
-            position: 'absolute',
-            right: -110,
-            top: -90,
-            width: 260,
-            height: 260,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at center, rgba(59,130,246,0.2), transparent 70%)',
+            position: 'absolute', top: -70, right: -70,
+            width: 230, height: 230, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(99,102,241,0.15), transparent 70%)',
             pointerEvents: 'none',
           }}
         />
 
-        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <div className="max-w-3xl">
-            <div className="text-[11px] font-black uppercase tracking-[0.24em]" style={{ color: '#9ef9cc' }}>
+        <div className="relative z-10">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span
+              className="h-[5px] w-[5px] flex-shrink-0 rounded-full"
+              style={{ background: 'var(--t-accent)', opacity: 0.8 }}
+            />
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.24em]"
+              style={{ color: 'var(--t-accent)' }}
+            >
               {config.copy.eyebrow}
-            </div>
-            <h1 className="mt-3 max-w-[14ch] text-[34px] font-black leading-[0.95] tracking-[-0.04em] md:text-[46px]" style={{ color: '#f8fbff' }}>
-              {config.copy.title}
-            </h1>
-            <p className="mt-4 max-w-2xl text-[14px] leading-7 md:text-[15px]" style={{ color: 'rgba(231,238,248,0.76)' }}>
-              {config.copy.subtitle}
-            </p>
+            </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatPill label="Active" value={`${activeEntries.length} live`} />
-            <StatPill label="Featured" value={`${featuredEntries.length} pinned`} />
-            <StatPill label="Workflow" value="Copy + claim" />
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1
+                className="text-[28px] font-black leading-[1.0] tracking-[-0.04em] md:text-[34px]"
+                style={{ color: 'var(--t-text-1)' }}
+              >
+                {config.copy.title}
+              </h1>
+              <p
+                className="mt-2 max-w-[52ch] text-[13px] leading-[1.65]"
+                style={{ color: 'var(--t-text-4)' }}
+              >
+                {config.copy.subtitle}
+              </p>
+            </div>
+
+            <div className="flex gap-2 flex-shrink-0">
+              <StatCard value={String(activeEntries.length)} label="Live offers" accent />
+              <StatCard value={String(featuredEntries.length)} label="Featured" />
+            </div>
           </div>
         </div>
       </section>
 
-      {!activeEntries.length ? (
-        <section className="panel-shell rounded-[24px] px-5 py-8 text-center">
-          <div className="mx-auto max-w-xl">
-            <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--t-text-5)' }}>
-              No active offers
-            </div>
-            <h2 className="mt-3 text-[24px] font-black tracking-[-0.03em]" style={{ color: 'var(--t-text-1)' }}>
-              Bonus codes page is ready for content
-            </h2>
-            <p className="mt-3 text-[13px] leading-6" style={{ color: 'var(--t-text-4)' }}>
-              Open the admin panel and add or activate bonus code cards. As soon as you save them there, this page will reflect the updated lineup in the same browser profile.
-            </p>
+      {/* ── Empty state ── */}
+      {activeEntries.length === 0 ? (
+        <section
+          className="rounded-[20px] px-6 py-10 text-center"
+          style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}
+        >
+          <div
+            className="text-[10px] font-bold uppercase tracking-[0.2em]"
+            style={{ color: 'var(--t-text-5)' }}
+          >
+            No active offers
           </div>
+          <h2
+            className="mt-3 text-[20px] font-black tracking-[-0.03em]"
+            style={{ color: 'var(--t-text-1)' }}
+          >
+            No bonus codes are live yet
+          </h2>
+          <p className="mt-2 text-[13px] leading-6" style={{ color: 'var(--t-text-4)' }}>
+            Open the admin panel and activate bonus code cards. They appear here instantly.
+          </p>
         </section>
       ) : null}
 
-      {featuredEntries.length ? (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: '#94f6c9' }}>
-                {config.copy.featuredLabel}
-              </div>
-              <div className="mt-1 text-[13px]" style={{ color: 'var(--t-text-4)' }}>
-                Put your strongest or most time-sensitive offers first.
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
+      {/* ── Featured ── */}
+      {featuredEntries.length > 0 ? (
+        <section className="mb-7">
+          <SectionRow label={config.copy.featuredLabel} count={featuredEntries.length} accent />
+          <div className="grid gap-4 md:grid-cols-2">
             {featuredEntries.map((entry) => (
               <BonusCodeCard
                 key={entry.id}
@@ -312,18 +430,11 @@ export default function BonusCodesPage() {
         </section>
       ) : null}
 
-      {standardEntries.length ? (
-        <section className="space-y-3">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: 'var(--t-text-5)' }}>
-              {config.copy.allLabel}
-            </div>
-            <div className="mt-1 text-[13px]" style={{ color: 'var(--t-text-4)' }}>
-              Keep evergreen codes, secondary campaigns, and bookmaker-specific promos here.
-            </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      {/* ── All codes ── */}
+      {standardEntries.length > 0 ? (
+        <section>
+          <SectionRow label={config.copy.allLabel} count={standardEntries.length} />
+          <div className="grid gap-4 md:grid-cols-2">
             {standardEntries.map((entry) => (
               <BonusCodeCard
                 key={entry.id}
@@ -335,6 +446,7 @@ export default function BonusCodesPage() {
           </div>
         </section>
       ) : null}
+
     </div>
   );
 }
