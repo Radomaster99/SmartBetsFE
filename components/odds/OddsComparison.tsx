@@ -217,14 +217,6 @@ export function OddsComparison({
     [orderedOdds],
   );
 
-  if (odds.length === 0) {
-    return (
-      <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>
-        No odds available for this fixture.
-      </div>
-    );
-  }
-
   const bestOutcomes = bestOdds
     ? [
         { key: 'home' as const, label: 'Home Win', odd: bestOdds.bestHomeOdd, bookmaker: bestOdds.bestHomeBookmaker },
@@ -232,6 +224,14 @@ export function OddsComparison({
         { key: 'away' as const, label: 'Away Win', odd: bestOdds.bestAwayOdd, bookmaker: bestOdds.bestAwayBookmaker },
       ].filter((row) => row.odd != null && row.odd > 0)
     : [];
+
+  if (odds.length === 0 && bestOutcomes.length === 0) {
+    return (
+      <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>
+        No odds available for this fixture.
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -276,7 +276,8 @@ export function OddsComparison({
       {bestOutcomes.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {bestOutcomes.map((row) => {
-            const href = buildBookmakerHref(row.bookmaker, {
+            const bookmaker = row.bookmaker ?? 'Unknown';
+            const href = buildBookmakerHref(bookmaker, {
               fixture: fixtureId,
               outcome: row.key,
               source: 'best-odds-header',
@@ -333,7 +334,7 @@ export function OddsComparison({
                   {row.odd!.toFixed(2)}
                 </span>
                 <span style={{ fontSize: 9, color: 'var(--t-text-4)', textAlign: 'center' }}>
-                  {row.bookmaker}
+                  {bookmaker}
                 </span>
               </a>
             );
@@ -341,131 +342,146 @@ export function OddsComparison({
         </div>
       ) : null}
 
-      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--t-border)' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 10px',
-            borderBottom: '1px solid var(--t-border)',
-            background: 'rgba(255,255,255,0.02)',
-          }}
-        >
-          <span
+      {orderedOdds.length > 0 ? (
+        <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--t-border)' }}>
+          <div
             style={{
-              fontSize: 9,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.14em',
-              color: 'var(--t-text-5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '6px 10px',
+              borderBottom: '1px solid var(--t-border)',
+              background: 'rgba(255,255,255,0.02)',
             }}
           >
-            All bookmakers
-          </span>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {(['1', 'X', '2'] as const).map((label) => (
-              <span
-                key={label}
-                style={{ fontSize: 9, fontWeight: 700, color: 'var(--t-text-5)', width: 44, textAlign: 'center' }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {orderedOdds.map((odd, index) => {
-          const meta = getBookmakerMeta(odd.bookmaker);
-          const oddIdentityKey = getOddIdentityKey(odd);
-          const generalHref = buildBookmakerHref(odd.bookmaker, {
-            fixture: fixtureId ?? odd.apiFixtureId,
-            source: 'odds-comparison-row',
-          });
-          const rowMovements = oddsMovements?.[oddIdentityKey];
-
-          return (
-            <div
-              key={oddIdentityKey}
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '7px 10px',
-                borderBottom: index < orderedOdds.length - 1 ? '1px solid var(--t-border)' : undefined,
+                fontSize: 9,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: 'var(--t-text-5)',
               }}
             >
-              <a
-                href={generalHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  flexShrink: 0,
-                  fontSize: 9,
-                  fontWeight: 900,
-                  textDecoration: 'none',
-                  background: `${meta.accent}18`,
-                  color: meta.accent,
-                  border: `1px solid ${meta.accent}33`,
-                }}
-              >
-                {meta.logoText}
-              </a>
-
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'var(--t-text-2)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {odd.bookmaker}
-              </span>
-
-              <div style={{ display: 'flex', gap: 4 }}>
-                <OddPill
-                  value={odd.homeOdd}
-                  isBest={odd.homeOdd === maxHome}
-                  movement={rowMovements?.home}
-                  bookmaker={odd.bookmaker}
-                  fixtureId={fixtureId}
-                  apiFixtureId={odd.apiFixtureId}
-                  outcome="home"
-                />
-                <OddPill
-                  value={odd.drawOdd}
-                  isBest={odd.drawOdd === maxDraw}
-                  movement={rowMovements?.draw}
-                  bookmaker={odd.bookmaker}
-                  fixtureId={fixtureId}
-                  apiFixtureId={odd.apiFixtureId}
-                  outcome="draw"
-                />
-                <OddPill
-                  value={odd.awayOdd}
-                  isBest={odd.awayOdd === maxAway}
-                  movement={rowMovements?.away}
-                  bookmaker={odd.bookmaker}
-                  fixtureId={fixtureId}
-                  apiFixtureId={odd.apiFixtureId}
-                  outcome="away"
-                />
-              </div>
+              All bookmakers
+            </span>
+            <div style={{ display: 'flex', gap: 12 }}>
+              {(['1', 'X', '2'] as const).map((label) => (
+                <span
+                  key={label}
+                  style={{ fontSize: 9, fontWeight: 700, color: 'var(--t-text-5)', width: 44, textAlign: 'center' }}
+                >
+                  {label}
+                </span>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+
+          {orderedOdds.map((odd, index) => {
+            const meta = getBookmakerMeta(odd.bookmaker);
+            const oddIdentityKey = getOddIdentityKey(odd);
+            const generalHref = buildBookmakerHref(odd.bookmaker, {
+              fixture: fixtureId ?? odd.apiFixtureId,
+              source: 'odds-comparison-row',
+            });
+            const rowMovements = oddsMovements?.[oddIdentityKey];
+
+            return (
+              <div
+                key={oddIdentityKey}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '7px 10px',
+                  borderBottom: index < orderedOdds.length - 1 ? '1px solid var(--t-border)' : undefined,
+                }}
+              >
+                <a
+                  href={generalHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    fontSize: 9,
+                    fontWeight: 900,
+                    textDecoration: 'none',
+                    background: `${meta.accent}18`,
+                    color: meta.accent,
+                    border: `1px solid ${meta.accent}33`,
+                  }}
+                >
+                  {meta.logoText}
+                </a>
+
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--t-text-2)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {odd.bookmaker}
+                </span>
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <OddPill
+                    value={odd.homeOdd}
+                    isBest={odd.homeOdd === maxHome}
+                    movement={rowMovements?.home}
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="home"
+                  />
+                  <OddPill
+                    value={odd.drawOdd}
+                    isBest={odd.drawOdd === maxDraw}
+                    movement={rowMovements?.draw}
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="draw"
+                  />
+                  <OddPill
+                    value={odd.awayOdd}
+                    isBest={odd.awayOdd === maxAway}
+                    movement={rowMovements?.away}
+                    bookmaker={odd.bookmaker}
+                    fixtureId={fixtureId}
+                    apiFixtureId={odd.apiFixtureId}
+                    outcome="away"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : bestOutcomes.length > 0 ? (
+        <div
+          style={{
+            borderRadius: 10,
+            padding: '10px 12px',
+            border: '1px solid var(--t-border)',
+            background: 'rgba(255,255,255,0.03)',
+            fontSize: 11,
+            color: 'var(--t-text-5)',
+          }}
+        >
+          Detailed bookmaker rows are not available yet. Showing the best prices we could resolve for this fixture.
+        </div>
+      ) : null}
 
       {bestOdds ? (
         <div style={{ textAlign: 'right', fontSize: 10, color: 'var(--t-text-5)' }}>

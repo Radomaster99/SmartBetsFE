@@ -1,4 +1,4 @@
-import type { BestOddsDto, LiveOddsMarketDto, LiveOddsValueDto, OddDto } from '@/lib/types/api';
+import type { BestOddsDto, LiveOddsMarketDto, LiveOddsSummaryDto, LiveOddsValueDto, OddDto } from '@/lib/types/api';
 
 const FULLTIME_THREE_WAY_MARKET_NAMES = new Set([
   'match winner',
@@ -427,5 +427,30 @@ export function deriveBestOddsFromOdds(odds: OddDto[]): BestOddsDto | null {
     bestDrawBookmaker: bestDraw.bookmaker,
     bestAwayOdd: bestAway.awayOdd,
     bestAwayBookmaker: bestAway.bookmaker,
+  };
+}
+
+export function mergeLiveSummaryOutcomes(
+  previous: LiveOddsSummaryDto | null | undefined,
+  next: LiveOddsSummaryDto | null | undefined,
+): LiveOddsSummaryDto | null {
+  if (!next && !previous) {
+    return null;
+  }
+
+  if (!next) {
+    return previous ?? null;
+  }
+
+  return {
+    ...next,
+    source: next.source,
+    collectedAtUtc: next.collectedAtUtc ?? previous?.collectedAtUtc ?? null,
+    bestHomeOdd: next.bestHomeOdd ?? previous?.bestHomeOdd ?? null,
+    bestHomeBookmaker: next.bestHomeBookmaker ?? previous?.bestHomeBookmaker ?? null,
+    bestDrawOdd: next.bestDrawOdd ?? previous?.bestDrawOdd ?? null,
+    bestDrawBookmaker: next.bestDrawBookmaker ?? previous?.bestDrawBookmaker ?? null,
+    bestAwayOdd: next.bestAwayOdd ?? previous?.bestAwayOdd ?? null,
+    bestAwayBookmaker: next.bestAwayBookmaker ?? previous?.bestAwayBookmaker ?? null,
   };
 }

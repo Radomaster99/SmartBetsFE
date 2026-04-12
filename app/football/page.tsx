@@ -1,16 +1,18 @@
 'use client';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { PromoStrip } from '@/components/ads/PromoStrip';
 import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import {
   useLiveOddsListSignalR,
   useLiveViewersHeartbeat,
-  useVisibleLiveOddsByFixture,
+  useVisibleLiveSummaries,
 } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
+import { fetchFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { FixtureFilters } from '@/components/fixtures/FixtureFilters';
 import { FixtureTable } from '@/components/fixtures/FixtureTable';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -18,7 +20,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useStandings } from '@/lib/hooks/useStandings';
 import { StandingsTable } from '@/components/standings/StandingsTable';
 import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
-import { deriveBestOddsFromOdds } from '@/lib/live-odds';
+import { mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -111,23 +113,6 @@ function isUsableLiveSummary(summary: LiveOddsSummaryDto | null | undefined): su
   }
 
   return Boolean(summary.bestHomeOdd || summary.bestDrawOdd || summary.bestAwayOdd);
-}
-
-function buildLiveSummaryFromOddsSummary(bestOdds: ReturnType<typeof deriveBestOddsFromOdds>): LiveOddsSummaryDto | null {
-  if (!bestOdds) {
-    return null;
-  }
-
-  return {
-    source: 'live',
-    collectedAtUtc: bestOdds.collectedAtUtc,
-    bestHomeOdd: bestOdds.bestHomeOdd,
-    bestHomeBookmaker: bestOdds.bestHomeBookmaker,
-    bestDrawOdd: bestOdds.bestDrawOdd,
-    bestDrawBookmaker: bestOdds.bestDrawBookmaker,
-    bestAwayOdd: bestOdds.bestAwayOdd,
-    bestAwayBookmaker: bestOdds.bestAwayBookmaker,
-  };
 }
 
 function LiveListStatusPill({
@@ -243,6 +228,7 @@ function SavedFixtureLink({
 
 function FootballPageClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const today = todayISO();
@@ -351,6 +337,12 @@ function FootballPageClient() {
   };
 
   const handleRowClick = (fixture: FixtureDto) => {
+    void queryClient.prefetchQuery({
+      queryKey: ['fixture', String(fixture.apiFixtureId)],
+      queryFn: () => fetchFixtureDetail(String(fixture.apiFixtureId)),
+      staleTime: 30_000,
+    });
+
     if (window.innerWidth < 768) {
       const params = new URLSearchParams();
       params.set('tab', 'odds');
@@ -378,43 +370,20 @@ function FootballPageClient() {
     () => new Set(visibleLiveFixtureIds),
     [visibleLiveFixtureIds],
   );
-  const visibleLiveFixtures = useMemo(
+  const visibleLiveFixtureIdsForSummary = useMemo(
     () =>
       state === 'Live'
         ? rawFixtures
             .filter((fixture) => visibleLiveFixtureIdSet.has(fixture.apiFixtureId))
-            .map((fixture) => ({
-              apiFixtureId: fixture.apiFixtureId,
-              homeTeamName: fixture.homeTeamName,
-              awayTeamName: fixture.awayTeamName,
-            }))
+            .map((fixture) => fixture.apiFixtureId)
         : [],
     [rawFixtures, state, visibleLiveFixtureIdSet],
   );
-  const { data: visibleLiveOddsByFixture = {} } = useVisibleLiveOddsByFixture(
-    visibleLiveFixtures,
+  const { data: visibleLiveSummaries = {} } = useVisibleLiveSummaries(
+    visibleLiveFixtureIdsForSummary,
     state === 'Live',
   );
   useLiveViewersHeartbeat(visibleLiveFixtureIds, state === 'Live');
-  const visibleLiveSummaries = useMemo(() => {
-    const entries = Object.entries(visibleLiveOddsByFixture)
-      .map(([fixtureId, odds]) => {
-        if (!odds.length) {
-          return null;
-        }
-
-        const bestOdds = deriveBestOddsFromOdds(odds);
-        const summary = buildLiveSummaryFromOddsSummary(bestOdds);
-        if (!summary) {
-          return null;
-        }
-
-        return [Number(fixtureId), summary] as const;
-      })
-      .filter((entry): entry is readonly [number, LiveOddsSummaryDto] => entry !== null);
-
-    return Object.fromEntries(entries) as Record<number, LiveOddsSummaryDto>;
-  }, [visibleLiveOddsByFixture]);
 
   useEffect(() => {
     if (state !== 'Live') {
@@ -434,17 +403,18 @@ function FootballPageClient() {
         const freshSummary = fixture.liveOddsSummary ?? null;
 
         if (isUsableLiveSummary(freshSummary)) {
-          next[fixtureId] = freshSummary;
+          const mergedSummary = mergeLiveSummaryOutcomes(current[fixtureId] ?? null, freshSummary);
+          next[fixtureId] = mergedSummary ?? freshSummary;
           const previous = current[fixtureId];
           if (
             !previous ||
-            previous.collectedAtUtc !== freshSummary.collectedAtUtc ||
-            previous.bestHomeOdd !== freshSummary.bestHomeOdd ||
-            previous.bestDrawOdd !== freshSummary.bestDrawOdd ||
-            previous.bestAwayOdd !== freshSummary.bestAwayOdd ||
-            previous.bestHomeBookmaker !== freshSummary.bestHomeBookmaker ||
-            previous.bestDrawBookmaker !== freshSummary.bestDrawBookmaker ||
-            previous.bestAwayBookmaker !== freshSummary.bestAwayBookmaker
+            previous.collectedAtUtc !== mergedSummary?.collectedAtUtc ||
+            previous.bestHomeOdd !== mergedSummary?.bestHomeOdd ||
+            previous.bestDrawOdd !== mergedSummary?.bestDrawOdd ||
+            previous.bestAwayOdd !== mergedSummary?.bestAwayOdd ||
+            previous.bestHomeBookmaker !== mergedSummary?.bestHomeBookmaker ||
+            previous.bestDrawBookmaker !== mergedSummary?.bestDrawBookmaker ||
+            previous.bestAwayBookmaker !== mergedSummary?.bestAwayBookmaker
           ) {
             changed = true;
           }
@@ -481,11 +451,9 @@ function FootballPageClient() {
         const directLiveSummary = visibleLiveSummaries[fixture.apiFixtureId] ?? null;
         const liveSummary = fixture.liveOddsSummary ?? null;
         const stickyLiveSummary = stickyLiveSummaries[fixture.apiFixtureId] ?? null;
-        const preferredLiveSummary =
-          directLiveSummary ??
-          (liveSummary?.source === 'live' ? liveSummary : null) ??
-          stickyLiveSummary ??
-          liveSummary;
+        const liveProviderSummary = directLiveSummary ?? (liveSummary?.source === 'live' ? liveSummary : null);
+        const mergedLiveSummary = mergeLiveSummaryOutcomes(stickyLiveSummary, liveProviderSummary);
+        const preferredLiveSummary = mergedLiveSummary ?? liveSummary;
 
         return preferredLiveSummary
           ? {
@@ -674,7 +642,6 @@ function FootballPageClient() {
                   isLoading={isLoading}
                   isFetching={isFetching}
                   oddsMovements={liveOddsListRealtime.movements}
-                  liveOddsByFixture={visibleLiveOddsByFixture}
                   savedFixtureIds={fixtureIdSet}
                   onToggleSave={toggleFixture}
                   selectedFixtureId={selectedFixtureId ?? undefined}

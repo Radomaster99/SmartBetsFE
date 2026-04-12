@@ -6,6 +6,38 @@ interface LiveViewersHeartbeatRequestBody {
   fixtureIds?: number[];
 }
 
+function readBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function normalizeHeartbeatResponse(payload: unknown): LiveOddsViewersHeartbeatDto {
+  const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+
+  return {
+    receivedFixtureIds: Array.isArray(record.receivedFixtureIds ?? record.ReceivedFixtureIds)
+      ? ((record.receivedFixtureIds ?? record.ReceivedFixtureIds) as unknown[])
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value > 0)
+      : [],
+    acceptedFixtureIds: Array.isArray(record.acceptedFixtureIds ?? record.AcceptedFixtureIds)
+      ? ((record.acceptedFixtureIds ?? record.AcceptedFixtureIds) as unknown[])
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value > 0)
+      : [],
+    activeFixtureIds: Array.isArray(record.activeFixtureIds ?? record.ActiveFixtureIds)
+      ? ((record.activeFixtureIds ?? record.ActiveFixtureIds) as unknown[])
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value) && value > 0)
+      : [],
+    touchedAtUtc:
+      typeof (record.touchedAtUtc ?? record.TouchedAtUtc) === 'string'
+        ? String(record.touchedAtUtc ?? record.TouchedAtUtc)
+        : new Date().toISOString(),
+    viewerHeartbeatTtlSeconds: Number(record.viewerHeartbeatTtlSeconds ?? record.ViewerHeartbeatTtlSeconds ?? 0),
+    heartbeatAccepted: readBoolean(record.heartbeatAccepted ?? record.HeartbeatAccepted),
+  };
+}
+
 export async function POST(req: NextRequest) {
   let body: LiveViewersHeartbeatRequestBody;
 
@@ -30,16 +62,17 @@ export async function POST(req: NextRequest) {
       activeFixtureIds: [],
       touchedAtUtc: new Date().toISOString(),
       viewerHeartbeatTtlSeconds: 0,
+      heartbeatAccepted: false,
     } satisfies LiveOddsViewersHeartbeatDto);
   }
 
   try {
-    const data = await apiFetch<LiveOddsViewersHeartbeatDto>('/api/odds/live/viewers/heartbeat', {
+    const data = await apiFetch<unknown>('/api/odds/live/viewers/heartbeat', {
       method: 'POST',
       body: JSON.stringify({ fixtureIds }),
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(normalizeHeartbeatResponse(data));
   } catch (error) {
     const message = String(error);
     console.error('[live-viewers-heartbeat] POST /api/odds/live/viewers/heartbeat failed:', message);

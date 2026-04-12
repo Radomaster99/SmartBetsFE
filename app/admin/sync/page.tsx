@@ -2,9 +2,20 @@
 
 import { Suspense, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { BonusCodeCardEditor } from '@/components/admin/BonusCodeCardEditor';
 import { HeroBannerSlotEditor } from '@/components/admin/HeroBannerSlotEditor';
 import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import {
+  BONUS_CODES_STORAGE_KEY,
+  createEmptyBonusCodeEntry,
+  DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  readBonusCodesPageConfig,
+  type BonusCodeEntry,
+  type BonusCodesPageConfig,
+  writeBonusCodesPageConfig,
+} from '@/lib/bonus-codes';
+import { useLiveViewersConfig } from '@/lib/hooks/useLiveViewersConfig';
 import {
   DEFAULT_HERO_BANNER_FOCUS_PERCENT,
   DEFAULT_HERO_BANNER_HEIGHT_PX,
@@ -51,7 +62,7 @@ import {
 } from '@/lib/side-ads';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
-const ADMIN_SECTION_IDS = ['quick', 'league', 'popular', 'hero', 'ads', 'result', 'snapshot', 'status'] as const;
+const ADMIN_SECTION_IDS = ['quick', 'league', 'heartbeat', 'popular', 'bonus', 'hero', 'ads', 'result', 'snapshot', 'status'] as const;
 
 type AdminSectionId = (typeof ADMIN_SECTION_IDS)[number];
 
@@ -156,10 +167,30 @@ function InfoStrip({ children }: { children: ReactNode }) {
   );
 }
 
-function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
+function MetricCard({
+  label,
+  value,
+  color,
+  background,
+  borderColor,
+  labelColor,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  background?: string;
+  borderColor?: string;
+  labelColor?: string;
+}) {
   return (
-    <div className="rounded-lg px-3 py-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--t-border)' }}>
-      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-text-6)' }}>
+    <div
+      className="rounded-lg px-3 py-3"
+      style={{
+        background: background ?? 'rgba(255,255,255,0.03)',
+        border: `1px solid ${borderColor ?? 'var(--t-border)'}`,
+      }}
+    >
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: labelColor ?? 'var(--t-text-6)' }}>
         {label}
       </div>
       <div className="text-[13px] font-semibold" style={{ color }}>
@@ -310,9 +341,12 @@ function AdminSyncPageContent() {
   const [season, setSeason] = useState(DEFAULT_SEASON);
   const [syncLeagueId, setSyncLeagueId] = useState(ALL_LEAGUES_VALUE);
   const [syncSeason, setSyncSeason] = useState(String(DEFAULT_SEASON));
+  const [theOddsFixtureId, setTheOddsFixtureId] = useState('');
   const [popularLeagueId, setPopularLeagueId] = useState('');
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
+  const [bonusCodesHydrated, setBonusCodesHydrated] = useState(false);
+  const [bonusCodesConfig, setBonusCodesConfig] = useState<BonusCodesPageConfig>(DEFAULT_BONUS_CODES_PAGE_CONFIG);
   const [heroBannersHydrated, setHeroBannersHydrated] = useState(false);
   const [heroBannerLayoutHydrated, setHeroBannerLayoutHydrated] = useState(false);
   const [heroBanners, setHeroBanners] = useState<HeroBannerConfig[]>(DEFAULT_HERO_BANNERS);
@@ -328,7 +362,9 @@ function AdminSyncPageContent() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     quick: true,
     league: true,
+    heartbeat: true,
     popular: false,
+    bonus: false,
     hero: false,
     ads: false,
     result: false,
@@ -337,6 +373,18 @@ function AdminSyncPageContent() {
   });
 
   const { data: status, isLoading: statusLoading, refetch } = useSyncStatus(season, false);
+  const {
+    data: liveViewersConfig,
+    isLoading: liveViewersConfigLoading,
+    refetch: refetchLiveViewersConfig,
+  } = useLiveViewersConfig(true);
+  const liveViewersConfigUnavailable = liveViewersConfig?.configAvailable === false;
+  const liveHeartbeatEnabled = liveViewersConfig?.effectiveViewerDrivenRefreshEnabled === true;
+  const adminHeartbeatDesiredEnabled =
+    liveViewersConfig?.liveOddsHeartbeatEnabled ??
+    liveViewersConfig?.viewerDrivenRefreshEnabled ??
+    liveViewersConfig?.adminViewerDrivenRefreshEnabled ??
+    liveHeartbeatEnabled;
 
   async function runAction(action: string, url: string) {
     setLoading(action);
@@ -357,6 +405,41 @@ function AdminSyncPageContent() {
       }
     } catch (e) {
       setResult({ action, ok: false, message: String(e) });
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function runHeartbeatToggle(nextEnabled: boolean) {
+    setLoading('heartbeat-toggle');
+    setResult(null);
+
+    try {
+      const res = await fetch('/api/admin/odds/live/the-odds/viewer-refresh', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          liveOddsHeartbeatEnabled: nextEnabled,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+
+      setResult({
+        action: 'heartbeat-toggle',
+        ok: res.ok,
+        message: res.ok
+          ? JSON.stringify(json, null, 2)
+          : `Error ${res.status}: ${json.error ?? 'Unknown error'}`,
+      });
+
+      if (res.ok) {
+        await refetchLiveViewersConfig();
+        refetch();
+      }
+    } catch (error) {
+      setResult({ action: 'heartbeat-toggle', ok: false, message: String(error) });
     } finally {
       setLoading(null);
     }
@@ -449,9 +532,13 @@ function AdminSyncPageContent() {
     [adminPopularLeagueKeys, syncLeagues],
   );
 
+  const bonusCodeEntries = bonusCodesConfig.entries;
+  const activeBonusCodesCount = bonusCodeEntries.filter((entry) => entry.isActive).length;
+  const featuredBonusCodesCount = bonusCodeEntries.filter((entry) => entry.isActive && entry.isFeatured).length;
   const selectedPopularLeague = popularLeagueOptions.find((league) => league.key === popularLeagueId) ?? null;
   const hasLeague = selectedLeagueIds.length > 0;
   const hasLeagueAndSeason = Boolean(selectedLeagueIds.length > 0 && syncSeason);
+  const hasTheOddsFixtureId = Boolean(theOddsFixtureId.trim());
 
   const availableStatusSeasons = useMemo(
     () =>
@@ -544,6 +631,45 @@ function AdminSyncPageContent() {
     },
   ];
 
+  const theOddsRefreshButtons: ActionBtn[] = [
+    {
+      id: 'the-odds-refresh-fixture',
+      label: 'Refresh Fixture Odds',
+      runningLabel: 'Refreshing...',
+      description:
+        'Runs the admin The Odds refresh for one live fixture. Use it when you want a manual cache warm-up or a quick diagnostics refresh for a single match.',
+      requestPreview: [
+        `POST /api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${theOddsFixtureId.trim() || '{apiFixtureId}'}${forceSync ? '&force=true' : ''}`,
+      ],
+      accent: true,
+      onClick: () =>
+        runAction(
+          'the-odds-refresh-fixture',
+          `/api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${encodeURIComponent(theOddsFixtureId.trim())}${forceSync ? '&force=true' : ''}`,
+        ),
+      disabled: !hasTheOddsFixtureId,
+      disabledReason: 'Enter an API fixture id',
+    },
+    {
+      id: 'the-odds-refresh-league',
+      label: 'Refresh League Odds',
+      runningLabel: 'Refreshing...',
+      description:
+        'Runs the admin The Odds refresh for the selected league-season. In bulk mode it will loop through the tracked leagues one by one.',
+      requestPreview: [
+        `POST /api/admin/odds/live/the-odds/refresh-league?leagueId=${leagueTargetPreview}&season=${syncSeason}${forceSync ? '&force=true' : ''}`,
+      ],
+      onClick: () =>
+        runLeagueAction(
+          'the-odds-refresh-league',
+          (leagueId) =>
+            `/api/admin/odds/live/the-odds/refresh-league?leagueId=${leagueId}&season=${syncSeason}${forceSync ? '&force=true' : ''}`,
+        ),
+      disabled: !hasLeagueAndSeason,
+      disabledReason: 'Select a league group and season',
+    },
+  ];
+
   const quickSummary = includeOdds
     ? 'Core bootstrap with pre-match odds enabled.'
     : 'Core bootstrap without pre-match odds.';
@@ -554,11 +680,240 @@ function AdminSyncPageContent() {
       : `Targeting ${leagueNameById.get(syncLeagueId) ?? 'one league'}${syncSeason ? ` for ${syncSeason}.` : '.'}`;
 
   const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues for new visitors in this browser profile.`;
+  const bonusSummary = activeBonusCodesCount
+    ? `${activeBonusCodesCount} active bonus code card${activeBonusCodesCount === 1 ? '' : 's'} with ${featuredBonusCodesCount} featured pick${featuredBonusCodesCount === 1 ? '' : 's'}.`
+    : 'No active bonus code cards yet.';
   const heroSummary = `${heroBanners.filter((banner) => banner.isClickable && banner.href).length}/3 hero ads clickable • ${heroBannerLayout.heightPx}px tall.`;
   const configuredSideAdsCount = [sideAdsConfig.left, sideAdsConfig.right].filter(Boolean).length;
   const adsSummary = configuredSideAdsCount
     ? `${configuredSideAdsCount} side banner slot${configuredSideAdsCount === 1 ? '' : 's'} ready.`
     : 'No side banners configured yet.';
+  const heartbeatSummary = liveViewersConfigLoading
+    ? 'Checking the global live viewers heartbeat policy from the backend.'
+    : liveViewersConfigUnavailable
+      ? 'The global heartbeat status could not be loaded from the backend right now.'
+    : adminHeartbeatDesiredEnabled
+      ? liveHeartbeatEnabled
+        ? 'Heartbeat is globally enabled and live pages can keep sending viewer keepalive pings.'
+        : 'Heartbeat is globally armed, but another runtime guard is still keeping the effective refresh path disabled.'
+      : 'Heartbeat is globally disabled and live pages will stop sending viewer keepalive pings.';
+  const heartbeatStatusCards = [
+    {
+      label: 'Effective refresh',
+      value: liveViewersConfigLoading ? 'Checking' : liveViewersConfigUnavailable ? 'Unknown' : liveHeartbeatEnabled ? 'Enabled' : 'Disabled',
+      color: liveViewersConfigLoading ? '#fbbf24' : liveViewersConfigUnavailable ? '#fca5a5' : liveHeartbeatEnabled ? '#00e676' : '#f59e0b',
+      background:
+        liveViewersConfigLoading
+          ? 'rgba(245,158,11,0.12)'
+          : liveViewersConfigUnavailable
+            ? 'rgba(239,68,68,0.12)'
+            : liveHeartbeatEnabled
+              ? 'rgba(0,230,118,0.12)'
+              : 'rgba(245,158,11,0.12)',
+      borderColor:
+        liveViewersConfigLoading
+          ? 'rgba(245,158,11,0.34)'
+          : liveViewersConfigUnavailable
+            ? 'rgba(239,68,68,0.3)'
+            : liveHeartbeatEnabled
+              ? 'rgba(0,230,118,0.28)'
+              : 'rgba(245,158,11,0.3)',
+      labelColor:
+        liveHeartbeatEnabled && !liveViewersConfigUnavailable ? 'rgba(167,243,208,0.82)' : 'rgba(255,237,213,0.82)',
+    },
+    {
+      label: 'Config toggle',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : adminHeartbeatDesiredEnabled == null
+            ? 'Unknown'
+            : adminHeartbeatDesiredEnabled
+              ? 'Enabled'
+              : 'Disabled',
+      color:
+        adminHeartbeatDesiredEnabled == null
+          ? '#94a3b8'
+          : adminHeartbeatDesiredEnabled
+            ? '#00e676'
+            : '#f59e0b',
+      background:
+        adminHeartbeatDesiredEnabled == null
+          ? 'rgba(148,163,184,0.08)'
+          : adminHeartbeatDesiredEnabled
+            ? 'rgba(0,230,118,0.1)'
+            : 'rgba(245,158,11,0.1)',
+      borderColor:
+        adminHeartbeatDesiredEnabled == null
+          ? 'rgba(148,163,184,0.18)'
+          : adminHeartbeatDesiredEnabled
+            ? 'rgba(0,230,118,0.24)'
+            : 'rgba(245,158,11,0.24)',
+    },
+    {
+      label: 'Live heartbeat',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.liveOddsHeartbeatEnabled == null
+            ? 'Unknown'
+            : liveViewersConfig.liveOddsHeartbeatEnabled
+              ? 'Enabled'
+              : 'Disabled',
+      color:
+        liveViewersConfig?.liveOddsHeartbeatEnabled == null
+          ? '#94a3b8'
+          : liveViewersConfig.liveOddsHeartbeatEnabled
+            ? '#00e676'
+            : '#f59e0b',
+      background:
+        liveViewersConfig?.liveOddsHeartbeatEnabled == null
+          ? 'rgba(148,163,184,0.08)'
+          : liveViewersConfig.liveOddsHeartbeatEnabled
+            ? 'rgba(0,230,118,0.1)'
+            : 'rgba(245,158,11,0.1)',
+      borderColor:
+        liveViewersConfig?.liveOddsHeartbeatEnabled == null
+          ? 'rgba(148,163,184,0.18)'
+          : liveViewersConfig.liveOddsHeartbeatEnabled
+            ? 'rgba(0,230,118,0.24)'
+            : 'rgba(245,158,11,0.24)',
+    },
+    {
+      label: 'The Odds provider',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.theOddsProviderEnabled == null
+            ? 'Unknown'
+            : liveViewersConfig.theOddsProviderEnabled
+              ? 'Enabled'
+              : 'Disabled',
+      color:
+        liveViewersConfig?.theOddsProviderEnabled == null
+          ? '#94a3b8'
+          : liveViewersConfig.theOddsProviderEnabled
+            ? '#00e676'
+            : '#f59e0b',
+      background:
+        liveViewersConfig?.theOddsProviderEnabled == null
+          ? 'rgba(148,163,184,0.08)'
+          : liveViewersConfig.theOddsProviderEnabled
+            ? 'rgba(0,230,118,0.1)'
+            : 'rgba(245,158,11,0.1)',
+      borderColor:
+        liveViewersConfig?.theOddsProviderEnabled == null
+          ? 'rgba(148,163,184,0.18)'
+          : liveViewersConfig.theOddsProviderEnabled
+            ? 'rgba(0,230,118,0.24)'
+            : 'rgba(245,158,11,0.24)',
+    },
+    {
+      label: 'Provider configured',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.theOddsProviderConfigured == null
+            ? 'Unknown'
+            : liveViewersConfig.theOddsProviderConfigured
+              ? 'Ready'
+              : 'Missing',
+      color:
+        liveViewersConfig?.theOddsProviderConfigured == null
+          ? '#94a3b8'
+          : liveViewersConfig.theOddsProviderConfigured
+            ? '#00e676'
+            : '#fca5a5',
+      background:
+        liveViewersConfig?.theOddsProviderConfigured == null
+          ? 'rgba(148,163,184,0.08)'
+          : liveViewersConfig.theOddsProviderConfigured
+            ? 'rgba(0,230,118,0.12)'
+            : 'rgba(239,68,68,0.16)',
+      borderColor:
+        liveViewersConfig?.theOddsProviderConfigured == null
+          ? 'rgba(148,163,184,0.18)'
+          : liveViewersConfig.theOddsProviderConfigured
+            ? 'rgba(0,230,118,0.24)'
+            : 'rgba(239,68,68,0.34)',
+      labelColor:
+        liveViewersConfig?.theOddsProviderConfigured === false
+          ? 'rgba(254,202,202,0.92)'
+          : undefined,
+    },
+    {
+      label: 'Read catch-up',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.readDrivenCatchUpEnabled == null
+            ? 'Unknown'
+            : liveViewersConfig.readDrivenCatchUpEnabled
+              ? 'Enabled'
+              : 'Disabled',
+      color:
+        liveViewersConfig?.readDrivenCatchUpEnabled == null
+          ? '#94a3b8'
+          : liveViewersConfig.readDrivenCatchUpEnabled
+            ? '#7dd3fc'
+            : '#f59e0b',
+      background:
+        liveViewersConfig?.readDrivenCatchUpEnabled == null
+          ? 'rgba(148,163,184,0.08)'
+          : liveViewersConfig.readDrivenCatchUpEnabled
+            ? 'rgba(14,165,233,0.14)'
+            : 'rgba(245,158,11,0.1)',
+      borderColor:
+        liveViewersConfig?.readDrivenCatchUpEnabled == null
+          ? 'rgba(148,163,184,0.18)'
+          : liveViewersConfig.readDrivenCatchUpEnabled
+            ? 'rgba(56,189,248,0.3)'
+            : 'rgba(245,158,11,0.24)',
+      labelColor:
+        liveViewersConfig?.readDrivenCatchUpEnabled === true
+          ? 'rgba(186,230,253,0.9)'
+          : undefined,
+    },
+    {
+      label: 'Heartbeat TTL',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.viewerHeartbeatTtlSeconds == null
+            ? 'Unknown'
+          : `${liveViewersConfig.viewerHeartbeatTtlSeconds}s`,
+      color: '#60a5fa',
+      background: 'rgba(59,130,246,0.1)',
+      borderColor: 'rgba(96,165,250,0.24)',
+      labelColor: 'rgba(191,219,254,0.82)',
+    },
+    {
+      label: 'Refresh interval',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.viewerRefreshIntervalSeconds == null
+            ? 'Unknown'
+          : `${liveViewersConfig.viewerRefreshIntervalSeconds}s`,
+      color: '#a78bfa',
+      background: 'rgba(139,92,246,0.1)',
+      borderColor: 'rgba(167,139,250,0.24)',
+      labelColor: 'rgba(221,214,254,0.82)',
+    },
+    {
+      label: 'Updated at',
+      value:
+        liveViewersConfigLoading
+          ? 'Checking'
+          : liveViewersConfig?.updatedAtUtc
+            ? fmtTs(liveViewersConfig.updatedAtUtc)
+            : 'Not persisted',
+      color: '#f9a8d4',
+      background: 'rgba(236,72,153,0.08)',
+      borderColor: 'rgba(249,168,212,0.22)',
+      labelColor: 'rgba(251,207,232,0.82)',
+    },
+  ];
   const snapshotSummary = status ? `Latest snapshot ${fmtTs(status.generatedAtUtc)}.` : 'No sync snapshot loaded yet.';
   const statusSummary = `${syncLeagues.length} league-season rows for ${season}.`;
   const rawSection = searchParams.get('section');
@@ -571,6 +926,8 @@ function AdminSyncPageContent() {
       readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET),
     );
     setPopularStorageHydrated(true);
+    setBonusCodesConfig(readBonusCodesPageConfig());
+    setBonusCodesHydrated(true);
     setHeroBanners(readHeroBannersConfig());
     setHeroBannersHydrated(true);
     setHeroBannerLayout(readHeroBannerLayoutConfig());
@@ -586,6 +943,38 @@ function AdminSyncPageContent() {
 
     writePopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, adminPopularLeaguePresets);
   }, [adminPopularLeaguePresets, popularStorageHydrated]);
+
+  useEffect(() => {
+    if (!bonusCodesHydrated) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      writeBonusCodesPageConfig(bonusCodesConfig);
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [bonusCodesConfig, bonusCodesHydrated]);
+
+  useEffect(() => {
+    if (!bonusCodesHydrated) {
+      return;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === BONUS_CODES_STORAGE_KEY) {
+        setBonusCodesConfig(readBonusCodesPageConfig());
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [bonusCodesHydrated]);
 
   useEffect(() => {
     if (!heroBannersHydrated) {
@@ -702,6 +1091,135 @@ function AdminSyncPageContent() {
       action: 'popular-refresh',
       ok: true,
       message: 'Admin popular leagues were restored for this browser profile. Hidden user overrides were cleared.',
+    });
+  }
+
+  function updateBonusCodesCopy(updates: Partial<BonusCodesPageConfig['copy']>) {
+    setBonusCodesConfig((current) => ({
+      ...current,
+      copy: {
+        ...current.copy,
+        ...updates,
+      },
+    }));
+  }
+
+  function updateBonusCodeEntry(id: string, updates: Partial<BonusCodeEntry>) {
+    setBonusCodesConfig((current) => ({
+      ...current,
+      entries: current.entries.map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              ...updates,
+              updatedAtUtc: new Date().toISOString(),
+            }
+          : entry,
+      ),
+    }));
+  }
+
+  function addBonusCodeEntry() {
+    const nextEntry = createEmptyBonusCodeEntry();
+    setBonusCodesConfig((current) => ({
+      ...current,
+      entries: [...current.entries, nextEntry],
+    }));
+    setResult({
+      action: 'bonus-code-add',
+      ok: true,
+      message: `Added a new bonus code card draft for ${nextEntry.bookmaker}.`,
+    });
+  }
+
+  function duplicateBonusCodeEntry(id: string) {
+    setBonusCodesConfig((current) => {
+      const index = current.entries.findIndex((entry) => entry.id === id);
+
+      if (index === -1) {
+        return current;
+      }
+
+      const source = current.entries[index];
+      const duplicate = {
+        ...source,
+        ...createEmptyBonusCodeEntry(),
+        bookmaker: `${source.bookmaker} copy`,
+        badge: source.badge,
+        offer: source.offer,
+        code: source.code,
+        description: source.description,
+        terms: source.terms,
+        ctaLabel: source.ctaLabel,
+        href: source.href,
+        isActive: source.isActive,
+        isFeatured: false,
+        toneId: source.toneId,
+        updatedAtUtc: new Date().toISOString(),
+      };
+
+      const nextEntries = [...current.entries];
+      nextEntries.splice(index + 1, 0, duplicate);
+
+      return {
+        ...current,
+        entries: nextEntries,
+      };
+    });
+
+    setResult({
+      action: 'bonus-code-duplicate',
+      ok: true,
+      message: 'Bonus code card duplicated. Review the copied code and bookmaker title before publishing it live.',
+    });
+  }
+
+  function moveBonusCodeEntry(id: string, direction: 'up' | 'down') {
+    setBonusCodesConfig((current) => {
+      const index = current.entries.findIndex((entry) => entry.id === id);
+
+      if (index === -1) {
+        return current;
+      }
+
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (targetIndex < 0 || targetIndex >= current.entries.length) {
+        return current;
+      }
+
+      const nextEntries = [...current.entries];
+      const [entry] = nextEntries.splice(index, 1);
+      nextEntries.splice(targetIndex, 0, {
+        ...entry,
+        updatedAtUtc: new Date().toISOString(),
+      });
+
+      return {
+        ...current,
+        entries: nextEntries,
+      };
+    });
+  }
+
+  function removeBonusCodeEntry(id: string) {
+    setBonusCodesConfig((current) => ({
+      ...current,
+      entries: current.entries.filter((entry) => entry.id !== id),
+    }));
+    setResult({
+      action: 'bonus-code-remove',
+      ok: true,
+      message: 'The selected bonus code card was removed.',
+    });
+  }
+
+  function resetBonusCodesConfig() {
+    setBonusCodesConfig(DEFAULT_BONUS_CODES_PAGE_CONFIG);
+    setResult({
+      action: 'bonus-codes-reset',
+      ok: true,
+      message: 'Bonus codes page content was reset to the default preset.',
     });
   }
 
@@ -996,8 +1514,12 @@ function AdminSyncPageContent() {
         return { title: 'Quick sync', description: quickSummary };
       case 'league':
         return { title: 'League actions', description: leagueSummary };
+      case 'heartbeat':
+        return { title: 'Heartbeat kill switch', description: heartbeatSummary };
       case 'popular':
         return { title: 'Popular leagues', description: popularSummary };
+      case 'bonus':
+        return { title: 'Bonus codes', description: bonusSummary };
       case 'hero':
         return { title: 'Hero banners', description: heroSummary };
       case 'ads':
@@ -1113,6 +1635,20 @@ function AdminSyncPageContent() {
                   className="input-shell w-24 px-3 py-1.5 text-[12px]"
                 />
               </div>
+
+              <div>
+                <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  Fixture API id
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={theOddsFixtureId}
+                  onChange={(e) => setTheOddsFixtureId(e.target.value)}
+                  placeholder="1379288"
+                  className="input-shell w-36 px-3 py-1.5 text-[12px]"
+                />
+              </div>
             </div>
 
               <InfoStrip>
@@ -1121,11 +1657,142 @@ function AdminSyncPageContent() {
                 : `Only ${leagueNameById.get(syncLeagueId) ?? 'the selected league'} will be touched.`}
             </InfoStrip>
 
+            <InfoStrip>
+              The Odds admin refresh tools below are manual actions only. The normal live pages should keep using the regular read endpoints plus viewer heartbeat.
+            </InfoStrip>
+
             <div className="grid gap-3 md:grid-cols-2">
               {perLeagueButtons.map((btn) => (
                 <ActionCard key={btn.id} btn={btn} loading={loading} />
               ))}
             </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {theOddsRefreshButtons.map((btn) => (
+                <ActionCard key={btn.id} btn={btn} loading={loading} />
+              ))}
+            </div>
+          </div>
+        </AccordionSection>
+        ) : null}
+
+        {activeSection === 'heartbeat' ? (
+        <AccordionSection
+          title="Heartbeat Kill Switch"
+          summary={heartbeatSummary}
+          badge={liveViewersConfigLoading ? 'checking' : liveViewersConfigUnavailable ? 'unknown' : adminHeartbeatDesiredEnabled ? 'armed' : 'disarmed'}
+          isOpen={openSections.heartbeat}
+          onToggle={() => toggleSection('heartbeat')}
+        >
+          <div className="space-y-4">
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: liveHeartbeatEnabled
+                  ? 'linear-gradient(135deg, rgba(127,29,29,0.84), rgba(59,7,7,0.96))'
+                  : 'linear-gradient(135deg, rgba(120,53,15,0.92), rgba(67,20,7,0.96))',
+                border: liveHeartbeatEnabled
+                  ? '1px solid rgba(248,113,113,0.45)'
+                  : '1px solid rgba(251,191,36,0.36)',
+                boxShadow: liveHeartbeatEnabled
+                  ? '0 18px 44px rgba(127,29,29,0.28)'
+                  : '0 18px 44px rgba(120,53,15,0.22)',
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="text-[10px] font-black uppercase tracking-[0.26em]"
+                    style={{ color: adminHeartbeatDesiredEnabled ? '#fecaca' : '#fde68a' }}
+                  >
+                    Global backend control
+                  </div>
+                  <div className="mt-2 text-[18px] font-black uppercase tracking-[0.18em]" style={{ color: '#fff7ed' }}>
+                    {liveViewersConfigLoading
+                      ? 'Checking heartbeat state'
+                      : liveViewersConfigUnavailable
+                        ? 'Heartbeat state unavailable'
+                        : adminHeartbeatDesiredEnabled
+                          ? 'Heartbeat armed'
+                          : 'Heartbeat disarmed'}
+                  </div>
+                  <p className="mt-2 max-w-2xl text-[12px] leading-5" style={{ color: 'rgba(255,245,245,0.88)' }}>
+                    Heartbeat sends the visible live fixture ids to the backend every 25 seconds. This is the viewer keepalive
+                    signal that tells the live odds system which matches are actively being watched.
+                  </p>
+                  <p className="mt-2 max-w-2xl text-[11px]" style={{ color: adminHeartbeatDesiredEnabled ? '#fecaca' : '#fde68a' }}>
+                    Turning it off does not remove normal read access. It only stops every client from pushing automatic viewer
+                    priority updates for live odds refresh until the global switch is enabled again.
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-col items-end gap-3">
+                  <span
+                    className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]"
+                    style={{
+                      background: adminHeartbeatDesiredEnabled ? 'rgba(254,202,202,0.12)' : 'rgba(253,230,138,0.12)',
+                      border: adminHeartbeatDesiredEnabled
+                        ? '1px solid rgba(248,113,113,0.38)'
+                        : '1px solid rgba(251,191,36,0.34)',
+                      color: adminHeartbeatDesiredEnabled ? '#fecaca' : '#fde68a',
+                    }}
+                  >
+                    {liveViewersConfigLoading ? 'Checking' : liveViewersConfigUnavailable ? 'Unknown' : adminHeartbeatDesiredEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => void runHeartbeatToggle(!adminHeartbeatDesiredEnabled)}
+                    disabled={Boolean(loading) || liveViewersConfigLoading}
+                    className="rounded-xl px-5 py-3 text-[12px] font-black uppercase tracking-[0.22em] transition-transform hover:-translate-y-[1px]"
+                    style={{
+                      minWidth: '260px',
+                      background: adminHeartbeatDesiredEnabled
+                        ? 'linear-gradient(135deg, #ef4444, #7f1d1d)'
+                        : 'linear-gradient(135deg, #f97316, #7c2d12)',
+                      border: adminHeartbeatDesiredEnabled
+                        ? '1px solid rgba(252,165,165,0.62)'
+                        : '1px solid rgba(253,186,116,0.62)',
+                      boxShadow: adminHeartbeatDesiredEnabled
+                        ? '0 16px 36px rgba(127,29,29,0.42)'
+                        : '0 16px 36px rgba(124,45,18,0.42)',
+                      color: '#fff7ed',
+                      opacity: loading === 'heartbeat-toggle' || liveViewersConfigLoading ? 0.72 : 1,
+                    }}
+                  >
+                    {loading === 'heartbeat-toggle'
+                      ? 'Updating switch'
+                      : adminHeartbeatDesiredEnabled
+                        ? 'Disable heartbeat'
+                        : 'Re-arm heartbeat'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <InfoStrip>
+              Use this kill switch only for testing or debugging. With heartbeat disabled, the frontend still reads cached live odds,
+              but it stops telling the backend which live fixtures are being actively viewed across the whole site.
+            </InfoStrip>
+
+            <InfoStrip>
+              Manual admin refresh actions still work while heartbeat is disabled. This switch only controls the automatic browser
+              keepalive signal.
+            </InfoStrip>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {heartbeatStatusCards.map((card) => (
+                <MetricCard key={card.label} label={card.label} value={card.value} color={card.color} />
+              ))}
+            </div>
+
+            {liveViewersConfigUnavailable && liveViewersConfig?.error ? (
+              <InfoStrip>
+                Backend config endpoint error:
+                {' '}
+                <span className="font-mono">{liveViewersConfig.error}</span>
+              </InfoStrip>
+            ) : null}
           </div>
         </AccordionSection>
         ) : null}
@@ -1212,6 +1879,142 @@ function AdminSyncPageContent() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </AccordionSection>
+        ) : null}
+
+        {activeSection === 'bonus' ? (
+        <AccordionSection
+          title="Bonus Codes"
+          summary={bonusSummary}
+          badge={`${activeBonusCodesCount} active`}
+          isOpen={openSections.bonus}
+          onToggle={() => toggleSection('bonus')}
+        >
+          <div className="space-y-3">
+            <InfoStrip>
+              Manage the content for the new <span className="font-semibold">Bonus codes</span> header tab. This follows the same frontend content model as hero banners and side ads, so changes are stored in this browser profile and reflected on <span className="font-mono">/bonus-codes</span>.
+            </InfoStrip>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard label="Active cards" value={String(activeBonusCodesCount)} color="#00e676" />
+              <MetricCard label="Featured cards" value={String(featuredBonusCodesCount)} color="#fbbf24" />
+              <MetricCard
+                label="Total cards"
+                value={String(bonusCodeEntries.length)}
+                color="#93c5fd"
+                background="rgba(59,130,246,0.08)"
+                borderColor="rgba(96,165,250,0.24)"
+                labelColor="rgba(191,219,254,0.82)"
+              />
+              <MetricCard
+                label="Page route"
+                value="/bonus-codes"
+                color="#f9a8d4"
+                background="rgba(236,72,153,0.08)"
+                borderColor="rgba(249,168,212,0.22)"
+                labelColor="rgba(251,207,232,0.82)"
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <div className="mb-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  Eyebrow
+                </div>
+                <input
+                  value={bonusCodesConfig.copy.eyebrow}
+                  onChange={(event) => updateBonusCodesCopy({ eyebrow: event.target.value })}
+                  className="input-shell w-full px-3 py-1.5 text-[12px]"
+                />
+              </label>
+
+              <label className="block">
+                <div className="mb-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  Featured label
+                </div>
+                <input
+                  value={bonusCodesConfig.copy.featuredLabel}
+                  onChange={(event) => updateBonusCodesCopy({ featuredLabel: event.target.value })}
+                  className="input-shell w-full px-3 py-1.5 text-[12px]"
+                />
+              </label>
+
+              <label className="block md:col-span-2">
+                <div className="mb-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  Page title
+                </div>
+                <input
+                  value={bonusCodesConfig.copy.title}
+                  onChange={(event) => updateBonusCodesCopy({ title: event.target.value })}
+                  className="input-shell w-full px-3 py-1.5 text-[12px]"
+                />
+              </label>
+
+              <label className="block md:col-span-2">
+                <div className="mb-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  Subtitle
+                </div>
+                <textarea
+                  value={bonusCodesConfig.copy.subtitle}
+                  onChange={(event) => updateBonusCodesCopy({ subtitle: event.target.value })}
+                  className="input-shell min-h-[88px] w-full px-3 py-2 text-[12px]"
+                />
+              </label>
+
+              <label className="block md:col-span-2">
+                <div className="mb-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                  All cards label
+                </div>
+                <input
+                  value={bonusCodesConfig.copy.allLabel}
+                  onChange={(event) => updateBonusCodesCopy({ allLabel: event.target.value })}
+                  className="input-shell w-full px-3 py-1.5 text-[12px]"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={addBonusCodeEntry}
+                className="cta-btn rounded px-3 py-1.5 text-[12px] font-bold"
+              >
+                Add bonus code
+              </button>
+              <button
+                type="button"
+                onClick={resetBonusCodesConfig}
+                className="chrome-btn rounded px-3 py-1.5 text-[12px] font-bold transition-all"
+              >
+                Restore default page
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              {bonusCodeEntries.map((entry, index) => (
+                <BonusCodeCardEditor
+                  key={entry.id}
+                  entry={entry}
+                  index={index}
+                  total={bonusCodeEntries.length}
+                  onChange={updateBonusCodeEntry}
+                  onMove={moveBonusCodeEntry}
+                  onDuplicate={duplicateBonusCodeEntry}
+                  onRemove={removeBonusCodeEntry}
+                />
+              ))}
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={addBonusCodeEntry}
+                className="cta-btn rounded px-4 py-2 text-[12px] font-bold"
+              >
+                Add another bonus code
+              </button>
             </div>
           </div>
         </AccordionSection>

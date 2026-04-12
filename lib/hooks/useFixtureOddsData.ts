@@ -39,19 +39,37 @@ function formatRelativeTimestamp(iso: string | null | undefined): string | null 
 function summaryToBestOdds(
   summary: LiveOddsSummaryDto,
   fixture: { id: number; apiFixtureId: number },
+  fallback?: BestOddsDto | null,
 ): BestOddsDto | null {
-  if (!summary.bestHomeOdd || !summary.bestDrawOdd || !summary.bestAwayOdd) return null;
+  const bestHomeOdd = summary.bestHomeOdd ?? fallback?.bestHomeOdd ?? null;
+  const bestHomeBookmaker = summary.bestHomeBookmaker ?? fallback?.bestHomeBookmaker ?? null;
+  const bestDrawOdd = summary.bestDrawOdd ?? fallback?.bestDrawOdd ?? null;
+  const bestDrawBookmaker = summary.bestDrawBookmaker ?? fallback?.bestDrawBookmaker ?? null;
+  const bestAwayOdd = summary.bestAwayOdd ?? fallback?.bestAwayOdd ?? null;
+  const bestAwayBookmaker = summary.bestAwayBookmaker ?? fallback?.bestAwayBookmaker ?? null;
+
+  if (
+    bestHomeOdd == null &&
+    bestDrawOdd == null &&
+    bestAwayOdd == null &&
+    !bestHomeBookmaker &&
+    !bestDrawBookmaker &&
+    !bestAwayBookmaker
+  ) {
+    return null;
+  }
+
   return {
     fixtureId: fixture.id,
     apiFixtureId: fixture.apiFixtureId,
     marketName: 'Match Winner',
-    collectedAtUtc: summary.collectedAtUtc ?? new Date().toISOString(),
-    bestHomeOdd: summary.bestHomeOdd,
-    bestHomeBookmaker: summary.bestHomeBookmaker ?? 'Bet365',
-    bestDrawOdd: summary.bestDrawOdd,
-    bestDrawBookmaker: summary.bestDrawBookmaker ?? 'Bet365',
-    bestAwayOdd: summary.bestAwayOdd,
-    bestAwayBookmaker: summary.bestAwayBookmaker ?? 'Bet365',
+    collectedAtUtc: summary.collectedAtUtc ?? fallback?.collectedAtUtc ?? new Date().toISOString(),
+    bestHomeOdd,
+    bestHomeBookmaker,
+    bestDrawOdd,
+    bestDrawBookmaker,
+    bestAwayOdd,
+    bestAwayBookmaker,
   };
 }
 
@@ -124,7 +142,11 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
   const summaryLiveBestOdds = useMemo(() => {
     const s = detail?.liveOddsSummary;
     if (!isLive || !s || s.source !== 'live') return null;
-    return summaryToBestOdds(s, { id: detail.fixture.id, apiFixtureId: detail.fixture.apiFixtureId });
+    return summaryToBestOdds(
+      s,
+      { id: detail.fixture.id, apiFixtureId: detail.fixture.apiFixtureId },
+      detail?.bestOdds ?? null,
+    );
   }, [detail, isLive]);
 
   const liveSummarySource = isLive ? (detail?.liveOddsSummary?.source ?? null) : null;
@@ -133,9 +155,16 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
   const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || liveSummarySource === 'prematch');
   const shouldUseLiveBookmakerView = Boolean(isLive && hasPerMarketLiveOdds);
   const isLiveBookmakerRowsPending = Boolean(isLive && liveSummarySource === 'live' && !hasPerMarketLiveOdds);
-  const usingPreMatchFallback = Boolean(
-    isLive && !shouldUseLiveBookmakerView && liveSummarySource !== 'live' && hasPreMatchFallback,
+  const shouldHoldForLiveRows = Boolean(
+    isLive &&
+      liveSummarySource === 'live' &&
+      !hasPerMarketLiveOdds &&
+      (liveOddsQuery.isLoading || liveOddsQuery.isFetching),
   );
+  const shouldUsePreMatchFallbackView = Boolean(
+    isLive && !shouldUseLiveBookmakerView && hasPreMatchFallback && !shouldHoldForLiveRows,
+  );
+  const usingPreMatchFallback = shouldUsePreMatchFallbackView;
 
   const displayOdds = useMemo(() => {
     if (!isLive) {
@@ -146,17 +175,17 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
       return mappedLiveOdds;
     }
 
-    if (liveSummarySource === 'live') {
+    if (!shouldUsePreMatchFallbackView) {
       return [];
     }
 
     return odds ?? [];
-  }, [isLive, liveSummarySource, mappedLiveOdds, odds, shouldUseLiveBookmakerView]);
+  }, [isLive, mappedLiveOdds, odds, shouldUseLiveBookmakerView, shouldUsePreMatchFallbackView]);
 
   const resolvedBestOdds = isLive
     ? shouldUseLiveBookmakerView
       ? derivedLiveBestOdds ?? summaryLiveBestOdds ?? detail?.bestOdds ?? null
-      : summaryLiveBestOdds ?? detail?.bestOdds ?? null
+      : summaryLiveBestOdds ?? (shouldUsePreMatchFallbackView ? detail?.bestOdds ?? null : null)
     : detail?.bestOdds ?? null;
 
   const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(displayOdds.length);

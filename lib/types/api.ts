@@ -81,12 +81,12 @@ export interface BestOddsDto {
   apiFixtureId: number;
   marketName: string;
   collectedAtUtc: string;
-  bestHomeOdd: number;
-  bestHomeBookmaker: string;
-  bestDrawOdd: number;
-  bestDrawBookmaker: string;
-  bestAwayOdd: number;
-  bestAwayBookmaker: string;
+  bestHomeOdd: number | null;
+  bestHomeBookmaker: string | null;
+  bestDrawOdd: number | null;
+  bestDrawBookmaker: string | null;
+  bestAwayOdd: number | null;
+  bestAwayBookmaker: string | null;
 }
 
 export interface LiveOddsValueDto {
@@ -138,6 +138,23 @@ export interface LiveOddsViewersHeartbeatDto {
   activeFixtureIds: number[];
   touchedAtUtc: string;
   viewerHeartbeatTtlSeconds: number;
+  heartbeatAccepted?: boolean | null;
+}
+
+export interface LiveOddsViewersConfigDto {
+  effectiveViewerDrivenRefreshEnabled: boolean;
+  viewerDrivenRefreshEnabled?: boolean | null;
+  adminViewerDrivenRefreshEnabled?: boolean | null;
+  liveOddsHeartbeatEnabled?: boolean | null;
+  theOddsProviderEnabled?: boolean | null;
+  theOddsProviderConfigured?: boolean | null;
+  configViewerDrivenRefreshEnabled?: boolean | null;
+  readDrivenCatchUpEnabled?: boolean | null;
+  viewerHeartbeatTtlSeconds?: number | null;
+  viewerRefreshIntervalSeconds?: number | null;
+  updatedAtUtc?: string | null;
+  configAvailable?: boolean;
+  error?: string | null;
 }
 
 export interface FixtureFreshnessDto {

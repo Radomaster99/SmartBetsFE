@@ -81,16 +81,23 @@ interface Props {
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
-  // Live fixtures must only show live odds from the backend liveOddsSummary.
-  // Never fall back to pre-match batch odds on live rows.
-  if (fixture.stateBucket === 'Live') {
-    return false;
-  }
   const liveSummary = fixture.liveOddsSummary ?? null;
-  // If the backend already returned odds via liveOddsSummary (live or prematch), no batch call needed.
-  if (liveSummary?.source === 'live' || liveSummary?.source === 'prematch') {
-    return false;
+
+  const hasCompleteSummary =
+    liveSummary?.bestHomeOdd != null &&
+    liveSummary?.bestDrawOdd != null &&
+    liveSummary?.bestAwayOdd != null;
+
+  // Live rows can still need fallback when the provider returns only part of the 1X2 set.
+  if (fixture.stateBucket === 'Live') {
+    return !hasCompleteSummary;
   }
+
+  // If the backend already returned a complete summary (live or prematch), no batch call needed.
+  if (liveSummary?.source === 'live' || liveSummary?.source === 'prematch') {
+    return !hasCompleteSummary;
+  }
+
   return fixture.stateBucket === 'Upcoming' || fixture.stateBucket === 'Unknown';
 }
 

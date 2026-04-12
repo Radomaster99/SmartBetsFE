@@ -121,12 +121,13 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
         </div>
         <div className="flex flex-col">
           {rows.map((row, i) => {
-            const href = buildBookmakerHref(row.bookmaker, {
+            const bookmaker = row.bookmaker ?? 'Unknown';
+            const href = buildBookmakerHref(bookmaker, {
               fixture: fixtureId,
               outcome: row.outcomeKey,
               source: 'best-odds-panel',
             });
-            const meta = getBookmakerMeta(row.bookmaker);
+            const meta = getBookmakerMeta(bookmaker);
             const movement = movements?.[row.outcomeKey];
 
             return (
@@ -145,7 +146,7 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="odds-cell text-[22px] font-black" style={{ color: 'var(--t-accent)' }}>
-                        {row.odd.toFixed(2)}
+                        {row.odd!.toFixed(2)}
                       </span>
                       {movement ? (
                         <span
@@ -179,8 +180,8 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
                     {meta.logoText}
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={row.bookmaker}>
-                      {row.bookmaker}
+                    <div className="truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={bookmaker}>
+                      {bookmaker}
                     </div>
                     <div className="text-[10px]" style={{ color: 'var(--t-text-5)' }}>
                       Bookmaker
@@ -215,8 +216,8 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
         <OddsRow
           key={row.outcomeKey}
           outcome={row.outcome}
-          odd={row.odd}
-          bookmaker={row.bookmaker}
+          odd={row.odd!}
+          bookmaker={row.bookmaker ?? 'Unknown'}
           outcomeKey={row.outcomeKey}
           fixtureId={fixtureId}
           isLast={i === rows.length - 1}

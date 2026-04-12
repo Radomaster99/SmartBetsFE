@@ -12,10 +12,11 @@ export class FixtureDetailError extends Error {
   }
 }
 
-async function fetchFixtureDetail(fixtureId: string): Promise<FixtureDetailDto> {
+export async function fetchFixtureDetail(fixtureId: string): Promise<FixtureDetailDto> {
   let res: Response;
   try {
     res = await fetch(`/api/fixtures/${fixtureId}`, {
+      cache: 'no-store',
       signal: AbortSignal.timeout(90_000),
     });
   } catch (err) {
@@ -43,7 +44,18 @@ export function useFixtureDetail(fixtureId: string) {
     queryKey: ['fixture', fixtureId],
     queryFn: () => fetchFixtureDetail(fixtureId),
     staleTime: 30_000,
-    retry: false,
+    retry: (failureCount, error) => {
+      if (!(error instanceof FixtureDetailError)) {
+        return failureCount < 1;
+      }
+
+      if (error.status === 404) {
+        return false;
+      }
+
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1_500 * (attemptIndex + 1), 4_000),
     enabled: !!fixtureId,
   });
 }

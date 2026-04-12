@@ -262,58 +262,51 @@ export function FixtureRow({
   // Priority:
   // 1. live bookmaker rows from any live provider
   // 2. backend list summary (live or prematch fallback)
-  // 3. pre-match batch fallback for non-live rows
+  // 3. best-odds batch fallback for any outcome still missing
   const hasSummary = liveSummary !== null;
-  const usePreMatch = !isLive;
 
   const homeOdd = liveBestOdds
     ? liveBestOdds.bestHomeOdd
     : hasSummary
       ? (liveSummary?.bestHomeOdd ?? null)
-      : usePreMatch
-        ? (bestOddsFallback?.bestHomeOdd ?? null)
-        : null;
+      : null;
   const homeBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestHomeBookmaker
       : hasSummary
         ? liveSummary?.bestHomeBookmaker
-        : usePreMatch
-          ? bestOddsFallback?.bestHomeBookmaker
-          : null,
+        : null,
   );
   const drawOdd = liveBestOdds
     ? liveBestOdds.bestDrawOdd
     : hasSummary
       ? (liveSummary?.bestDrawOdd ?? null)
-      : usePreMatch
-        ? (bestOddsFallback?.bestDrawOdd ?? null)
-        : null;
+      : null;
   const drawBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestDrawBookmaker
       : hasSummary
         ? liveSummary?.bestDrawBookmaker
-        : usePreMatch
-          ? bestOddsFallback?.bestDrawBookmaker
-          : null,
+        : null,
   );
   const awayOdd = liveBestOdds
     ? liveBestOdds.bestAwayOdd
     : hasSummary
       ? (liveSummary?.bestAwayOdd ?? null)
-      : usePreMatch
-        ? (bestOddsFallback?.bestAwayOdd ?? null)
-        : null;
+      : null;
   const awayBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestAwayBookmaker
       : hasSummary
         ? liveSummary?.bestAwayBookmaker
-        : usePreMatch
-          ? bestOddsFallback?.bestAwayBookmaker
-          : null,
+        : null,
   );
+  const resolvedHomeOdd = homeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
+  const resolvedHomeBookmaker = homeBookmaker ?? resolveBookmaker(bestOddsFallback?.bestHomeBookmaker);
+  const resolvedDrawOdd = drawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
+  const resolvedDrawBookmaker = drawBookmaker ?? resolveBookmaker(bestOddsFallback?.bestDrawBookmaker);
+  const resolvedAwayOdd = awayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const resolvedAwayBookmaker = awayBookmaker ?? resolveBookmaker(bestOddsFallback?.bestAwayBookmaker);
 
   // Score flash: detect when live score changes
   const prevScoreRef = useRef({ home: fixture.homeGoals, away: fixture.awayGoals });
@@ -334,7 +327,7 @@ export function FixtureRow({
   }, [fixture.homeGoals, fixture.awayGoals, fixture.stateBucket]);
 
   // Highest value among the three = loosest market (gets green highlight)
-  const allOdds = [homeOdd, drawOdd, awayOdd].filter((o): o is number => o !== null);
+  const allOdds = [resolvedHomeOdd, resolvedDrawOdd, resolvedAwayOdd].filter((o): o is number => o !== null);
   const bestOddValue = allOdds.length > 0 ? Math.max(...allOdds) : null;
 
   const homeWin = hasScore && fixture.homeGoals! > fixture.awayGoals!;
@@ -466,32 +459,32 @@ export function FixtureRow({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
           <OddsButton
             label="HOME"
-            value={homeOdd}
-            bookmaker={homeBookmaker}
+            value={resolvedHomeOdd}
+            bookmaker={resolvedHomeBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="home"
             movement={oddsMovement?.home}
-            isBest={bestOddValue !== null && homeOdd === bestOddValue}
+            isBest={bestOddValue !== null && resolvedHomeOdd === bestOddValue}
             onFallbackClick={handleOpenOdds}
           />
           <OddsButton
             label="DRAW"
-            value={drawOdd}
-            bookmaker={drawBookmaker}
+            value={resolvedDrawOdd}
+            bookmaker={resolvedDrawBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="draw"
             movement={oddsMovement?.draw}
-            isBest={bestOddValue !== null && drawOdd === bestOddValue}
+            isBest={bestOddValue !== null && resolvedDrawOdd === bestOddValue}
             onFallbackClick={handleOpenOdds}
           />
           <OddsButton
             label="AWAY"
-            value={awayOdd}
-            bookmaker={awayBookmaker}
+            value={resolvedAwayOdd}
+            bookmaker={resolvedAwayBookmaker}
             fixtureId={fixture.apiFixtureId}
             outcomeKey="away"
             movement={oddsMovement?.away}
-            isBest={bestOddValue !== null && awayOdd === bestOddValue}
+            isBest={bestOddValue !== null && resolvedAwayOdd === bestOddValue}
             onFallbackClick={handleOpenOdds}
           />
         </div>

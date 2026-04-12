@@ -19,7 +19,8 @@ import type {
   OddDto,
   PagedResultDto,
 } from '@/lib/types/api';
-import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
+import { LIVE_VIEWERS_CONFIG_QUERY_KEY, useLiveViewersConfig } from '@/lib/hooks/useLiveViewersConfig';
+import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://smartbets-fqzk.onrender.com';
 const LIVE_VIEWER_HEARTBEAT_INTERVAL_MS = 25_000;
@@ -85,6 +86,29 @@ async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
   }
 
   return res.json();
+}
+
+async function fetchLiveOddsSummaries(fixtureIds: number[]): Promise<Record<number, LiveOddsSummaryDto>> {
+  const res = await fetch('/api/odds/live/summary', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ fixtureIds }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch live odds summaries');
+  }
+
+  const payload = (await res.json()) as LiveOddsSummaryDto[];
+  return Object.fromEntries(
+    payload
+      .filter((summary) => Number.isFinite(summary.apiFixtureId) && Number(summary.apiFixtureId) > 0)
+      .map((summary) => [Number(summary.apiFixtureId), summary]),
+  ) as Record<number, LiveOddsSummaryDto>;
 }
 
 async function postLiveViewersHeartbeat(fixtureIds: number[]): Promise<LiveOddsViewersHeartbeatDto | null> {
@@ -228,6 +252,32 @@ export function useLiveOdds(fixtureId: string, enabled = true, options?: LiveOdd
   });
 }
 
+export function useVisibleLiveSummaries(fixtureIds: number[], enabled = true, options?: LiveOddsQueryOptions) {
+  const stableFixtureIds = Array.from(
+    new Set(fixtureIds.filter((fixtureId) => Number.isFinite(fixtureId) && fixtureId > 0)),
+  ).sort((left, right) => left - right);
+  const fixtureIdsKey = stableFixtureIds.join(',');
+
+  return useQuery({
+    queryKey: ['visible-live-summaries', fixtureIdsKey],
+    enabled: enabled && stableFixtureIds.length > 0,
+    staleTime: options?.staleTime ?? 30_000,
+    refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      try {
+        return await fetchLiveOddsSummaries(stableFixtureIds);
+      } catch (error) {
+        if (!(error instanceof Error && error.name === 'TimeoutError')) {
+          console.warn('[useVisibleLiveSummaries] Failed to fetch live odds summaries:', error);
+        }
+        return {};
+      }
+    },
+  });
+}
+
 type VisibleLiveFixtureSeed = Pick<FixtureDto, 'apiFixtureId' | 'homeTeamName' | 'awayTeamName'>;
 
 export function useVisibleLiveOddsByFixture(
@@ -280,13 +330,21 @@ export function useVisibleLiveOddsByFixture(
 }
 
 export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
+  const queryClient = useQueryClient();
+  const liveViewersConfigQuery = useLiveViewersConfig(enabled);
   const stableFixtureIds = Array.from(
     new Set(fixtureIds.filter((fixtureId) => Number.isFinite(fixtureId) && fixtureId > 0)),
   ).sort((left, right) => left - right);
   const fixtureIdsKey = stableFixtureIds.join(',');
+  const [heartbeatRejected, setHeartbeatRejected] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(() =>
     typeof document === 'undefined' ? true : !document.hidden,
   );
+  const isHeartbeatEnabled = liveViewersConfigQuery.data?.effectiveViewerDrivenRefreshEnabled === true;
+
+  useEffect(() => {
+    setHeartbeatRejected(false);
+  }, [enabled, fixtureIdsKey, isHeartbeatEnabled]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -300,7 +358,7 @@ export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
   }, []);
 
   useEffect(() => {
-    if (!enabled || !isPageVisible || stableFixtureIds.length === 0) {
+    if (!enabled || !isHeartbeatEnabled || heartbeatRejected || !isPageVisible || stableFixtureIds.length === 0) {
       return;
     }
 
@@ -308,7 +366,15 @@ export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
 
     const sendHeartbeat = async () => {
       try {
-        await postLiveViewersHeartbeat(stableFixtureIds);
+        const response = await postLiveViewersHeartbeat(stableFixtureIds);
+
+        if (!cancelled && response?.heartbeatAccepted === false) {
+          setHeartbeatRejected(true);
+          queryClient.setQueryData(LIVE_VIEWERS_CONFIG_QUERY_KEY, (current: { effectiveViewerDrivenRefreshEnabled?: boolean } | undefined) => ({
+            ...(current ?? {}),
+            effectiveViewerDrivenRefreshEnabled: false,
+          }));
+        }
       } catch (error) {
         if (!cancelled) {
           console.error('[useLiveViewersHeartbeat] Failed to send heartbeat:', error);
@@ -325,7 +391,7 @@ export function useLiveViewersHeartbeat(fixtureIds: number[], enabled = true) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [enabled, fixtureIdsKey, isPageVisible]);
+  }, [enabled, fixtureIdsKey, heartbeatRejected, isHeartbeatEnabled, isPageVisible, queryClient]);
 }
 
 function applyFixtureSummaryUpdate(
@@ -352,9 +418,10 @@ function applyFixtureSummaryUpdate(
       }
 
       changed = true;
+      const mergedSummary = mergeLiveSummaryOutcomes(fixture.liveOddsSummary ?? null, nextSummary);
       return {
         ...fixture,
-        liveOddsSummary: nextSummary,
+        liveOddsSummary: mergedSummary,
       };
     });
 
