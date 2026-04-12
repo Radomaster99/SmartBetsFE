@@ -499,7 +499,7 @@ export function FixtureTable({
 
   return (
     <div ref={containerRef} className="flex-1 overflow-auto">
-      {isLoading ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
+      {isFetching ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
       {sortedLeagueEntries.map(([key, { name, country, items }]) => {
         const oddsCount = items.filter((fixture) => {
           const liveSummary = fixture.liveOddsSummary ?? null;
