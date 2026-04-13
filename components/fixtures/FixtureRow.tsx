@@ -11,6 +11,7 @@ interface Props {
   fixture: FixtureDto;
   bestOddsFallback?: BestOddsDto | null;
   liveOddsRows?: OddDto[];
+  isLiveOddsPending?: boolean;
   oddsMovement?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   isSaved?: boolean;
   onToggleSave?: (fixture: FixtureDto) => void;
@@ -112,6 +113,40 @@ function StatusCell({ fixture }: { fixture: FixtureDto }) {
   );
 }
 
+function OddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        borderRadius: radius,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          inset: -1,
+          borderRadius: radius + 1,
+          background:
+            'conic-gradient(from 0deg, rgba(0,230,118,0) 0deg, rgba(0,230,118,0) 250deg, rgba(0,230,118,0.14) 288deg, rgba(0,230,118,0.98) 324deg, rgba(0,230,118,0) 360deg)',
+          animation: 'odds-loading-spin 1.05s linear infinite',
+        }}
+      />
+      <span
+        style={{
+          position: 'absolute',
+          inset: 1,
+          borderRadius: Math.max(radius - 1, 0),
+          background: fill,
+        }}
+      />
+    </span>
+  );
+}
+
 function OddsButton({
   label,
   value,
@@ -120,6 +155,7 @@ function OddsButton({
   outcomeKey,
   movement,
   isBest,
+  isLoading = false,
   onFallbackClick,
 }: {
   label: string;
@@ -129,6 +165,7 @@ function OddsButton({
   outcomeKey: 'home' | 'draw' | 'away';
   movement?: LiveOddsMovementDirection;
   isBest: boolean;
+  isLoading?: boolean;
   onFallbackClick: (event: React.MouseEvent) => void;
 }) {
   const prevMovementRef = useRef<LiveOddsMovementDirection | undefined>(movement);
@@ -155,10 +192,15 @@ function OddsButton({
     gap: 2,
     height: 32,
     borderRadius: 6,
-    border: isBest ? '1px solid rgba(0,230,118,0.35)' : '1px solid var(--t-border)',
-    background: isBest ? 'rgba(0,230,118,0.1)' : 'var(--t-surface-2)',
+    border: isLoading
+      ? '1px solid rgba(0,230,118,0.2)'
+      : isBest
+        ? '1px solid rgba(0,230,118,0.35)'
+        : '1px solid var(--t-border)',
+    background: isLoading ? 'rgba(0,230,118,0.06)' : isBest ? 'rgba(0,230,118,0.1)' : 'var(--t-surface-2)',
     cursor: value && bookmaker ? 'pointer' : 'default',
     position: 'relative',
+    overflow: 'hidden',
     textDecoration: 'none',
     padding: 0,
     width: '100%',
@@ -167,6 +209,47 @@ function OddsButton({
 
   const inner = (
     <>
+      {isLoading && value == null ? <OddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={6} /> : null}
+      <span
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          width: '100%',
+          height: '100%',
+        }}
+      >
+      {isLoading && value == null ? (
+        <>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 26,
+              height: 8,
+              borderRadius: 999,
+              background: 'rgba(148,163,184,0.26)',
+              animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+            }}
+          />
+          <span
+            style={{
+              fontSize: 7,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: 'rgba(0,230,118,0.7)',
+              lineHeight: 1,
+            }}
+          >
+            Live
+          </span>
+        </>
+      ) : (
+        <>
       {movement ? (
         <span
           aria-hidden="true"
@@ -211,6 +294,9 @@ function OddsButton({
       >
         {bookmaker ?? label}
       </span>
+        </>
+      )}
+      </span>
     </>
   );
 
@@ -235,7 +321,11 @@ function OddsButton({
       type="button"
       onClick={onFallbackClick}
       aria-label={`${label} odds`}
-      style={{ ...buttonStyle, background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}
+      style={
+        isLoading
+          ? buttonStyle
+          : { ...buttonStyle, background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }
+      }
     >
       {inner}
     </button>
@@ -246,6 +336,7 @@ export function FixtureRow({
   fixture,
   bestOddsFallback,
   liveOddsRows = [],
+  isLiveOddsPending = false,
   oddsMovement,
   isSaved = false,
   onToggleSave,
@@ -255,58 +346,89 @@ export function FixtureRow({
   const isLive = fixture.stateBucket === 'Live';
   const isFinished = fixture.stateBucket === 'Finished';
   const liveSummary = fixture.liveOddsSummary ?? null;
+  const liveSummaryIsLive = liveSummary?.source === 'live';
+  const liveSummaryIsPrematch = liveSummary?.source === 'prematch';
   const sortedLiveOddsRows = sortOddsByStrength(liveOddsRows);
   const liveBestOdds = sortedLiveOddsRows.length > 0 ? deriveBestOddsFromOdds(sortedLiveOddsRows) : null;
   const hasScore = fixture.homeGoals !== null && fixture.awayGoals !== null;
+  const hideFallbackWhilePending = isLive && isLiveOddsPending && !liveBestOdds;
 
   // Priority:
   // 1. live bookmaker rows from any live provider
   // 2. backend list summary (live or prematch fallback)
   // 3. best-odds batch fallback for any outcome still missing
-  const hasSummary = liveSummary !== null;
-
   const homeOdd = liveBestOdds
     ? liveBestOdds.bestHomeOdd
-    : hasSummary
+    : liveSummaryIsLive
       ? (liveSummary?.bestHomeOdd ?? null)
       : null;
   const homeBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestHomeBookmaker
-      : hasSummary
+      : liveSummaryIsLive
         ? liveSummary?.bestHomeBookmaker
         : null,
   );
   const drawOdd = liveBestOdds
     ? liveBestOdds.bestDrawOdd
-    : hasSummary
+    : liveSummaryIsLive
       ? (liveSummary?.bestDrawOdd ?? null)
       : null;
   const drawBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestDrawBookmaker
-      : hasSummary
+      : liveSummaryIsLive
         ? liveSummary?.bestDrawBookmaker
         : null,
   );
   const awayOdd = liveBestOdds
     ? liveBestOdds.bestAwayOdd
-    : hasSummary
+    : liveSummaryIsLive
       ? (liveSummary?.bestAwayOdd ?? null)
       : null;
   const awayBookmaker = resolveBookmaker(
     liveBestOdds
       ? liveBestOdds.bestAwayBookmaker
-      : hasSummary
+      : liveSummaryIsLive
         ? liveSummary?.bestAwayBookmaker
         : null,
   );
-  const resolvedHomeOdd = homeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
-  const resolvedHomeBookmaker = homeBookmaker ?? resolveBookmaker(bestOddsFallback?.bestHomeBookmaker);
-  const resolvedDrawOdd = drawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
-  const resolvedDrawBookmaker = drawBookmaker ?? resolveBookmaker(bestOddsFallback?.bestDrawBookmaker);
-  const resolvedAwayOdd = awayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
-  const resolvedAwayBookmaker = awayBookmaker ?? resolveBookmaker(bestOddsFallback?.bestAwayBookmaker);
+  const resolvedHomeOdd =
+    homeOdd ??
+    (hideFallbackWhilePending
+      ? null
+      : ((liveSummaryIsPrematch ? liveSummary?.bestHomeOdd ?? null : null) ?? bestOddsFallback?.bestHomeOdd ?? null));
+  const resolvedHomeBookmaker =
+    homeBookmaker ??
+    (hideFallbackWhilePending
+      ? null
+      : resolveBookmaker(
+          (liveSummaryIsPrematch ? liveSummary?.bestHomeBookmaker : null) ?? bestOddsFallback?.bestHomeBookmaker,
+        ));
+  const resolvedDrawOdd =
+    drawOdd ??
+    (hideFallbackWhilePending
+      ? null
+      : ((liveSummaryIsPrematch ? liveSummary?.bestDrawOdd ?? null : null) ?? bestOddsFallback?.bestDrawOdd ?? null));
+  const resolvedDrawBookmaker =
+    drawBookmaker ??
+    (hideFallbackWhilePending
+      ? null
+      : resolveBookmaker(
+          (liveSummaryIsPrematch ? liveSummary?.bestDrawBookmaker : null) ?? bestOddsFallback?.bestDrawBookmaker,
+        ));
+  const resolvedAwayOdd =
+    awayOdd ??
+    (hideFallbackWhilePending
+      ? null
+      : ((liveSummaryIsPrematch ? liveSummary?.bestAwayOdd ?? null : null) ?? bestOddsFallback?.bestAwayOdd ?? null));
+  const resolvedAwayBookmaker =
+    awayBookmaker ??
+    (hideFallbackWhilePending
+      ? null
+      : resolveBookmaker(
+          (liveSummaryIsPrematch ? liveSummary?.bestAwayBookmaker : null) ?? bestOddsFallback?.bestAwayBookmaker,
+        ));
 
   // Score flash: detect when live score changes
   const prevScoreRef = useRef({ home: fixture.homeGoals, away: fixture.awayGoals });
@@ -465,6 +587,7 @@ export function FixtureRow({
             outcomeKey="home"
             movement={oddsMovement?.home}
             isBest={bestOddValue !== null && resolvedHomeOdd === bestOddValue}
+            isLoading={hideFallbackWhilePending && resolvedHomeOdd == null}
             onFallbackClick={handleOpenOdds}
           />
           <OddsButton
@@ -475,6 +598,7 @@ export function FixtureRow({
             outcomeKey="draw"
             movement={oddsMovement?.draw}
             isBest={bestOddValue !== null && resolvedDrawOdd === bestOddValue}
+            isLoading={hideFallbackWhilePending && resolvedDrawOdd == null}
             onFallbackClick={handleOpenOdds}
           />
           <OddsButton
@@ -485,6 +609,7 @@ export function FixtureRow({
             outcomeKey="away"
             movement={oddsMovement?.away}
             isBest={bestOddValue !== null && resolvedAwayOdd === bestOddValue}
+            isLoading={hideFallbackWhilePending && resolvedAwayOdd == null}
             onFallbackClick={handleOpenOdds}
           />
         </div>

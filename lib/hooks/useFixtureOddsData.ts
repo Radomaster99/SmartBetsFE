@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds } from '@/lib/hooks/useOdds';
 import {
@@ -11,7 +12,7 @@ import {
   type LiveOddsRealtimeStatus,
 } from '@/lib/hooks/useLiveOdds';
 import { deriveBestOddsFromOdds, getOddIdentityKey, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
-import type { BestOddsDto, LiveOddsSummaryDto, OddDto } from '@/lib/types/api';
+import type { BestOddsDto, FixtureDetailDto, FixtureDto, LiveOddsSummaryDto, OddDto, PagedResultDto } from '@/lib/types/api';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,44 @@ function summaryToBestOdds(
   };
 }
 
+function bestOddsToLiveSummary(bestOdds: BestOddsDto): LiveOddsSummaryDto {
+  return {
+    apiFixtureId: bestOdds.apiFixtureId,
+    source: 'live',
+    collectedAtUtc: bestOdds.collectedAtUtc,
+    bestHomeOdd: bestOdds.bestHomeOdd,
+    bestHomeBookmaker: bestOdds.bestHomeBookmaker,
+    bestDrawOdd: bestOdds.bestDrawOdd,
+    bestDrawBookmaker: bestOdds.bestDrawBookmaker,
+    bestAwayOdd: bestOdds.bestAwayOdd,
+    bestAwayBookmaker: bestOdds.bestAwayBookmaker,
+  };
+}
+
+function areLiveSummariesEqual(
+  left: LiveOddsSummaryDto | null | undefined,
+  right: LiveOddsSummaryDto | null | undefined,
+): boolean {
+  if (!left && !right) {
+    return true;
+  }
+
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left.source === right.source &&
+    left.collectedAtUtc === right.collectedAtUtc &&
+    left.bestHomeOdd === right.bestHomeOdd &&
+    left.bestHomeBookmaker === right.bestHomeBookmaker &&
+    left.bestDrawOdd === right.bestDrawOdd &&
+    left.bestDrawBookmaker === right.bestDrawBookmaker &&
+    left.bestAwayOdd === right.bestAwayOdd &&
+    left.bestAwayBookmaker === right.bestAwayBookmaker
+  );
+}
+
 // ── public interface ───────────────────────────────────────────────────────
 
 export interface FixtureOddsData {
@@ -103,6 +142,7 @@ export interface FixtureOddsData {
  * @param isOddsTabActive - pass false when the odds tab is not visible to pause movement tracking
  */
 export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): FixtureOddsData {
+  const queryClient = useQueryClient();
   const [bestOddsMovements, setBestOddsMovements] = useState<
     Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>
   >({});
@@ -148,6 +188,21 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
       detail?.bestOdds ?? null,
     );
   }, [detail, isLive]);
+  const derivedLiveSummary = useMemo(() => {
+    if (!isLive) {
+      return null;
+    }
+
+    if (derivedLiveBestOdds) {
+      return bestOddsToLiveSummary(derivedLiveBestOdds);
+    }
+
+    if (summaryLiveBestOdds) {
+      return bestOddsToLiveSummary(summaryLiveBestOdds);
+    }
+
+    return detail?.liveOddsSummary?.source === 'live' ? detail.liveOddsSummary : null;
+  }, [derivedLiveBestOdds, detail?.liveOddsSummary, isLive, summaryLiveBestOdds]);
 
   const liveSummarySource = isLive ? (detail?.liveOddsSummary?.source ?? null) : null;
   const hasLiveOdds = mappedLiveOdds.length > 0 || liveSummarySource === 'live' || Boolean(summaryLiveBestOdds);
@@ -189,6 +244,59 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
     : detail?.bestOdds ?? null;
 
   const hasAnyOdds = Boolean(resolvedBestOdds) || Boolean(displayOdds.length);
+
+  useEffect(() => {
+    if (!detail || !derivedLiveSummary) {
+      return;
+    }
+
+    queryClient.setQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] }, (current) => {
+      if (!current) {
+        return current;
+      }
+
+      let changed = false;
+      const items = current.items.map((fixture) => {
+        if (fixture.apiFixtureId !== detail.fixture.apiFixtureId) {
+          return fixture;
+        }
+
+        if (areLiveSummariesEqual(fixture.liveOddsSummary, derivedLiveSummary)) {
+          return fixture;
+        }
+
+        changed = true;
+        return {
+          ...fixture,
+          liveOddsSummary: derivedLiveSummary,
+        };
+      });
+
+      return changed ? { ...current, items } : current;
+    });
+
+    queryClient.setQueryData<FixtureDetailDto | undefined>(['fixture', fixtureId], (current) => {
+      if (!current) {
+        return current;
+      }
+
+      if (
+        areLiveSummariesEqual(current.liveOddsSummary, derivedLiveSummary) &&
+        areLiveSummariesEqual(current.fixture.liveOddsSummary, derivedLiveSummary)
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        liveOddsSummary: derivedLiveSummary,
+        fixture: {
+          ...current.fixture,
+          liveOddsSummary: derivedLiveSummary,
+        },
+      };
+    });
+  }, [derivedLiveSummary, detail?.fixture.apiFixtureId, fixtureId, queryClient]);
 
   // ── freshness label ───────────────────────────────────────────────────────
 

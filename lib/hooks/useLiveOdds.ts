@@ -22,7 +22,8 @@ import type {
 import { LIVE_VIEWERS_CONFIG_QUERY_KEY, useLiveViewersConfig } from '@/lib/hooks/useLiveViewersConfig';
 import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://smartbets-fqzk.onrender.com';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://tn1ij0gjz51y40mkc99bo5ja.178.104.173.167.sslip.io';
 const LIVE_VIEWER_HEARTBEAT_INTERVAL_MS = 25_000;
 
 export type LiveOddsRealtimeStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
@@ -315,10 +316,12 @@ export function useVisibleLiveOddsByFixture(
             });
             return [fixture.apiFixtureId, odds] as const;
           } catch (error) {
-            console.error(
-              `[useVisibleLiveOddsByFixture] Failed to fetch live odds for fixture ${fixture.apiFixtureId}:`,
-              error,
-            );
+            if (!(error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) {
+              console.warn(
+                `[useVisibleLiveOddsByFixture] Failed to fetch live odds for fixture ${fixture.apiFixtureId}:`,
+                error,
+              );
+            }
             return [fixture.apiFixtureId, [] as OddDto[]] as const;
           }
         }),

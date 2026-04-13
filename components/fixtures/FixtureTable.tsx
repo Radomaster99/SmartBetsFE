@@ -73,6 +73,7 @@ interface Props {
   isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
   liveOddsByFixture?: Record<number, OddDto[]>;
+  pendingLiveOddsFixtureIds?: ReadonlySet<number>;
   savedFixtureIds?: Set<number>;
   onToggleSave?: (fixture: FixtureDto) => void;
   selectedFixtureId?: number;
@@ -124,17 +125,96 @@ function resolveBookmakerForDisplay(name: string | null | undefined): string | n
   return name?.trim() || null;
 }
 
+function MobileOddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        borderRadius: radius,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          inset: -1,
+          borderRadius: radius + 1,
+          background:
+            'conic-gradient(from 0deg, rgba(0,230,118,0) 0deg, rgba(0,230,118,0) 250deg, rgba(0,230,118,0.14) 288deg, rgba(0,230,118,0.98) 324deg, rgba(0,230,118,0) 360deg)',
+          animation: 'odds-loading-spin 1.05s linear infinite',
+        }}
+      />
+      <span
+        style={{
+          position: 'absolute',
+          inset: 1,
+          borderRadius: Math.max(radius - 1, 0),
+          background: fill,
+        }}
+      />
+    </span>
+  );
+}
+
 function MobileOddsCell({
   fixtureId,
   label,
   odd,
   bookmaker,
+  isLoading = false,
 }: {
   fixtureId: number;
   label: string;
   odd: number | null;
   bookmaker: string | null;
+  isLoading?: boolean;
 }) {
+  if (isLoading && odd == null) {
+    return (
+      <div
+        className="odds-btn odds-btn-grid min-h-[48px]"
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderColor: 'rgba(0,230,118,0.2)',
+          background: 'rgba(0,230,118,0.06)',
+        }}
+      >
+        <MobileOddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={12} />
+        <span
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
+            Live
+          </span>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 26,
+              height: 8,
+              borderRadius: 999,
+              background: 'rgba(148,163,184,0.26)',
+              animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+            }}
+          />
+        </span>
+      </div>
+    );
+  }
+
   if (!odd) {
     return (
       <div className="odds-btn odds-btn-grid min-h-[48px]">
@@ -184,16 +264,20 @@ function MobileFixtureCard({
   liveOddsRows,
   isSaved,
   onToggleSave,
+  isLiveOddsPending = false,
 }: {
   fixture: FixtureDto;
   bestOddsFallback: BestOddsDto | null;
   liveOddsRows: OddDto[];
   isSaved: boolean;
   onToggleSave?: (fixture: FixtureDto) => void;
+  isLiveOddsPending?: boolean;
 }) {
   const router = useRouter();
   const isLive = fixture.stateBucket === 'Live';
   const liveSummary = fixture.liveOddsSummary ?? null;
+  const liveSummaryIsLive = liveSummary?.source === 'live';
+  const liveSummaryIsPrematch = liveSummary?.source === 'prematch';
   const liveSource = liveSummary?.source ?? 'none';
   const liveBestOdds = liveOddsRows.length > 0 ? {
     homeOdd: Math.max(...liveOddsRows.map((odd) => odd.homeOdd)),
@@ -207,20 +291,37 @@ function MobileFixtureCard({
       liveOddsRows.reduce((best, odd) => (odd.awayOdd > best.awayOdd ? odd : best), liveOddsRows[0]).bookmaker,
   } : null;
   const scoreReady = fixture.homeGoals !== null && fixture.awayGoals !== null;
+  const hideFallbackWhilePending = isLive && isLiveOddsPending && !liveBestOdds;
 
-  // Use liveOddsSummary for both live and upcoming (backend populates it via includeLiveOddsSummary).
-  // Fall back to bestOddsFallback (batch call) when the summary is absent.
-  const homeOdd = liveBestOdds?.homeOdd ?? liveSummary?.bestHomeOdd ?? bestOddsFallback?.bestHomeOdd ?? null;
-  const drawOdd = liveBestOdds?.drawOdd ?? liveSummary?.bestDrawOdd ?? bestOddsFallback?.bestDrawOdd ?? null;
-  const awayOdd = liveBestOdds?.awayOdd ?? liveSummary?.bestAwayOdd ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const homeLiveOdd = liveBestOdds?.homeOdd ?? (liveSummaryIsLive ? liveSummary?.bestHomeOdd ?? null : null);
+  const drawLiveOdd = liveBestOdds?.drawOdd ?? (liveSummaryIsLive ? liveSummary?.bestDrawOdd ?? null : null);
+  const awayLiveOdd = liveBestOdds?.awayOdd ?? (liveSummaryIsLive ? liveSummary?.bestAwayOdd ?? null : null);
+  const homeFallbackOdd =
+    (liveSummaryIsPrematch ? liveSummary?.bestHomeOdd ?? null : null) ?? bestOddsFallback?.bestHomeOdd ?? null;
+  const drawFallbackOdd =
+    (liveSummaryIsPrematch ? liveSummary?.bestDrawOdd ?? null : null) ?? bestOddsFallback?.bestDrawOdd ?? null;
+  const awayFallbackOdd =
+    (liveSummaryIsPrematch ? liveSummary?.bestAwayOdd ?? null : null) ?? bestOddsFallback?.bestAwayOdd ?? null;
+  const homeOdd = homeLiveOdd ?? (hideFallbackWhilePending ? null : homeFallbackOdd);
+  const drawOdd = drawLiveOdd ?? (hideFallbackWhilePending ? null : drawFallbackOdd);
+  const awayOdd = awayLiveOdd ?? (hideFallbackWhilePending ? null : awayFallbackOdd);
   const homeBookmaker = resolveBookmakerForDisplay(
-    liveBestOdds?.homeBookmaker ?? liveSummary?.bestHomeBookmaker ?? bestOddsFallback?.bestHomeBookmaker,
+    liveBestOdds?.homeBookmaker ??
+      (liveSummaryIsLive ? liveSummary?.bestHomeBookmaker : null) ??
+      (hideFallbackWhilePending ? null : (liveSummaryIsPrematch ? liveSummary?.bestHomeBookmaker : null)) ??
+      bestOddsFallback?.bestHomeBookmaker,
   );
   const drawBookmaker = resolveBookmakerForDisplay(
-    liveBestOdds?.drawBookmaker ?? liveSummary?.bestDrawBookmaker ?? bestOddsFallback?.bestDrawBookmaker,
+    liveBestOdds?.drawBookmaker ??
+      (liveSummaryIsLive ? liveSummary?.bestDrawBookmaker : null) ??
+      (hideFallbackWhilePending ? null : (liveSummaryIsPrematch ? liveSummary?.bestDrawBookmaker : null)) ??
+      bestOddsFallback?.bestDrawBookmaker,
   );
   const awayBookmaker = resolveBookmakerForDisplay(
-    liveBestOdds?.awayBookmaker ?? liveSummary?.bestAwayBookmaker ?? bestOddsFallback?.bestAwayBookmaker,
+    liveBestOdds?.awayBookmaker ??
+      (liveSummaryIsLive ? liveSummary?.bestAwayBookmaker : null) ??
+      (hideFallbackWhilePending ? null : (liveSummaryIsPrematch ? liveSummary?.bestAwayBookmaker : null)) ??
+      bestOddsFallback?.bestAwayBookmaker,
   );
 
   const statusTone =
@@ -262,7 +363,7 @@ function MobileFixtureCard({
               className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
               style={{ color: statusTone.color, background: statusTone.bg, borderColor: statusTone.border }}
             >
-              {statusTone.label}
+              {hideFallbackWhilePending ? 'Loading live' : statusTone.label}
             </span>
           ) : null}
           <button
@@ -320,9 +421,27 @@ function MobileFixtureCard({
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2" onClick={(event) => event.stopPropagation()}>
-        <MobileOddsCell fixtureId={fixture.apiFixtureId} label="1" odd={homeOdd} bookmaker={homeBookmaker} />
-        <MobileOddsCell fixtureId={fixture.apiFixtureId} label="X" odd={drawOdd} bookmaker={drawBookmaker} />
-        <MobileOddsCell fixtureId={fixture.apiFixtureId} label="2" odd={awayOdd} bookmaker={awayBookmaker} />
+        <MobileOddsCell
+          fixtureId={fixture.apiFixtureId}
+          label="1"
+          odd={homeOdd}
+          bookmaker={homeBookmaker}
+          isLoading={hideFallbackWhilePending && homeOdd == null}
+        />
+        <MobileOddsCell
+          fixtureId={fixture.apiFixtureId}
+          label="X"
+          odd={drawOdd}
+          bookmaker={drawBookmaker}
+          isLoading={hideFallbackWhilePending && drawOdd == null}
+        />
+        <MobileOddsCell
+          fixtureId={fixture.apiFixtureId}
+          label="2"
+          odd={awayOdd}
+          bookmaker={awayBookmaker}
+          isLoading={hideFallbackWhilePending && awayOdd == null}
+        />
       </div>
     </div>
   );
@@ -350,6 +469,7 @@ export function FixtureTable({
   isFetching,
   oddsMovements,
   liveOddsByFixture = {},
+  pendingLiveOddsFixtureIds,
   savedFixtureIds,
   onToggleSave,
   selectedFixtureId,
@@ -553,6 +673,7 @@ export function FixtureTable({
                   fixture={fixture}
                   bestOddsFallback={bestOddsMap.get(fixture.apiFixtureId) ?? null}
                   liveOddsRows={liveOddsByFixture[fixture.apiFixtureId] ?? []}
+                  isLiveOddsPending={pendingLiveOddsFixtureIds?.has(fixture.apiFixtureId) ?? false}
                   isSaved={savedFixtureIds?.has(fixture.apiFixtureId) ?? false}
                   onToggleSave={onToggleSave}
                 />
@@ -589,6 +710,7 @@ export function FixtureTable({
                     fixture={fixture}
                     bestOddsFallback={bestOddsMap.get(fixture.apiFixtureId) ?? null}
                     liveOddsRows={liveOddsByFixture[fixture.apiFixtureId] ?? []}
+                    isLiveOddsPending={pendingLiveOddsFixtureIds?.has(fixture.apiFixtureId) ?? false}
                     oddsMovement={oddsMovements?.[fixture.apiFixtureId]}
                     isSaved={savedFixtureIds?.has(fixture.apiFixtureId) ?? false}
                     onToggleSave={onToggleSave}

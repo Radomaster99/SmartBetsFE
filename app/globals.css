@@ -382,6 +382,11 @@ html[data-theme="light"] .fixture-table tbody tr:hover td:first-child {
   50%       { opacity: 0.4; }
 }
 
+@keyframes odds-loading-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Pulsing dot for live-connected status pills */
 @keyframes live-pulse {
   0%, 100% { opacity: 1; }

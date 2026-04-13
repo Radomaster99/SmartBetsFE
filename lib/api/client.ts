@@ -1,4 +1,7 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://smartbets-fqzk.onrender.com';
+const BASE_URL =
+  process.env.SMARTBETS_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  'http://tn1ij0gjz51y40mkc99bo5ja.178.104.173.167.sslip.io';
 const API_KEY = process.env.API_KEY ?? '';
 const AUTH_SKEW_MS = 60_000;
 

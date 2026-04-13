@@ -8,6 +8,7 @@ import { useFixtures } from '@/lib/hooks/useFixtures';
 import {
   useLiveOddsListSignalR,
   useLiveViewersHeartbeat,
+  useVisibleLiveOddsByFixture,
   useVisibleLiveSummaries,
 } from '@/lib/hooks/useLiveOdds';
 import { useLeagues } from '@/lib/hooks/useLeagues';
@@ -20,7 +21,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useStandings } from '@/lib/hooks/useStandings';
 import { StandingsTable } from '@/components/standings/StandingsTable';
 import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
-import { mergeLiveSummaryOutcomes } from '@/lib/live-odds';
+import { deriveBestOddsFromOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -113,6 +114,73 @@ function isUsableLiveSummary(summary: LiveOddsSummaryDto | null | undefined): su
   }
 
   return Boolean(summary.bestHomeOdd || summary.bestDrawOdd || summary.bestAwayOdd);
+}
+
+function hasCompleteLiveSummary(summary: LiveOddsSummaryDto | null | undefined): boolean {
+  return Boolean(
+    summary?.source === 'live' &&
+      summary.bestHomeOdd != null &&
+      summary.bestDrawOdd != null &&
+      summary.bestAwayOdd != null,
+  );
+}
+
+function areLiveSummariesEqual(
+  left: LiveOddsSummaryDto | null | undefined,
+  right: LiveOddsSummaryDto | null | undefined,
+): boolean {
+  if (!left && !right) {
+    return true;
+  }
+
+  if (!left || !right) {
+    return false;
+  }
+
+  return (
+    left.source === right.source &&
+    left.collectedAtUtc === right.collectedAtUtc &&
+    left.bestHomeOdd === right.bestHomeOdd &&
+    left.bestHomeBookmaker === right.bestHomeBookmaker &&
+    left.bestDrawOdd === right.bestDrawOdd &&
+    left.bestDrawBookmaker === right.bestDrawBookmaker &&
+    left.bestAwayOdd === right.bestAwayOdd &&
+    left.bestAwayBookmaker === right.bestAwayBookmaker
+  );
+}
+
+function resolvePreferredFixtureSummary(
+  recoveredSummary: LiveOddsSummaryDto | null | undefined,
+  batchSummary: LiveOddsSummaryDto | null | undefined,
+  cachedSummary: LiveOddsSummaryDto | null | undefined,
+  stickySummary: LiveOddsSummaryDto | null | undefined,
+): LiveOddsSummaryDto | null {
+  const recoveredLiveSummary = recoveredSummary?.source === 'live' ? recoveredSummary : null;
+  const batchLiveSummary = batchSummary?.source === 'live' ? batchSummary : null;
+  const cachedLiveSummary = cachedSummary?.source === 'live' ? cachedSummary : null;
+  const stickyLiveSummary = stickySummary?.source === 'live' ? stickySummary : null;
+
+  const preferredLiveSummary = mergeLiveSummaryOutcomes(
+    mergeLiveSummaryOutcomes(
+      mergeLiveSummaryOutcomes(stickyLiveSummary, cachedLiveSummary),
+      batchLiveSummary,
+    ),
+    recoveredLiveSummary,
+  );
+
+  if (preferredLiveSummary) {
+    return preferredLiveSummary;
+  }
+
+  if (batchSummary && batchSummary.source !== 'none') {
+    return batchSummary;
+  }
+
+  if (cachedSummary && cachedSummary.source !== 'none') {
+    return cachedSummary;
+  }
+
+  return recoveredSummary ?? batchSummary ?? cachedSummary ?? stickySummary ?? null;
 }
 
 function LiveListStatusPill({
@@ -379,11 +447,154 @@ function FootballPageClient() {
         : [],
     [rawFixtures, state, visibleLiveFixtureIdSet],
   );
+  const visibleLiveFixturesNeedingRecovery = useMemo(
+    () =>
+      state === 'Live'
+        ? rawFixtures
+            .filter(
+              (fixture) =>
+                visibleLiveFixtureIdSet.has(fixture.apiFixtureId) &&
+                !hasCompleteLiveSummary(fixture.liveOddsSummary ?? null),
+            )
+            .map((fixture) => ({
+              apiFixtureId: fixture.apiFixtureId,
+              homeTeamName: fixture.homeTeamName,
+              awayTeamName: fixture.awayTeamName,
+            }))
+        : [],
+    [rawFixtures, state, visibleLiveFixtureIdSet],
+  );
   const { data: visibleLiveSummaries = {} } = useVisibleLiveSummaries(
     visibleLiveFixtureIdsForSummary,
     state === 'Live',
   );
+  const [settledRecoveredLiveFixtureIds, setSettledRecoveredLiveFixtureIds] = useState<Record<number, true>>({});
+  const {
+    data: visibleRecoveredLiveOdds = {},
+    isFetching: visibleRecoveredLiveOddsFetching,
+  } = useVisibleLiveOddsByFixture(
+    visibleLiveFixturesNeedingRecovery,
+    state === 'Live' && visibleLiveFixturesNeedingRecovery.length > 0,
+    { staleTime: 20_000, refetchInterval: 45_000 },
+  );
   useLiveViewersHeartbeat(visibleLiveFixtureIds, state === 'Live');
+
+  const visibleRecoveredLiveSummaries = useMemo(() => {
+    return Object.entries(visibleRecoveredLiveOdds).reduce<Record<number, LiveOddsSummaryDto>>((acc, [fixtureId, odds]) => {
+      const bestOdds = deriveBestOddsFromOdds(odds);
+      if (!bestOdds) {
+        return acc;
+      }
+
+      acc[Number(fixtureId)] = {
+        apiFixtureId: bestOdds.apiFixtureId,
+        source: 'live',
+        collectedAtUtc: bestOdds.collectedAtUtc,
+        bestHomeOdd: bestOdds.bestHomeOdd,
+        bestHomeBookmaker: bestOdds.bestHomeBookmaker,
+        bestDrawOdd: bestOdds.bestDrawOdd,
+        bestDrawBookmaker: bestOdds.bestDrawBookmaker,
+        bestAwayOdd: bestOdds.bestAwayOdd,
+        bestAwayBookmaker: bestOdds.bestAwayBookmaker,
+      };
+
+      return acc;
+    }, {});
+  }, [visibleRecoveredLiveOdds]);
+
+  useEffect(() => {
+    if (state !== 'Live') {
+      setSettledRecoveredLiveFixtureIds((current) => (Object.keys(current).length === 0 ? current : {}));
+      return;
+    }
+
+    if (visibleRecoveredLiveOddsFetching || visibleLiveFixturesNeedingRecovery.length === 0) {
+      return;
+    }
+
+    setSettledRecoveredLiveFixtureIds((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      for (const fixture of visibleLiveFixturesNeedingRecovery) {
+        if (!next[fixture.apiFixtureId]) {
+          next[fixture.apiFixtureId] = true;
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [state, visibleLiveFixturesNeedingRecovery, visibleRecoveredLiveOddsFetching]);
+
+  const pendingRecoveredLiveFixtureIdSet = useMemo(() => {
+    if (state !== 'Live') {
+      return new Set<number>();
+    }
+
+    const needsRecoveryFixtureIds = visibleLiveFixturesNeedingRecovery.map((fixture) => fixture.apiFixtureId);
+    if (rawFixtures.length > 0 && visibleLiveFixtureIds.length === 0) {
+      return new Set(
+        rawFixtures
+          .filter((fixture) => !hasCompleteLiveSummary(fixture.liveOddsSummary ?? null))
+          .map((fixture) => fixture.apiFixtureId),
+      );
+    }
+
+    if (needsRecoveryFixtureIds.length === 0) {
+      return new Set<number>();
+    }
+
+    if (!visibleRecoveredLiveOddsFetching) {
+      return new Set<number>();
+    }
+
+    return new Set(
+      visibleLiveFixturesNeedingRecovery
+        .filter((fixture) => !settledRecoveredLiveFixtureIds[fixture.apiFixtureId])
+        .map((fixture) => fixture.apiFixtureId),
+    );
+  }, [
+    rawFixtures.length,
+    settledRecoveredLiveFixtureIds,
+    state,
+    visibleLiveFixtureIds.length,
+    visibleLiveFixturesNeedingRecovery,
+    visibleRecoveredLiveOddsFetching,
+  ]);
+
+  useEffect(() => {
+    const recoveredEntries = Object.entries(visibleRecoveredLiveSummaries);
+    if (recoveredEntries.length === 0) {
+      return;
+    }
+
+    queryClient.setQueriesData({ queryKey: ['fixtures'] }, (current: { items?: FixtureDto[] } | undefined) => {
+      if (!current || !Array.isArray(current.items)) {
+        return current;
+      }
+
+      let changed = false;
+      const items = current.items.map((fixture) => {
+        const recoveredSummary = visibleRecoveredLiveSummaries[fixture.apiFixtureId];
+        if (!recoveredSummary) {
+          return fixture;
+        }
+
+        if (areLiveSummariesEqual(fixture.liveOddsSummary, recoveredSummary)) {
+          return fixture;
+        }
+
+        changed = true;
+        return {
+          ...fixture,
+          liveOddsSummary: recoveredSummary,
+        };
+      });
+
+      return changed ? { ...current, items } : current;
+    });
+  }, [queryClient, visibleRecoveredLiveSummaries]);
 
   useEffect(() => {
     if (state !== 'Live') {
@@ -448,21 +659,25 @@ function FootballPageClient() {
           return fixture;
         }
 
-        const directLiveSummary = visibleLiveSummaries[fixture.apiFixtureId] ?? null;
-        const liveSummary = fixture.liveOddsSummary ?? null;
+        const recoveredLiveSummary = visibleRecoveredLiveSummaries[fixture.apiFixtureId] ?? null;
+        const batchLiveSummary = visibleLiveSummaries[fixture.apiFixtureId] ?? null;
+        const cachedSummary = fixture.liveOddsSummary ?? null;
         const stickyLiveSummary = stickyLiveSummaries[fixture.apiFixtureId] ?? null;
-        const liveProviderSummary = directLiveSummary ?? (liveSummary?.source === 'live' ? liveSummary : null);
-        const mergedLiveSummary = mergeLiveSummaryOutcomes(stickyLiveSummary, liveProviderSummary);
-        const preferredLiveSummary = mergedLiveSummary ?? liveSummary;
+        const preferredSummary = resolvePreferredFixtureSummary(
+          recoveredLiveSummary,
+          batchLiveSummary,
+          cachedSummary,
+          stickyLiveSummary,
+        );
 
-        return preferredLiveSummary
+        return preferredSummary
           ? {
               ...fixture,
-              liveOddsSummary: preferredLiveSummary,
+              liveOddsSummary: preferredSummary,
             }
           : fixture;
       }),
-    [rawFixtures, state, stickyLiveSummaries, visibleLiveSummaries],
+    [rawFixtures, state, stickyLiveSummaries, visibleLiveSummaries, visibleRecoveredLiveSummaries],
   );
   const fixtures = hydratedFixtures;
   const liveFixtureIds = state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [];
@@ -642,6 +857,7 @@ function FootballPageClient() {
                   isLoading={isLoading}
                   isFetching={isFetching}
                   oddsMovements={liveOddsListRealtime.movements}
+                  pendingLiveOddsFixtureIds={pendingRecoveredLiveFixtureIdSet}
                   savedFixtureIds={fixtureIdSet}
                   onToggleSave={toggleFixture}
                   selectedFixtureId={selectedFixtureId ?? undefined}
