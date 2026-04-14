@@ -60,11 +60,19 @@ import {
   type SideAdsConfig,
   writeSideAdsConfig,
 } from '@/lib/side-ads';
+import type { FixtureDto } from '@/lib/types/api';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 const ADMIN_SECTION_IDS = ['quick', 'league', 'heartbeat', 'popular', 'bonus', 'hero', 'ads', 'result', 'snapshot', 'status'] as const;
+const FIXTURE_SCOPE_OPTIONS = [
+  { value: 'Live', label: 'Live only' },
+  { value: 'Upcoming', label: 'Upcoming' },
+  { value: 'Finished', label: 'Finished' },
+  { value: 'All', label: 'All fixtures' },
+] as const;
 
 type AdminSectionId = (typeof ADMIN_SECTION_IDS)[number];
+type FixturePickerScope = (typeof FIXTURE_SCOPE_OPTIONS)[number]['value'];
 
 function freshnessColor(ts: string | null): string {
   if (!ts) return '#ef5350';
@@ -80,6 +88,26 @@ function fmtTs(ts: string | null): string {
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+}
+
+function formatFixtureKickoffLabel(ts: string): string {
+  const date = new Date(ts);
+
+  if (Number.isNaN(date.getTime())) {
+    return ts;
+  }
+
+  return new Intl.DateTimeFormat('bg-BG', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatFixtureOptionLabel(fixture: FixtureDto): string {
+  const liveBadge = fixture.stateBucket === 'Live' ? ` • ${fixture.elapsed != null ? `${fixture.elapsed}'` : fixture.status}` : '';
+  return `${fixture.homeTeamName} vs ${fixture.awayTeamName} • ${formatFixtureKickoffLabel(fixture.kickoffAt)}${liveBadge}`;
 }
 
 type ActionBtn = {
@@ -342,6 +370,10 @@ function AdminSyncPageContent() {
   const [syncLeagueId, setSyncLeagueId] = useState(ALL_LEAGUES_VALUE);
   const [syncSeason, setSyncSeason] = useState(String(DEFAULT_SEASON));
   const [theOddsFixtureId, setTheOddsFixtureId] = useState('');
+  const [fixtureScope, setFixtureScope] = useState<FixturePickerScope>('Live');
+  const [fixtureOptions, setFixtureOptions] = useState<FixtureDto[]>([]);
+  const [fixtureOptionsLoading, setFixtureOptionsLoading] = useState(false);
+  const [fixtureOptionsError, setFixtureOptionsError] = useState<string | null>(null);
   const [popularLeagueId, setPopularLeagueId] = useState('');
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
@@ -536,9 +568,77 @@ function AdminSyncPageContent() {
   const activeBonusCodesCount = bonusCodeEntries.filter((entry) => entry.isActive).length;
   const featuredBonusCodesCount = bonusCodeEntries.filter((entry) => entry.isActive && entry.isFeatured).length;
   const selectedPopularLeague = popularLeagueOptions.find((league) => league.key === popularLeagueId) ?? null;
+  const singleLeagueSelected = Boolean(syncLeagueId && syncLeagueId !== ALL_LEAGUES_VALUE);
+  const fixtureTargetId = theOddsFixtureId.trim();
+  const fixtureSelectValue = fixtureOptions.some((fixture) => String(fixture.apiFixtureId) === fixtureTargetId) ? fixtureTargetId : '';
   const hasLeague = selectedLeagueIds.length > 0;
   const hasLeagueAndSeason = Boolean(selectedLeagueIds.length > 0 && syncSeason);
-  const hasTheOddsFixtureId = Boolean(theOddsFixtureId.trim());
+  const hasFixtureTargetId = Boolean(fixtureTargetId);
+
+  useEffect(() => {
+    if (!singleLeagueSelected || !syncSeason) {
+      setFixtureOptions([]);
+      setFixtureOptionsLoading(false);
+      setFixtureOptionsError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    params.set('leagueId', syncLeagueId);
+    params.set('season', syncSeason);
+    params.set('page', '1');
+    params.set('pageSize', '100');
+    params.set('direction', fixtureScope === 'Finished' || fixtureScope === 'All' ? 'desc' : 'asc');
+
+    if (fixtureScope !== 'All') {
+      params.set('state', fixtureScope);
+    }
+
+    setFixtureOptionsLoading(true);
+    setFixtureOptionsError(null);
+
+    void fetch(`/api/fixtures/query?${params.toString()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(typeof json?.error === 'string' ? json.error : `Failed to fetch fixtures (${res.status})`);
+        }
+
+        return json;
+      })
+      .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setFixtureOptions(Array.isArray(payload?.items) ? (payload.items as FixtureDto[]) : []);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setFixtureOptions([]);
+        setFixtureOptionsError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setFixtureOptionsLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [fixtureScope, singleLeagueSelected, syncLeagueId, syncSeason]);
+
+  const selectedFixture = useMemo(
+    () => fixtureOptions.find((fixture) => String(fixture.apiFixtureId) === fixtureTargetId) ?? null,
+    [fixtureOptions, fixtureTargetId],
+  );
 
   const availableStatusSeasons = useMemo(
     () =>
@@ -579,6 +679,43 @@ function AdminSyncPageContent() {
         'Refreshes the live odds bet id reference list used by the live odds importer and widgets.',
       requestPreview: ['POST /api/odds/live-bets/sync'],
       onClick: () => runAction('live-bets', '/api/odds/live-bets/sync'),
+    },
+  ];
+
+  const fixtureActionButtons: ActionBtn[] = [
+    {
+      id: 'fixture-corners',
+      label: 'Sync Fixture Corners',
+      runningLabel: 'Syncing...',
+      description:
+        'Refreshes only the selected fixture corners snapshot through fixture statistics. It stays scoped to one match and does not loop whole leagues.',
+      requestPreview: [`POST /api/fixtures/${fixtureTargetId || '{apiFixtureId}'}/sync-corners${forceSync ? '?force=true' : ''}`],
+      accent: true,
+      onClick: () =>
+        runAction(
+          'fixture-corners',
+          `/api/fixtures/${encodeURIComponent(fixtureTargetId)}/sync-corners${forceSync ? '?force=true' : ''}`,
+        ),
+      disabled: !hasFixtureTargetId,
+      disabledReason: 'Choose a match or enter an API fixture id',
+    },
+    {
+      id: 'the-odds-refresh-fixture',
+      label: 'Refresh Fixture Odds',
+      runningLabel: 'Refreshing...',
+      description:
+        'Runs the admin The Odds refresh for one live fixture. Use it when you want a manual cache warm-up or a quick diagnostics refresh for a single match.',
+      requestPreview: [
+        `POST /api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${fixtureTargetId || '{apiFixtureId}'}${forceSync ? '&force=true' : ''}`,
+      ],
+      accent: true,
+      onClick: () =>
+        runAction(
+          'the-odds-refresh-fixture',
+          `/api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${encodeURIComponent(fixtureTargetId)}${forceSync ? '&force=true' : ''}`,
+        ),
+      disabled: !hasFixtureTargetId,
+      disabledReason: 'Choose a match or enter an API fixture id',
     },
   ];
 
@@ -633,24 +770,6 @@ function AdminSyncPageContent() {
 
   const theOddsRefreshButtons: ActionBtn[] = [
     {
-      id: 'the-odds-refresh-fixture',
-      label: 'Refresh Fixture Odds',
-      runningLabel: 'Refreshing...',
-      description:
-        'Runs the admin The Odds refresh for one live fixture. Use it when you want a manual cache warm-up or a quick diagnostics refresh for a single match.',
-      requestPreview: [
-        `POST /api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${theOddsFixtureId.trim() || '{apiFixtureId}'}${forceSync ? '&force=true' : ''}`,
-      ],
-      accent: true,
-      onClick: () =>
-        runAction(
-          'the-odds-refresh-fixture',
-          `/api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${encodeURIComponent(theOddsFixtureId.trim())}${forceSync ? '&force=true' : ''}`,
-        ),
-      disabled: !hasTheOddsFixtureId,
-      disabledReason: 'Enter an API fixture id',
-    },
-    {
       id: 'the-odds-refresh-league',
       label: 'Refresh League Odds',
       runningLabel: 'Refreshing...',
@@ -671,13 +790,25 @@ function AdminSyncPageContent() {
   ];
 
   const quickSummary = includeOdds
-    ? 'Core bootstrap with pre-match odds enabled.'
-    : 'Core bootstrap without pre-match odds.';
+    ? 'Core bootstrap with pre-match odds enabled plus targeted one-match tools below.'
+    : 'Core bootstrap without pre-match odds plus targeted one-match tools below.';
 
   const leagueSummary =
     syncLeagueId === ALL_LEAGUES_VALUE
       ? `Bulk mode over ${selectedLeagueIds.length} tracked leagues.`
       : `Targeting ${leagueNameById.get(syncLeagueId) ?? 'one league'}${syncSeason ? ` for ${syncSeason}.` : '.'}`;
+  const fixtureScopeLabel = FIXTURE_SCOPE_OPTIONS.find((option) => option.value === fixtureScope)?.label ?? fixtureScope;
+  const fixtureTargetSummary = !singleLeagueSelected
+    ? 'Choose one league first. Fixture-only actions never run in bulk mode.'
+    : fixtureOptionsLoading
+      ? `Loading ${fixtureScopeLabel.toLowerCase()} fixtures for the selected league-season.`
+      : fixtureOptionsError
+        ? `Could not load fixture options: ${fixtureOptionsError}`
+        : selectedFixture
+          ? `Targeting ${selectedFixture.homeTeamName} vs ${selectedFixture.awayTeamName} on ${formatFixtureKickoffLabel(selectedFixture.kickoffAt)}.`
+          : fixtureOptions.length > 0
+            ? `Loaded ${fixtureOptions.length} ${fixtureScopeLabel.toLowerCase()} fixture option${fixtureOptions.length === 1 ? '' : 's'}. Pick one match or keep typing an API fixture id manually.`
+            : `No ${fixtureScopeLabel.toLowerCase()} fixtures found for the selected league-season yet.`;
 
   const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues for new visitors in this browser profile.`;
   const bonusSummary = activeBonusCodesCount
@@ -1557,7 +1688,7 @@ function AdminSyncPageContent() {
         <AccordionSection
           title="Quick Sync"
           summary={quickSummary}
-          badge="3 actions"
+          badge={`${quickActionButtons.length + fixtureActionButtons.length} actions`}
           isOpen={openSections.quick}
           onToggle={() => toggleSection('quick')}
         >
@@ -1591,6 +1722,145 @@ function AdminSyncPageContent() {
               {quickActionButtons.map((btn) => (
                 <ActionCard key={btn.id} btn={btn} loading={loading} />
               ))}
+            </div>
+
+            <div
+              className="rounded-lg p-3"
+              style={{
+                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid var(--t-border)',
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-bold" style={{ color: 'var(--t-text-2)' }}>
+                    Targeted Fixture Tools
+                  </div>
+                  <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Choose one league, then one match. These actions stay scoped to a single fixture and avoid syncing every
+                    match across every league.
+                  </div>
+                </div>
+                <span
+                  className="rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em]"
+                  style={{
+                    background: 'rgba(0,230,118,0.08)',
+                    border: '1px solid rgba(0,230,118,0.18)',
+                    color: 'var(--t-accent)',
+                  }}
+                >
+                  one match only
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    League
+                  </label>
+                  <select
+                    value={syncLeagueId}
+                    onChange={(e) => setSyncLeagueId(e.target.value)}
+                    className="input-shell min-w-0 w-full px-3 py-1.5 text-[12px]"
+                  >
+                    <option value={ALL_LEAGUES_VALUE}>Choose one league</option>
+                    {syncLeagues.map((league) => (
+                      <option key={`${league.leagueApiId}-${league.season}`} value={String(league.leagueApiId)}>
+                        {league.countryName} - {league.leagueName} ({league.season})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Season
+                  </label>
+                  <input
+                    type="number"
+                    value={syncSeason}
+                    onChange={(e) => setSyncSeason(e.target.value)}
+                    className="input-shell w-full px-3 py-1.5 text-[12px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Match list
+                  </label>
+                  <select
+                    value={fixtureScope}
+                    onChange={(e) => setFixtureScope(e.target.value as FixturePickerScope)}
+                    className="input-shell w-full px-3 py-1.5 text-[12px]"
+                  >
+                    {FIXTURE_SCOPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="xl:col-span-2">
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Match
+                  </label>
+                  <select
+                    value={fixtureSelectValue}
+                    onChange={(e) => setTheOddsFixtureId(e.target.value)}
+                    disabled={!singleLeagueSelected || fixtureOptionsLoading || fixtureOptions.length === 0}
+                    className="input-shell w-full px-3 py-1.5 text-[12px] disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!singleLeagueSelected
+                        ? 'Choose one league first'
+                        : fixtureOptionsLoading
+                          ? 'Loading matches...'
+                          : fixtureOptions.length === 0
+                            ? 'No matches found for this filter'
+                            : 'Choose a match'}
+                    </option>
+                    {fixtureOptions.map((fixture) => (
+                      <option key={fixture.apiFixtureId} value={String(fixture.apiFixtureId)}>
+                        {formatFixtureOptionLabel(fixture)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Fixture API id
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={theOddsFixtureId}
+                    onChange={(e) => setTheOddsFixtureId(e.target.value)}
+                    placeholder="1379288"
+                    className="input-shell w-40 px-3 py-1.5 text-[12px]"
+                  />
+                </div>
+              </div>
+
+              <div
+                className="mt-3 rounded-md px-3 py-2 text-[11px]"
+                style={{
+                  background: fixtureOptionsError ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: fixtureOptionsError ? '1px solid rgba(239,68,68,0.22)' : '1px solid var(--t-border)',
+                  color: fixtureOptionsError ? '#fecaca' : 'var(--t-text-4)',
+                }}
+              >
+                {fixtureTargetSummary}
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {fixtureActionButtons.map((btn) => (
+                  <ActionCard key={btn.id} btn={btn} loading={loading} />
+                ))}
+              </div>
             </div>
           </div>
         </AccordionSection>
@@ -1633,20 +1903,6 @@ function AdminSyncPageContent() {
                   value={syncSeason}
                   onChange={(e) => setSyncSeason(e.target.value)}
                   className="input-shell w-24 px-3 py-1.5 text-[12px]"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-                  Fixture API id
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={theOddsFixtureId}
-                  onChange={(e) => setTheOddsFixtureId(e.target.value)}
-                  placeholder="1379288"
-                  className="input-shell w-36 px-3 py-1.5 text-[12px]"
                 />
               </div>
             </div>

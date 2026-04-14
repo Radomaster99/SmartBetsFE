@@ -221,7 +221,6 @@ function FixtureDetailPageInner({ params }: Props) {
             <ApiSportsWidget
               type="game"
               gameId={detail.fixture.apiFixtureId}
-              gameTab="events"
               refresh={isLive ? 120 : undefined}
             />
           </WidgetCard>

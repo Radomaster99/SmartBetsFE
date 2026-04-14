@@ -179,6 +179,36 @@ export interface FixtureDetailDto {
   oddsLastSyncedAtUtc: string | null;
 }
 
+export interface FixtureCornersTeamDto {
+  teamId: number | null;
+  teamApiId: number | null;
+  teamName: string | null;
+  teamLogoUrl: string | null;
+  corners: number | null;
+}
+
+export interface FixtureCornersDto {
+  apiFixtureId: number;
+  syncedAtUtc: string | null;
+  hasData: boolean;
+  totalCorners: number | null;
+  home: FixtureCornersTeamDto | null;
+  away: FixtureCornersTeamDto | null;
+}
+
+export interface FixtureStatisticItemDto {
+  type: string;
+  value: string | number | null;
+}
+
+export interface FixtureTeamStatisticsDto {
+  teamId?: number | null;
+  apiTeamId?: number | null;
+  teamName?: string | null;
+  teamLogoUrl?: string | null;
+  statistics?: FixtureStatisticItemDto[] | null;
+}
+
 export interface StandingDto {
   teamId: number | null;
   apiTeamId: number;

@@ -3,6 +3,8 @@ import type {
   FixtureDto,
   PagedResultDto,
   FixtureDetailDto,
+  FixtureCornersDto,
+  FixtureTeamStatisticsDto,
   OddDto,
   BestOddsDto,
   LiveOddsMarketDto,
@@ -50,4 +52,12 @@ export async function getFixtureLiveOdds(
   });
 
   return apiFetchWithJwt<LiveOddsMarketDto[]>(`/api/fixtures/${apiFixtureId}/odds/live${q}`);
+}
+
+export async function getFixtureStatistics(apiFixtureId: number): Promise<FixtureTeamStatisticsDto[]> {
+  return apiFetch<FixtureTeamStatisticsDto[]>(`/api/fixtures/${apiFixtureId}/statistics`);
+}
+
+export async function getFixtureCorners(apiFixtureId: number): Promise<FixtureCornersDto> {
+  return apiFetch<FixtureCornersDto>(`/api/fixtures/${apiFixtureId}/corners`);
 }

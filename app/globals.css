@@ -629,6 +629,25 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   color: var(--t-accent);
 }
 
+.widget-wrap--compact-player-details .player-info.player-pos {
+  display: none !important;
+}
+
+.widget-wrap--compact-player-details .players-table th:nth-child(2),
+.widget-wrap--compact-player-details .players-table td:nth-child(2),
+.widget-wrap--compact-player-details .players-table th:nth-child(3),
+.widget-wrap--compact-player-details .players-table td:nth-child(3),
+.widget-wrap--compact-player-details .players-table th:nth-child(12),
+.widget-wrap--compact-player-details .players-table td:nth-child(12),
+.widget-wrap--compact-player-details .players-table th:nth-child(13),
+.widget-wrap--compact-player-details .players-table td:nth-child(13),
+.widget-wrap--compact-player-details .players-table th:nth-child(14),
+.widget-wrap--compact-player-details .players-table td:nth-child(14),
+.widget-wrap--compact-player-details .players-table th:nth-child(15),
+.widget-wrap--compact-player-details .players-table td:nth-child(15) {
+  display: none !important;
+}
+
 .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results {
   display: grid !important;
   grid-template-columns: 125px minmax(0, 1fr) 96px !important;

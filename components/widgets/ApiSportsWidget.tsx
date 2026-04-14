@@ -9,6 +9,7 @@ interface Props {
   id?: number;
   gameId?: number;
   gameTab?: string;
+  compactPlayerDetails?: boolean;
   h2h?: string;
   teamId?: number;
   teamTab?: string;
@@ -33,6 +34,7 @@ export function ApiSportsWidget({
   id,
   gameId,
   gameTab,
+  compactPlayerDetails = false,
   h2h,
   teamId,
   teamTab,
@@ -53,13 +55,21 @@ export function ApiSportsWidget({
   const { hasWidgetKey, scriptStatus } = useWidgets();
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const wrapperClassName = ['widget-wrap', className].filter(Boolean).join(' ');
+  const wrapperClassName = [
+    'widget-wrap',
+    compactPlayerDetails ? 'widget-wrap--compact-player-details' : null,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
   const isLeaguesWidget = type === 'leagues';
   const containerStyle: CSSProperties = {
     width: '100%',
     minHeight: isLeaguesWidget ? '100%' : '220px',
     height: isLeaguesWidget ? '100%' : undefined,
   };
+
+  const shouldCompactGamePlayers = compactPlayerDetails && type === 'game';
 
   useEffect(() => {
     const container = containerRef.current;
@@ -77,15 +87,69 @@ export function ApiSportsWidget({
     let cancelled = false;
     let initTimeoutId: number | undefined;
     let observer: MutationObserver | undefined;
+    let compactObserver: MutationObserver | undefined;
+    let compactFrameId: number | undefined;
+
+    const normalizeWidgetText = (value: string | null | undefined) =>
+      value?.replace(/\s+/g, ' ').trim().toLowerCase() ?? '';
+
+    const shouldHideCompactPlayerRow = (row: Element) => {
+      const label = normalizeWidgetText(row.textContent);
+      return (
+        label.startsWith('position') ||
+        label.startsWith('rating') ||
+        label.startsWith('key passes') ||
+        label.startsWith('pass accuracy') ||
+        label.startsWith('yellow card') ||
+        label.startsWith('yellow cards') ||
+        label.startsWith('red card') ||
+        label.startsWith('red cards')
+      );
+    };
+
+    const applyCompactPlayersMode = (widget: Element) => {
+      if (!shouldCompactGamePlayers) {
+        return;
+      }
+
+      widget.querySelectorAll<HTMLElement>('.player-info.player-pos').forEach((element) => {
+        element.style.display = 'none';
+      });
+
+      widget.querySelectorAll<HTMLElement>('.player-stats-list .info-line').forEach((row) => {
+        if (shouldHideCompactPlayerRow(row)) {
+          row.style.display = 'none';
+        }
+      });
+    };
+
+    const scheduleCompactPlayersMode = (widget: Element) => {
+      if (!shouldCompactGamePlayers || compactFrameId) {
+        return;
+      }
+
+      compactFrameId = window.requestAnimationFrame(() => {
+        compactFrameId = undefined;
+        applyCompactPlayersMode(widget);
+      });
+    };
 
     const cleanupWidget = () => {
       if (observer) {
         observer.disconnect();
         observer = undefined;
       }
+      if (compactObserver) {
+        compactObserver.disconnect();
+        compactObserver = undefined;
+      }
       if (initTimeoutId) {
         window.clearTimeout(initTimeoutId);
         initTimeoutId = undefined;
+      }
+      if (compactFrameId) {
+        window.cancelAnimationFrame(compactFrameId);
+        compactFrameId = undefined;
       }
       container.innerHTML = '';
     };
@@ -159,9 +223,22 @@ export function ApiSportsWidget({
 
       containerRef.current.appendChild(widget);
 
+      if (shouldCompactGamePlayers) {
+        compactObserver = new MutationObserver(() => {
+          scheduleCompactPlayersMode(widget);
+        });
+        compactObserver.observe(widget, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+        scheduleCompactPlayersMode(widget);
+      }
+
       const markReady = () => {
         if (cancelled) return;
         setStatus('ready');
+        scheduleCompactPlayersMode(widget);
         if (observer) {
           observer.disconnect();
           observer = undefined;
@@ -219,6 +296,7 @@ export function ApiSportsWidget({
     home,
     away,
     date,
+    shouldCompactGamePlayers,
     isLeaguesWidget,
     hasWidgetKey,
     scriptStatus,
