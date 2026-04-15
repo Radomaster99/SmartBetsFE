@@ -699,25 +699,26 @@ function AdminSyncPageContent() {
       disabled: !hasFixtureTargetId,
       disabledReason: 'Choose a match or enter an API fixture id',
     },
-    {
-      id: 'the-odds-refresh-fixture',
-      label: 'Refresh Fixture Odds',
-      runningLabel: 'Refreshing...',
-      description:
-        'Runs the admin The Odds refresh for one live fixture. Use it when you want a manual cache warm-up or a quick diagnostics refresh for a single match.',
-      requestPreview: [
-        `POST /api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${fixtureTargetId || '{apiFixtureId}'}${forceSync ? '&force=true' : ''}`,
-      ],
-      accent: true,
-      onClick: () =>
-        runAction(
-          'the-odds-refresh-fixture',
-          `/api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${encodeURIComponent(fixtureTargetId)}${forceSync ? '&force=true' : ''}`,
-        ),
-      disabled: !hasFixtureTargetId,
-      disabledReason: 'Choose a match or enter an API fixture id',
-    },
   ];
+
+  const theOddsFixtureRefreshButton: ActionBtn = {
+    id: 'the-odds-refresh-fixture',
+    label: 'The Odds API: Refresh One Fixture',
+    runningLabel: 'Refreshing The Odds...',
+    description:
+      'Runs the manual The Odds API refresh for one live fixture. Use this when you want live odds from the new provider for a single match, not the API-Football importer.',
+    requestPreview: [
+      `POST /api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${fixtureTargetId || '{apiFixtureId}'}${forceSync ? '&force=true' : ''}`,
+    ],
+    accent: true,
+    onClick: () =>
+      runAction(
+        'the-odds-refresh-fixture',
+        `/api/admin/odds/live/the-odds/refresh-fixture?apiFixtureId=${encodeURIComponent(fixtureTargetId)}${forceSync ? '&force=true' : ''}`,
+      ),
+    disabled: !hasFixtureTargetId,
+    disabledReason: 'Choose a match or enter an API fixture id',
+  };
 
   const leagueTargetPreview = syncLeagueId === ALL_LEAGUES_VALUE ? '{leagueId}' : syncLeagueId;
   const perLeagueButtons: ActionBtn[] = [
@@ -756,10 +757,10 @@ function AdminSyncPageContent() {
     },
     {
       id: 'live-odds',
-      label: 'Sync Live Odds',
+      label: 'Sync Live Odds (API-Football)',
       runningLabel: 'Syncing...',
       description:
-        'Imports currently available live odds for the selected league. In bulk mode it runs per tracked league without a season parameter.',
+        'Imports currently available live odds from API-Football for the selected league. This is the older live odds flow, not the new The Odds API manual refresh.',
       requestPreview: [`POST /api/odds/live/sync?leagueId=${leagueTargetPreview}`],
       accent: true,
       onClick: () => runLeagueAction('live-odds', (leagueId) => `/api/odds/live/sync?leagueId=${leagueId}`),
@@ -771,10 +772,10 @@ function AdminSyncPageContent() {
   const theOddsRefreshButtons: ActionBtn[] = [
     {
       id: 'the-odds-refresh-league',
-      label: 'Refresh League Odds',
-      runningLabel: 'Refreshing...',
+      label: 'The Odds API: Refresh League',
+      runningLabel: 'Refreshing The Odds...',
       description:
-        'Runs the admin The Odds refresh for the selected league-season. In bulk mode it will loop through the tracked leagues one by one.',
+        'Runs the manual The Odds API refresh for the selected league-season. Use this when you want live odds from the new provider across the chosen league.',
       requestPreview: [
         `POST /api/admin/odds/live/the-odds/refresh-league?leagueId=${leagueTargetPreview}&season=${syncSeason}${forceSync ? '&force=true' : ''}`,
       ],
@@ -790,8 +791,8 @@ function AdminSyncPageContent() {
   ];
 
   const quickSummary = includeOdds
-    ? 'Core bootstrap with pre-match odds enabled plus targeted one-match tools below.'
-    : 'Core bootstrap without pre-match odds plus targeted one-match tools below.';
+    ? 'Core bootstrap with pre-match odds enabled plus targeted fixture tools below.'
+    : 'Core bootstrap without pre-match odds plus targeted fixture tools below.';
 
   const leagueSummary =
     syncLeagueId === ALL_LEAGUES_VALUE
@@ -1737,8 +1738,7 @@ function AdminSyncPageContent() {
                     Targeted Fixture Tools
                   </div>
                   <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-                    Choose one league, then one match. These actions stay scoped to a single fixture and avoid syncing every
-                    match across every league.
+                    Choose one league, then one match. These fixture-only tools stay scoped to a single match and avoid syncing every match across every league.
                   </div>
                 </div>
                 <span
@@ -1913,18 +1913,8 @@ function AdminSyncPageContent() {
                 : `Only ${leagueNameById.get(syncLeagueId) ?? 'the selected league'} will be touched.`}
             </InfoStrip>
 
-            <InfoStrip>
-              The Odds admin refresh tools below are manual actions only. The normal live pages should keep using the regular read endpoints plus viewer heartbeat.
-            </InfoStrip>
-
             <div className="grid gap-3 md:grid-cols-2">
               {perLeagueButtons.map((btn) => (
-                <ActionCard key={btn.id} btn={btn} loading={loading} />
-              ))}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              {theOddsRefreshButtons.map((btn) => (
                 <ActionCard key={btn.id} btn={btn} loading={loading} />
               ))}
             </div>
@@ -2035,6 +2025,148 @@ function AdminSyncPageContent() {
               Manual admin refresh actions still work while heartbeat is disabled. This switch only controls the automatic browser
               keepalive signal.
             </InfoStrip>
+
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid var(--t-border)',
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-bold" style={{ color: 'var(--t-text-2)' }}>
+                    The Odds API Manual Controls
+                  </div>
+                  <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    All manual The Odds API testing actions live here. Use one fixture for a single live match test, or
+                    refresh a whole league-season when you need broader coverage checks.
+                  </div>
+                </div>
+                <label
+                  className="flex cursor-pointer select-none items-center gap-2 text-[12px]"
+                  style={{ color: 'var(--t-text-3)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={forceSync}
+                    onChange={(e) => setForceSync(e.target.checked)}
+                    className="accent-green-400"
+                  />
+                  Force refresh
+                </label>
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    League
+                  </label>
+                  <select
+                    value={syncLeagueId}
+                    onChange={(e) => setSyncLeagueId(e.target.value)}
+                    className="input-shell min-w-0 w-full px-3 py-1.5 text-[12px]"
+                  >
+                    <option value={ALL_LEAGUES_VALUE}>All tracked leagues ({selectedLeagueIds.length})</option>
+                    {syncLeagues.map((league) => (
+                      <option key={`${league.leagueApiId}-${league.season}`} value={String(league.leagueApiId)}>
+                        {league.countryName} - {league.leagueName} ({league.season})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Season
+                  </label>
+                  <input
+                    type="number"
+                    value={syncSeason}
+                    onChange={(e) => setSyncSeason(e.target.value)}
+                    className="input-shell w-full px-3 py-1.5 text-[12px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Match list
+                  </label>
+                  <select
+                    value={fixtureScope}
+                    onChange={(e) => setFixtureScope(e.target.value as FixturePickerScope)}
+                    className="input-shell w-full px-3 py-1.5 text-[12px]"
+                  >
+                    {FIXTURE_SCOPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="xl:col-span-2">
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Match
+                  </label>
+                  <select
+                    value={fixtureSelectValue}
+                    onChange={(e) => setTheOddsFixtureId(e.target.value)}
+                    disabled={!singleLeagueSelected || fixtureOptionsLoading || fixtureOptions.length === 0}
+                    className="input-shell w-full px-3 py-1.5 text-[12px] disabled:opacity-50"
+                  >
+                    <option value="">
+                      {!singleLeagueSelected
+                        ? 'Choose one league first'
+                        : fixtureOptionsLoading
+                          ? 'Loading matches...'
+                          : fixtureOptions.length === 0
+                            ? 'No matches found for this filter'
+                            : 'Choose a match'}
+                    </option>
+                    {fixtureOptions.map((fixture) => (
+                      <option key={fixture.apiFixtureId} value={String(fixture.apiFixtureId)}>
+                        {formatFixtureOptionLabel(fixture)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="mb-1 block text-[11px]" style={{ color: 'var(--t-text-5)' }}>
+                    Fixture API id
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={theOddsFixtureId}
+                    onChange={(e) => setTheOddsFixtureId(e.target.value)}
+                    placeholder="1379288"
+                    className="input-shell w-40 px-3 py-1.5 text-[12px]"
+                  />
+                </div>
+              </div>
+
+              <div
+                className="mt-3 rounded-md px-3 py-2 text-[11px]"
+                style={{
+                  background: fixtureOptionsError ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: fixtureOptionsError ? '1px solid rgba(239,68,68,0.22)' : '1px solid var(--t-border)',
+                  color: fixtureOptionsError ? '#fecaca' : 'var(--t-text-4)',
+                }}
+              >
+                {fixtureTargetSummary}
+              </div>
+
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <ActionCard btn={theOddsFixtureRefreshButton} loading={loading} />
+                {theOddsRefreshButtons.map((btn) => (
+                  <ActionCard key={btn.id} btn={btn} loading={loading} />
+                ))}
+              </div>
+            </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {heartbeatStatusCards.map((card) => (

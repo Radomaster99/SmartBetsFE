@@ -231,6 +231,7 @@ function FixtureDetailPageInner({ params }: Props) {
             <ApiSportsWidget
               type="h2h"
               h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
+              className="widget-wrap--match-page-h2h"
             />
           </WidgetCard>
         )}

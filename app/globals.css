@@ -648,7 +648,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   display: none !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results {
   display: grid !important;
   grid-template-columns: 125px minmax(0, 1fr) 96px !important;
   align-items: center !important;
@@ -656,7 +656,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   padding: 0 14px 0 6px !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams {
   display: grid !important;
   width: 100% !important;
   min-width: 0 !important;
@@ -669,7 +669,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   padding: 4px 12px !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::before {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::before {
   content: "Home";
   grid-column: 1;
   grid-row: 1;
@@ -681,7 +681,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   color: var(--t-text-5) !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::after {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::after {
   content: "Away";
   grid-column: 3;
   grid-row: 1;
@@ -693,7 +693,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   color: var(--t-text-5) !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -701,13 +701,13 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   width: 100% !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child {
   grid-column: 1;
   grid-row: 2;
   position: relative;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child::after {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child::after {
   content: "-";
   position: absolute;
   right: -14px;
@@ -717,12 +717,12 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   font-weight: 700;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:last-child {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:last-child {
   grid-column: 3;
   grid-row: 2;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info .team-name {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info .team-name {
   max-width: 180px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -730,7 +730,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   text-align: center !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
   display: grid !important;
   grid-template-columns: auto 12px auto !important;
   grid-template-rows: auto auto !important;
@@ -744,7 +744,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   justify-self: end !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before {
   content: "Score";
   grid-column: 1 / 4;
   grid-row: 1;
@@ -756,7 +756,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   color: var(--t-text-5) !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::after {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::after {
   content: "-";
   grid-column: 2;
   grid-row: 2;
@@ -764,24 +764,91 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   font-weight: 700;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-home {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-home {
   grid-column: 1;
   grid-row: 2;
   display: flex !important;
   align-items: center !important;
 }
 
-.widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-away {
+.widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-away {
   grid-column: 3;
   grid-row: 2;
 }
 
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results {
+  display: flex !important;
+  align-items: center !important;
+  min-height: var(--game-height) !important;
+  padding: 0 10px !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
+  color: var(--text-color) !important;
+  display: inline-flex !important;
+  flex-direction: column !important;
+  padding: 1px 5px !important;
+  z-index: 1 !important;
+  justify-content: space-evenly !important;
+  font-size: var(--primary-font-size) !important;
+  line-height: 1rem !important;
+  gap: 2px !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams {
+  align-items: flex-start !important;
+  width: auto !important;
+  min-width: 0 !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::before,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::after,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::after,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child::after {
+  content: none !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info .team-name {
+  margin-left: 10px !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  text-align: left !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
+  align-items: center !important;
+  min-width: 20px !important;
+  position: relative !important;
+  font-family: Tomorrow !important;
+  margin-left: auto !important;
+  justify-self: auto !important;
+}
+
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-home,
+.widget-wrap--panel-default-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score .score-away {
+  display: flex !important;
+  flex-direction: row !important;
+}
+
 @media (max-width: 720px) {
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results {
     grid-template-columns: 1fr !important;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams {
     width: 100% !important;
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -791,28 +858,28 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
     padding: 1px 5px !important;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::before,
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::after {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::before,
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams::after {
     content: none;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info .team-name {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info .team-name {
     max-width: none;
     text-align: left;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child::after {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-teams .team-info:first-child::after {
     content: none;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     padding-right: 5px !important;
   }
 
-  .widget-wrap api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before {
+  .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before {
     content: none;
   }
 }

@@ -359,6 +359,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
                 <ApiSportsWidget
                   type="h2h"
                   h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
+                  className="widget-wrap--panel-default-h2h"
                 />
               </div>
             </div>
