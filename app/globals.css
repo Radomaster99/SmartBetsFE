@@ -16,6 +16,7 @@
 /* ── Theme tokens (dark default) ─────────────────────── */
 :root {
   /* Layout */
+  --topbar-h: 52px;
   --t-page-bg:    rgba(7, 12, 22, 0.94);
   --t-topbar-bg:  rgba(9, 14, 26, 0.84);
   --t-sidebar-bg: rgba(8, 13, 24, 0.80);
