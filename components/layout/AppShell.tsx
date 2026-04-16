@@ -180,7 +180,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box' }}>
+    <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box', ['--shell-gutter-px' as string]: shellGutter }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
       {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}
