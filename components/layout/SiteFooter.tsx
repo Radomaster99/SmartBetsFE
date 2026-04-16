@@ -8,7 +8,6 @@ export function SiteFooter() {
       className="site-footer"
       style={{
         marginInline: 'calc(-1 * var(--shell-gutter-px, 248px))',
-        display: 'none', // overridden to block on desktop by globals.css media query
       }}
     >
       {/* Solid center strip — z-index 1 sits above the glass pseudo-elements */}

@@ -885,6 +885,10 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
 }
 
 /* ── SiteFooter ─────────────────────────────────────── */
+.site-footer {
+  display: none;
+}
+
 @media (min-width: 768px) {
   .site-footer {
     position: relative;
