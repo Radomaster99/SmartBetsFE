@@ -16,6 +16,8 @@ export function Topbar() {
     <header
       className="layout-topbar flex flex-shrink-0 items-center gap-3 px-3 md:px-4"
       style={{
+        position: 'sticky',
+        top: 0,
         height: '52px',
         background: 'var(--t-topbar-bg)',
         borderBottom: '1px solid var(--t-border)',
