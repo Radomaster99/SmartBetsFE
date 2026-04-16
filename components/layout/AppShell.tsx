@@ -181,7 +181,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', ['--shell-gutter-px' as string]: shellGutter }}>
+    <div style={{ minHeight: '100vh', width: '100%', ['--shell-gutter-px' as string]: shellGutter }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
       {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}

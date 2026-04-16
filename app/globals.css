@@ -895,6 +895,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
     position: relative;
     overflow: hidden;
     display: block;
+    z-index: 2;
   }
 
   .site-footer::before,
@@ -906,9 +907,9 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
     width: var(--shell-gutter-px, 248px);
     backdrop-filter: blur(14px) saturate(120%);
     -webkit-backdrop-filter: blur(14px) saturate(120%);
-    background: color-mix(in srgb, var(--t-page-bg, #07101a) 72%, transparent);
+    background: color-mix(in srgb, var(--t-page-bg, #07101a) 80%, transparent);
     pointer-events: none;
-    z-index: 0;
+    z-index: 2;
   }
 
   .site-footer::before { left: 0; }
