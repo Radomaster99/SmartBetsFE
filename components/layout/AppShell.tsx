@@ -9,6 +9,7 @@ import { MobileSavedScreen } from '@/components/layout/MobileSavedScreen';
 import { MobileSearchOverlay } from '@/components/layout/MobileSearchOverlay';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SportSwitcherPanel } from '@/components/layout/SportSwitcherPanel';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
@@ -180,19 +181,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box' }}>
+    <div style={{ minHeight: '100vh', width: '100%', ['--shell-gutter-px' as string]: shellGutter }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
       {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', paddingInline: shellGutter, boxSizing: 'border-box' }}>
         <Topbar />
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'flex', position: 'relative' }}>
           <SportSwitcherPanel />
           <Sidebar />
-          <main style={{ flex: 1, overflowY: 'auto' }}>{children}</main>
+          <main style={{ flex: 1, minWidth: 0 }}>
+            {children}
+          </main>
         </div>
         <MobileBottomNav activeOverlay={mobileOverlay} onOverlayChange={setMobileOverlay} />
       </div>
+      <SiteFooter />
 
       {mobileOverlay === 'search' ? <MobileSearchOverlay onClose={() => setMobileOverlay('none')} /> : null}
       {mobileOverlay === 'leagues' ? <LeaguesBottomSheet onClose={() => setMobileOverlay('none')} /> : null}

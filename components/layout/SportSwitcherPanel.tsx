@@ -33,6 +33,10 @@ export function SportSwitcherPanel() {
     <aside
       className="hidden md:flex md:flex-col md:flex-shrink-0"
       style={{
+        position: 'sticky',
+        top: 52,
+        height: 'calc(100vh - 52px)',
+        alignSelf: 'flex-start',
         width: 56,
         background: 'var(--t-sidebar-bg)',
         borderRight: '1px solid var(--t-border)',
@@ -40,6 +44,7 @@ export function SportSwitcherPanel() {
         paddingTop: 10,
         paddingBottom: 12,
         gap: 4,
+        overflowY: 'auto',
       }}
     >
       <Link

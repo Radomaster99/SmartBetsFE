@@ -16,6 +16,7 @@
 /* ── Theme tokens (dark default) ─────────────────────── */
 :root {
   /* Layout */
+  --topbar-h: 52px;
   --t-page-bg:    rgba(7, 12, 22, 0.94);
   --t-topbar-bg:  rgba(9, 14, 26, 0.84);
   --t-sidebar-bg: rgba(8, 13, 24, 0.80);
@@ -882,4 +883,33 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
   .widget-wrap--match-page-h2h api-sports-widget[data-type="h2h"] .games-container game-item.results .game-score::before {
     content: none;
   }
+}
+
+/* ── SiteFooter ─────────────────────────────────────── */
+.site-footer {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .site-footer {
+    position: relative;
+    overflow: hidden;
+    display: block;
+    z-index: 2;
+  }
+
+  .site-footer::before,
+  .site-footer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--shell-gutter-px, 248px);
+    background: var(--t-page-bg, #07101a);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .site-footer::before { left: 0; }
+  .site-footer::after  { right: 0; }
 }
