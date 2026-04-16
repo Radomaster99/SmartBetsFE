@@ -6,10 +6,22 @@ export function SiteFooter() {
   return (
     <footer
       className="site-footer"
-      style={{
-        marginInline: 'calc(-1 * var(--shell-gutter-px, 248px))',
-      }}
+      style={{ position: 'relative' }}
     >
+      {/* Fade gradient — blends last content row into footer */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: -48,
+          left: 'var(--shell-gutter-px, 248px)',
+          right: 'var(--shell-gutter-px, 248px)',
+          height: 48,
+          background: 'linear-gradient(to bottom, transparent, var(--t-page-bg, #07101a))',
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
       {/* Solid center strip — z-index 1 sits above the glass pseudo-elements */}
       <div
         style={{
