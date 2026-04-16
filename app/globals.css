@@ -905,9 +905,7 @@ html[data-theme="light"] .filter-hover-chip:focus-visible {
     top: 0;
     bottom: 0;
     width: var(--shell-gutter-px, 248px);
-    backdrop-filter: blur(14px) saturate(120%);
-    -webkit-backdrop-filter: blur(14px) saturate(120%);
-    background: color-mix(in srgb, var(--t-page-bg, #07101a) 80%, transparent);
+    background: var(--t-page-bg, #07101a);
     pointer-events: none;
     z-index: 2;
   }
