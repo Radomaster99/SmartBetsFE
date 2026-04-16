@@ -9,6 +9,7 @@ import { MobileSavedScreen } from '@/components/layout/MobileSavedScreen';
 import { MobileSearchOverlay } from '@/components/layout/MobileSearchOverlay';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SportSwitcherPanel } from '@/components/layout/SportSwitcherPanel';
+import { SiteFooter } from '@/components/layout/SiteFooter';
 import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
@@ -189,7 +190,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           <SportSwitcherPanel />
           <Sidebar />
-          <main style={{ flex: 1, overflowY: 'auto' }}>{children}</main>
+          <main style={{ flex: 1, overflowY: 'auto' }}>
+            {children}
+            <SiteFooter />
+          </main>
         </div>
         <MobileBottomNav activeOverlay={mobileOverlay} onOverlayChange={setMobileOverlay} />
       </div>
