@@ -4,7 +4,12 @@ import { useMemo, type CSSProperties } from 'react';
 import type { BestOddsDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection, LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
 import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
-import { getOddIdentityKey, sortOddsByStrength } from '@/lib/live-odds';
+import {
+  dedupeOddsByBookmaker,
+  dedupeOddsByBookmakerName,
+  getOddIdentityKey,
+  sortOddsByStrength,
+} from '@/lib/live-odds';
 
 export interface OddsComparisonProps {
   bestOdds: BestOddsDto | null;
@@ -202,7 +207,10 @@ export function OddsComparison({
   bestOddsMovements,
   oddsMovements,
 }: OddsComparisonProps) {
-  const orderedOdds = useMemo(() => sortOddsByStrength(odds), [odds]);
+  const orderedOdds = useMemo(
+    () => sortOddsByStrength(dedupeOddsByBookmakerName(dedupeOddsByBookmaker(odds))),
+    [odds],
+  );
 
   const maxHome = useMemo(
     () => (orderedOdds.length > 0 ? Math.max(...orderedOdds.map((o) => o.homeOdd)) : -1),

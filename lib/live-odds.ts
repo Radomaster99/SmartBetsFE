@@ -85,6 +85,9 @@ function matchesTeamName(value: LiveOddsValueDto, teamName: string | null | unde
 
   const normalizedLabel = normalizeOutcomeLabel(value.outcomeLabel);
   const compactLabel = normalizeCompactText(value.outcomeLabel);
+  if (!normalizedLabel || !compactLabel) {
+    return false;
+  }
 
   return teamMatchers.some((matcher) => {
     if (!matcher) {
@@ -209,6 +212,10 @@ function normalizeIdentitySegment(value: string): string {
   return normalizeText(value).replace(/\s+/g, '-');
 }
 
+function getBookmakerDisplayKey(bookmaker: string): string {
+  return normalizeIdentitySegment(bookmaker);
+}
+
 function getMarketBookmakerIdentityKey(
   market: Pick<LiveOddsMarketDto, 'apiBookmakerId' | 'bookmakerIdentityType' | 'externalBookmakerKey' | 'bookmaker'>,
 ): string {
@@ -246,9 +253,32 @@ export function getOddIdentityKey(
 
 function pickThreeWayMarkets(markets: LiveOddsMarketDto[], options?: LiveOddsMappingOptions): LiveOddsMarketDto[] {
   const candidates = markets.filter((market) => isThreeWayMainMarket(market, options));
-  const scopedCandidates = options?.fulltimeOnly
-    ? candidates.filter((market) => isPrimaryLiveThreeWayMarketName(getNormalizedMarketName(market)))
-    : candidates;
+  let scopedCandidates = candidates;
+
+  if (options?.fulltimeOnly) {
+    const primaryCandidates = candidates.filter((market) =>
+      isPrimaryLiveThreeWayMarketName(getNormalizedMarketName(market)),
+    );
+
+    if (primaryCandidates.length > 0) {
+      scopedCandidates = primaryCandidates;
+    } else {
+      const minuteMarketCandidates = candidates.filter((market) =>
+        getNormalizedMarketName(market).startsWith('1x2'),
+      );
+
+      const freshestMinuteMarketByBookmaker = new Map<string, LiveOddsMarketDto>();
+      for (const market of minuteMarketCandidates) {
+        const key = getMarketBookmakerIdentityKey(market);
+        const existing = freshestMinuteMarketByBookmaker.get(key);
+        if (!existing || getMarketTimestamp(market) > getMarketTimestamp(existing)) {
+          freshestMinuteMarketByBookmaker.set(key, market);
+        }
+      }
+
+      scopedCandidates = Array.from(freshestMinuteMarketByBookmaker.values());
+    }
+  }
 
   return [...scopedCandidates].sort((left, right) => {
     const leftPriority = getMarketNamePriority(left);
@@ -303,7 +333,7 @@ function mergeOddRows(left: OddDto, right: OddDto): OddDto {
   };
 }
 
-function mergeOddsByBookmaker(odds: OddDto[]): OddDto[] {
+export function dedupeOddsByBookmaker(odds: OddDto[]): OddDto[] {
   const byBookmaker = new Map<string, OddDto>();
 
   for (const odd of odds) {
@@ -318,6 +348,23 @@ function mergeOddsByBookmaker(odds: OddDto[]): OddDto[] {
   }
 
   return Array.from(byBookmaker.values());
+}
+
+export function dedupeOddsByBookmakerName(odds: OddDto[]): OddDto[] {
+  const byBookmakerName = new Map<string, OddDto>();
+
+  for (const odd of odds) {
+    const key = getBookmakerDisplayKey(odd.bookmaker);
+    const existing = byBookmakerName.get(key);
+    if (!existing) {
+      byBookmakerName.set(key, odd);
+      continue;
+    }
+
+    byBookmakerName.set(key, mergeOddRows(existing, odd));
+  }
+
+  return Array.from(byBookmakerName.values());
 }
 
 function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: LiveOddsMappingOptions): OddDto[] {
@@ -357,7 +404,7 @@ function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: LiveOd
     ];
   });
 
-  return mergeOddsByBookmaker(rawOdds);
+  return dedupeOddsByBookmaker(rawOdds);
 }
 
 export function mapLiveOddsToOdds(markets: LiveOddsMarketDto[], options?: LiveOddsMappingOptions): OddDto[] {

@@ -132,6 +132,12 @@ export interface LiveOddsSummaryUpdatedDto extends LiveOddsSummaryDto {
   leagueApiId: number;
 }
 
+export interface LiveBetTypeDto {
+  apiBetId: number;
+  name: string;
+  syncedAtUtc?: string | null;
+}
+
 export interface LiveOddsViewersHeartbeatDto {
   receivedFixtureIds: number[];
   acceptedFixtureIds: number[];

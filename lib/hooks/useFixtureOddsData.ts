@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
 import { useOdds } from '@/lib/hooks/useOdds';
+import { useLiveBetTypes } from '@/lib/hooks/useLiveBetTypes';
 import {
   useLiveOdds,
   useLiveOddsSignalR,
@@ -11,8 +12,22 @@ import {
   type LiveOddsMovementDirection,
   type LiveOddsRealtimeStatus,
 } from '@/lib/hooks/useLiveOdds';
-import { deriveBestOddsFromOdds, getOddIdentityKey, mapLiveOddsToMainMatchOdds } from '@/lib/live-odds';
-import type { BestOddsDto, FixtureDetailDto, FixtureDto, LiveOddsSummaryDto, OddDto, PagedResultDto } from '@/lib/types/api';
+import {
+  dedupeOddsByBookmaker,
+  deriveBestOddsFromOdds,
+  getOddIdentityKey,
+  mapLiveOddsToMainMatchOdds,
+} from '@/lib/live-odds';
+import { getApiFootballThreeWayFallbackBetIds } from '@/lib/live-bets';
+import type {
+  BestOddsDto,
+  FixtureDetailDto,
+  FixtureDto,
+  LiveOddsMarketDto,
+  LiveOddsSummaryDto,
+  OddDto,
+  PagedResultDto,
+} from '@/lib/types/api';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -112,6 +127,19 @@ function areLiveSummariesEqual(
   );
 }
 
+async function fetchFixtureLiveOddsForBetId(fixtureId: string, betId: number): Promise<LiveOddsMarketDto[]> {
+  const res = await fetch(`/api/fixtures/${fixtureId}/odds/live?betId=${betId}&latestOnly=true`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch API-Football live odds for bet ${betId}`);
+  }
+
+  return res.json();
+}
+
 // ── public interface ───────────────────────────────────────────────────────
 
 export interface FixtureOddsData {
@@ -164,8 +192,51 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
   const liveOddsQuery = useLiveOdds(fixtureId, liveOddsEnabled);
   const liveOddsRealtimeStatus = useLiveOddsSignalR(fixtureId, liveOddsEnabled);
   useLiveViewersHeartbeat(heartbeatFixtureIds, liveOddsEnabled);
+  const hasTheOddsProviderRows = Boolean(
+    isLive && (liveOddsQuery.data ?? []).some((market) => market.sourceProvider === 'the-odds-api'),
+  );
+  const liveBetTypesQuery = useLiveBetTypes(isLive && isOddsTabActive && hasTheOddsProviderRows);
+  const apiFootballFallbackBetIds = useMemo(
+    () => getApiFootballThreeWayFallbackBetIds(liveBetTypesQuery.data ?? [], detail?.fixture.elapsed ?? null),
+    [detail?.fixture.elapsed, liveBetTypesQuery.data],
+  );
+  const apiFootballFallbackQuery = useQuery({
+    queryKey: ['fixture-live-odds-api-football-fallback', fixtureId, apiFootballFallbackBetIds.join(',')],
+    enabled: Boolean(
+      isLive &&
+        isOddsTabActive &&
+        hasTheOddsProviderRows &&
+        apiFootballFallbackBetIds.length > 0 &&
+        detail?.fixture.homeTeamName &&
+        detail?.fixture.awayTeamName,
+    ),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      for (const betId of apiFootballFallbackBetIds) {
+        try {
+          const markets = await fetchFixtureLiveOddsForBetId(fixtureId, betId);
+          const mappedOdds = mapLiveOddsToMainMatchOdds(markets, {
+            homeTeamName: detail?.fixture.homeTeamName,
+            awayTeamName: detail?.fixture.awayTeamName,
+          }).filter((odd) => odd.sourceProvider === 'api-football' && /bet365/i.test(odd.bookmaker));
 
-  const mappedLiveOdds = useMemo(
+          if (mappedOdds.length > 0) {
+            return markets;
+          }
+        } catch (error) {
+          console.warn(
+            `[useFixtureOddsData] Failed API-Football Bet365 fallback fetch for fixture ${fixtureId} and bet ${betId}:`,
+            error,
+          );
+        }
+      }
+
+      return [] as LiveOddsMarketDto[];
+    },
+  });
+
+  const mappedPreferredLiveOdds = useMemo(
     () =>
       isLive
         ? mapLiveOddsToMainMatchOdds(liveOddsQuery.data ?? [], {
@@ -175,6 +246,32 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
         : [],
     [detail?.fixture.awayTeamName, detail?.fixture.homeTeamName, isLive, liveOddsQuery.data],
   );
+  const mappedApiFootballFallbackOdds = useMemo(
+    () =>
+      isLive
+        ? mapLiveOddsToMainMatchOdds(apiFootballFallbackQuery.data ?? [], {
+            homeTeamName: detail?.fixture.homeTeamName,
+            awayTeamName: detail?.fixture.awayTeamName,
+          }).filter((odd) => odd.sourceProvider === 'api-football' && /bet365/i.test(odd.bookmaker))
+        : [],
+    [
+      apiFootballFallbackQuery.data,
+      detail?.fixture.awayTeamName,
+      detail?.fixture.homeTeamName,
+      isLive,
+    ],
+  );
+  const mappedLiveOdds = useMemo(() => {
+    if (!isLive) {
+      return [];
+    }
+
+    if (mappedApiFootballFallbackOdds.length === 0) {
+      return mappedPreferredLiveOdds;
+    }
+
+    return dedupeOddsByBookmaker([...mappedPreferredLiveOdds, ...mappedApiFootballFallbackOdds]);
+  }, [isLive, mappedApiFootballFallbackOdds, mappedPreferredLiveOdds]);
   const derivedLiveBestOdds = useMemo(
     () => (isLive ? deriveBestOddsFromOdds(mappedLiveOdds) : null),
     [isLive, mappedLiveOdds],

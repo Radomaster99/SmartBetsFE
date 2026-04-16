@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminRequest } from '@/lib/admin-auth';
 import { apiFetch, buildQuery } from '@/lib/api/client';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ fixtureId: string }> },
 ) {
+  const unauthorizedResponse = await requireAdminRequest(req);
+  if (unauthorizedResponse) {
+    return unauthorizedResponse;
+  }
+
   const { fixtureId } = await params;
   const force = req.nextUrl.searchParams.get('force');
 

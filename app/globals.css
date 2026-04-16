@@ -74,7 +74,7 @@ html[data-theme="light"] {
 }
 
 /* ── Widget custom theme — dark (default) ────────────── */
-api-sports-widget[data-theme="SmartBets"] {
+api-sports-widget[data-theme="OddsDetector"] {
   --primary-color:   #00e676;
   --success-color:   #00e676;
   --warning-color:   #f59e0b;
@@ -110,7 +110,7 @@ api-sports-widget[data-theme="SmartBets"] {
 }
 
 /* ── Widget custom theme — light override ────────────── */
-html[data-theme="light"] api-sports-widget[data-theme="SmartBets"] {
+html[data-theme="light"] api-sports-widget[data-theme="OddsDetector"] {
   --primary-color:   #059669;
   --success-color:   #059669;
   --warning-color:   #c47a10;

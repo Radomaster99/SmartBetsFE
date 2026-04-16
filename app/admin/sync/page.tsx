@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { AdminRouteGate } from '@/components/admin/AdminRouteGate';
 import { BonusCodeCardEditor } from '@/components/admin/BonusCodeCardEditor';
 import { HeroBannerSlotEditor } from '@/components/admin/HeroBannerSlotEditor';
 import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
@@ -2698,7 +2699,9 @@ function AdminSyncPageContent() {
 export default function AdminSyncPage() {
   return (
     <Suspense fallback={<div className="p-5"><LoadingSpinner /></div>}>
-      <AdminSyncPageContent />
+      <AdminRouteGate>
+        <AdminSyncPageContent />
+      </AdminRouteGate>
     </Suspense>
   );
 }

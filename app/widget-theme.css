@@ -1,5 +1,5 @@
 /* Centralized API-Sports widget theme.
-   Adjust widget colors here to keep them aligned with the SmartBets site theme. */
+   Adjust widget colors here to keep them aligned with the OddsDetector site theme. */
 
 :root {
   --w-warning: #f59e0b;
@@ -15,7 +15,7 @@ html[data-theme="light"] {
   --w-hover: rgba(0, 0, 0, 0.04);
 }
 
-html body api-sports-widget[data-theme="SmartBets"] {
+html body api-sports-widget[data-theme="OddsDetector"] {
   --primary-color: var(--t-accent);
   --success-color: var(--t-accent);
   --warning-color: var(--w-warning);
@@ -50,7 +50,7 @@ html body api-sports-widget[data-theme="SmartBets"] {
   --hover: var(--w-hover);
 }
 
-html[data-theme="light"] body api-sports-widget[data-theme="SmartBets"] {
+html[data-theme="light"] body api-sports-widget[data-theme="OddsDetector"] {
   --primary-color: var(--t-accent);
   --success-color: var(--t-accent);
   --warning-color: var(--w-warning);

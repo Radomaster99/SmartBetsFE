@@ -87,7 +87,7 @@ export function SiteFooter() {
                 color: 'var(--t-text-6, #374151)',
               }}
             >
-              Smart<span style={{ color: 'var(--t-accent, #00e676)' }}>Bets</span>
+              Odds<span style={{ color: 'var(--t-accent, #00e676)' }}>Detector</span>
             </span>
             <RespBadge />
           </div>
@@ -110,7 +110,7 @@ export function SiteFooter() {
               marginTop: '4px',
             }}
           >
-            © {new Date().getFullYear()} SmartBets. Odds comparison for informational purposes. 18+ only. Please gamble responsibly.
+            © {new Date().getFullYear()} OddsDetector. Odds comparison for informational purposes. 18+ only. Please gamble responsibly.
           </p>
         </div>
       </div>

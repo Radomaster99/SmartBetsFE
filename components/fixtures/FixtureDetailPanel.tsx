@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
 import { useFixtureCorners } from '@/lib/hooks/useFixtureCorners';
+import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
+import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { OddsComparison } from '@/components/odds/OddsComparison';
@@ -12,99 +14,6 @@ type PanelTab = 'odds' | 'match' | 'h2h';
 interface Props {
   fixtureId: number;
   onClose: () => void;
-}
-
-function CornersStrip({
-  homeCorners,
-  awayCorners,
-  totalCorners,
-  isLoading,
-  syncedAtUtc,
-}: {
-  homeCorners: number | null;
-  awayCorners: number | null;
-  totalCorners: number | null;
-  isLoading: boolean;
-  syncedAtUtc?: string | null;
-}) {
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 12px',
-        borderBottom: '1px solid var(--t-border)',
-        background: 'linear-gradient(180deg, rgba(0,230,118,0.05), rgba(0,230,118,0.02))',
-      }}
-    >
-      <div style={{ textAlign: 'left' }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--t-text-5)',
-          }}
-        >
-          Home corners
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t-text-1)' }}>
-          {isLoading ? '...' : (homeCorners ?? '-')}
-        </div>
-      </div>
-
-      <div
-        style={{
-          minWidth: 88,
-          textAlign: 'center',
-          padding: '6px 10px',
-          borderRadius: 999,
-          border: '1px solid rgba(0,230,118,0.18)',
-          background: 'rgba(0,230,118,0.08)',
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,230,118,0.72)',
-          }}
-        >
-          Corners
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t-text-2)' }}>
-          {isLoading ? 'Syncing...' : totalCorners != null ? `Total ${totalCorners}` : 'Live stats'}
-        </div>
-        {!isLoading && syncedAtUtc ? (
-          <div style={{ marginTop: 2, fontSize: 10, color: 'var(--t-text-5)' }}>
-            {new Date(syncedAtUtc).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        ) : null}
-      </div>
-
-      <div style={{ textAlign: 'right' }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--t-text-5)',
-          }}
-        >
-          Away corners
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--t-text-1)' }}>
-          {isLoading ? '...' : (awayCorners ?? '-')}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
@@ -131,12 +40,22 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
     enabled: Boolean(detail),
     refetchInterval: isLive ? 60_000 : false,
   });
+  const statisticsQuery = useFixtureStatistics(fixtureIdStr, {
+    enabled: Boolean(detail),
+    refetchInterval: isLive ? 60_000 : false,
+  });
 
   const cornersSummary = cornersQuery.data;
-  const shouldShowCornersStrip = Boolean(
-    detail &&
-      ((cornersSummary?.hasData ?? false) ||
-        (isLive && (cornersQuery.isLoading || cornersQuery.isFetching))),
+  const quickStatsSummary = useMemo(
+    () =>
+      detail
+        ? extractFixtureQuickStatsSummary(
+            statisticsQuery.data,
+            detail.fixture,
+            cornersSummary,
+          )
+        : null,
+    [cornersSummary, detail, statisticsQuery.data],
   );
 
   const tabs: { id: PanelTab; label: string }[] = [
@@ -209,7 +128,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
 
       {detail ? (
         <div style={{ flexShrink: 0, borderBottom: '1px solid var(--t-border)' }}>
-          <FixtureDetailHeader detail={detail} />
+          <FixtureDetailHeader detail={detail} quickStats={quickStatsSummary} />
         </div>
       ) : isLoading ? (
         <div
@@ -240,27 +159,6 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
           }}
         >
           Failed to load fixture
-        </div>
-      ) : null}
-
-      {shouldShowCornersStrip && cornersSummary?.hasData ? (
-        <div style={{ flexShrink: 0 }}>
-          <CornersStrip
-            homeCorners={cornersSummary.home?.corners ?? null}
-            awayCorners={cornersSummary.away?.corners ?? null}
-            totalCorners={cornersSummary.totalCorners}
-            syncedAtUtc={cornersSummary.syncedAtUtc}
-            isLoading={false}
-          />
-        </div>
-      ) : shouldShowCornersStrip ? (
-        <div style={{ flexShrink: 0 }}>
-          <CornersStrip
-            homeCorners={null}
-            awayCorners={null}
-            totalCorners={null}
-            isLoading
-          />
         </div>
       ) : null}
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminRequest } from '@/lib/admin-auth';
 import { apiFetch } from '@/lib/api/client';
 
 interface ViewerRefreshPatchBody {
@@ -48,6 +49,11 @@ function readEnabled(body: ViewerRefreshPatchBody, searchParams: URLSearchParams
 }
 
 export async function PATCH(req: NextRequest) {
+  const unauthorizedResponse = await requireAdminRequest(req);
+  if (unauthorizedResponse) {
+    return unauthorizedResponse;
+  }
+
   let body: ViewerRefreshPatchBody = {};
 
   try {

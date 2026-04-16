@@ -7,8 +7,8 @@ import { WidgetsProvider } from '@/components/widgets/WidgetsProvider';
 import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'SmartBets - Football Odds Monitor',
-  description: 'Football odds comparison and live market tracking for serious bettors.',
+  title: 'OddsDetector - Football Odds Monitor',
+  description: 'Football odds comparison, live market tracking, and admin-controlled betting content.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

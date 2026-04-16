@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FixtureDetailDto } from '@/lib/types/api';
+import type { FixtureQuickStatsSummary, FixtureStatPairSummary } from '@/lib/fixture-statistics';
 import { StatusBadge, formatFixtureStatusLabel } from '@/components/shared/StatusBadge';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 
@@ -13,6 +14,7 @@ export interface SelectedFixtureTeam {
 interface Props {
   detail: FixtureDetailDto;
   onTeamSelect?: (team: SelectedFixtureTeam) => void;
+  quickStats?: FixtureQuickStatsSummary | null;
 }
 
 function formatDateTime(iso: string): string {
@@ -100,13 +102,145 @@ function TeamCard({
   );
 }
 
-export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
+function QuickStatGlyph({ kind }: { kind: 'yellow' | 'red' | 'corners' | 'shots' }) {
+  if (kind === 'yellow' || kind === 'red') {
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          width: 9,
+          height: 12,
+          borderRadius: 2,
+          background: kind === 'yellow' ? '#facc15' : '#ef4444',
+          boxShadow:
+            kind === 'yellow'
+              ? '0 0 0 1px rgba(250,204,21,0.18)'
+              : '0 0 0 1px rgba(239,68,68,0.18)',
+          transform: 'rotate(-2deg)',
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+
+  if (kind === 'corners') {
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'relative',
+          width: 11,
+          height: 12,
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            left: 2,
+            bottom: 0,
+            width: 1.5,
+            height: 12,
+            background: 'rgba(226,232,240,0.85)',
+          }}
+        />
+        <span
+          style={{
+            position: 'absolute',
+            left: 3,
+            top: 1,
+            width: 6,
+            height: 5,
+            background: 'rgba(226,232,240,0.92)',
+            clipPath: 'polygon(0 0, 100% 28%, 0 100%)',
+          }}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'relative',
+        width: 12,
+        height: 12,
+        borderRadius: 999,
+        border: '1.5px solid rgba(147,197,253,0.9)',
+        flexShrink: 0,
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          inset: 2.5,
+          borderRadius: 999,
+          background: 'rgba(147,197,253,0.9)',
+        }}
+      />
+    </span>
+  );
+}
+
+function formatStatPair(pair: FixtureStatPairSummary): string {
+  return `${pair.home ?? '-'}-${pair.away ?? '-'}`;
+}
+
+function QuickStatChip({
+  kind,
+  label,
+  pair,
+}: {
+  kind: 'yellow' | 'red' | 'corners' | 'shots';
+  label: string;
+  pair: FixtureStatPairSummary;
+}) {
+  return (
+    <div
+      title={label}
+      aria-label={`${label}: ${pair.home ?? '-'} to ${pair.away ?? '-'}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        minWidth: 56,
+        padding: '4px 8px',
+        borderRadius: 999,
+        background: 'rgba(15,23,42,0.42)',
+        border: '1px solid rgba(148,163,184,0.14)',
+        color: 'var(--t-text-2)',
+      }}
+    >
+      <QuickStatGlyph kind={kind} />
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          lineHeight: 1,
+          letterSpacing: '0.01em',
+        }}
+      >
+        {formatStatPair(pair)}
+      </span>
+    </div>
+  );
+}
+
+export function FixtureDetailHeader({ detail, onTeamSelect, quickStats }: Props) {
   const f = detail.fixture;
   const isLive = f.stateBucket === 'Live';
   const isFinished = f.stateBucket === 'Finished';
   const hasScore = f.homeGoals !== null && f.awayGoals !== null;
   const statusLabel = formatFixtureStatusLabel(f.stateBucket, f.status);
   const liveMinuteLabel = isLive ? formatLiveMinute(f.status ?? '', f.elapsed, f.statusExtra) : null;
+  const quickStatItems = [
+    quickStats?.redCards ? { kind: 'red' as const, label: 'Red cards', pair: quickStats.redCards } : null,
+    quickStats?.yellowCards ? { kind: 'yellow' as const, label: 'Yellow cards', pair: quickStats.yellowCards } : null,
+    quickStats?.corners ? { kind: 'corners' as const, label: 'Corners', pair: quickStats.corners } : null,
+    quickStats?.shotsOnTarget ? { kind: 'shots' as const, label: 'Shots on target', pair: quickStats.shotsOnTarget } : null,
+  ].filter(Boolean) as Array<{ kind: 'yellow' | 'red' | 'corners' | 'shots'; label: string; pair: FixtureStatPairSummary }>;
 
   return (
     <div style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
@@ -180,6 +314,23 @@ export function FixtureDetailHeader({ detail, onTeamSelect }: Props) {
           onSelect={onTeamSelect}
         />
       </div>
+
+      {quickStatItems.length > 0 ? (
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '0 16px 12px',
+          }}
+        >
+          {quickStatItems.map((item) => (
+            <QuickStatChip key={item.label} kind={item.kind} label={item.label} pair={item.pair} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

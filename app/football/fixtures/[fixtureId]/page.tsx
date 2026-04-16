@@ -2,7 +2,10 @@
 import { Suspense, use, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
+import { useFixtureCorners } from '@/lib/hooks/useFixtureCorners';
 import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
+import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
+import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
 import { OddsComparison } from '@/components/odds/OddsComparison';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
@@ -69,10 +72,29 @@ function FixtureDetailPageInner({ params }: Props) {
 
   // useFixtureDetail is called inside useFixtureOddsData; we still need refetch
   const { refetch } = useFixtureDetail(fixtureId);
+  const cornersQuery = useFixtureCorners(fixtureId, {
+    enabled: Boolean(detail),
+    refetchInterval: isLive ? 60_000 : false,
+  });
+  const statisticsQuery = useFixtureStatistics(fixtureId, {
+    enabled: Boolean(detail),
+    refetchInterval: isLive ? 60_000 : false,
+  });
 
   const resolvedRequestedTab = useMemo(
     () => resolveInitialTab(requestedTab, detail?.fixture.stateBucket ?? null),
     [detail?.fixture.stateBucket, requestedTab],
+  );
+  const quickStatsSummary = useMemo(
+    () =>
+      detail
+        ? extractFixtureQuickStatsSummary(
+            statisticsQuery.data,
+            detail.fixture,
+            cornersQuery.data,
+          )
+        : null,
+    [cornersQuery.data, detail, statisticsQuery.data],
   );
 
   useEffect(() => {
@@ -193,6 +215,7 @@ function FixtureDetailPageInner({ params }: Props) {
       <FixtureDetailHeader
         detail={detail}
         onTeamSelect={handleTeamSelect}
+        quickStats={quickStatsSummary}
       />
 
       <div

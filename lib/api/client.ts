@@ -1,7 +1,7 @@
 const BASE_URL =
   process.env.SMARTBETS_API_BASE_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  'http://tn1ij0gjz51y40mkc99bo5ja.178.104.173.167.sslip.io';
+  '';
 const API_KEY = process.env.API_KEY ?? '';
 const AUTH_SKEW_MS = 60_000;
 
@@ -31,6 +31,10 @@ function isJwtTokenValid(token: JwtTokenResponseDto | null): token is JwtTokenRe
 }
 
 async function fetchJwtToken(): Promise<JwtTokenResponseDto> {
+  if (!BASE_URL) {
+    throw new Error('Missing SMARTBETS_API_BASE_URL or NEXT_PUBLIC_API_BASE_URL');
+  }
+
   const res = await fetch(`${BASE_URL}/api/auth/token`, {
     method: 'POST',
     headers: {
@@ -69,6 +73,10 @@ export async function getJwtToken(forceRefresh = false): Promise<JwtTokenRespons
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  if (!BASE_URL) {
+    throw new Error('Missing SMARTBETS_API_BASE_URL or NEXT_PUBLIC_API_BASE_URL');
+  }
+
   const url = `${BASE_URL}${path}`;
   const hasBody = options?.body !== undefined && options?.body !== null;
   const res = await fetch(url, {
@@ -91,6 +99,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 }
 
 export async function apiFetchWithJwt<T>(path: string, options?: RequestInit): Promise<T> {
+  if (!BASE_URL) {
+    throw new Error('Missing SMARTBETS_API_BASE_URL or NEXT_PUBLIC_API_BASE_URL');
+  }
+
   const token = await getJwtToken();
   const url = `${BASE_URL}${path}`;
   const hasBody = options?.body !== undefined && options?.body !== null;

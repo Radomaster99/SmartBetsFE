@@ -1,9 +1,25 @@
-import type { FixtureDto, FixtureTeamStatisticsDto } from '@/lib/types/api';
+import type {
+  FixtureCornersDto,
+  FixtureDto,
+  FixtureTeamStatisticsDto,
+} from '@/lib/types/api';
 
 interface CornersSummary {
   homeCorners: number | null;
   awayCorners: number | null;
   totalCorners: number | null;
+}
+
+export interface FixtureStatPairSummary {
+  home: number | null;
+  away: number | null;
+}
+
+export interface FixtureQuickStatsSummary {
+  yellowCards: FixtureStatPairSummary | null;
+  redCards: FixtureStatPairSummary | null;
+  corners: FixtureStatPairSummary | null;
+  shotsOnTarget: FixtureStatPairSummary | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -40,6 +56,37 @@ function normalizeText(value: unknown): string | null {
 function isCornerStatisticType(type: unknown): boolean {
   const normalized = normalizeText(type);
   return Boolean(normalized && normalized.includes('corner'));
+}
+
+function isYellowCardStatisticType(type: unknown): boolean {
+  const normalized = normalizeText(type);
+  return Boolean(
+    normalized &&
+      (normalized === 'yellow cards' ||
+        normalized === 'yellow card' ||
+        normalized.includes('yellow card')),
+  );
+}
+
+function isRedCardStatisticType(type: unknown): boolean {
+  const normalized = normalizeText(type);
+  return Boolean(
+    normalized &&
+      (normalized === 'red cards' ||
+        normalized === 'red card' ||
+        normalized.includes('red card')),
+  );
+}
+
+function isShotsOnTargetStatisticType(type: unknown): boolean {
+  const normalized = normalizeText(type);
+  return Boolean(
+    normalized &&
+      (normalized === 'shots on goal' ||
+        normalized === 'shots on target' ||
+        normalized.includes('shots on goal') ||
+        normalized.includes('shots on target')),
+  );
 }
 
 function getTeamApiId(entry: FixtureTeamStatisticsDto | Record<string, unknown>): number | null {
@@ -93,9 +140,16 @@ function getStatisticsArray(entry: FixtureTeamStatisticsDto | Record<string, unk
 }
 
 function getCornersValue(entry: FixtureTeamStatisticsDto | Record<string, unknown>): number | null {
+  return getStatisticValue(entry, isCornerStatisticType);
+}
+
+function getStatisticValue(
+  entry: FixtureTeamStatisticsDto | Record<string, unknown>,
+  matchesType: (type: unknown) => boolean,
+): number | null {
   for (const stat of getStatisticsArray(entry)) {
     const record = asRecord(stat);
-    if (!record || !isCornerStatisticType(record.type)) {
+    if (!record || !matchesType(record.type)) {
       continue;
     }
 
@@ -160,5 +214,102 @@ export function extractCornersSummary(
     awayCorners,
     totalCorners:
       homeCorners != null && awayCorners != null ? homeCorners + awayCorners : null,
+  };
+}
+
+function extractStatPair(
+  statistics: FixtureTeamStatisticsDto[] | null | undefined,
+  fixture: Pick<FixtureDto, 'homeTeamApiId' | 'awayTeamApiId' | 'homeTeamName' | 'awayTeamName'>,
+  matchesType: (type: unknown) => boolean,
+): FixtureStatPairSummary | null {
+  if (!Array.isArray(statistics) || statistics.length === 0) {
+    return null;
+  }
+
+  let home: number | null = null;
+  let away: number | null = null;
+  const normalizedHomeName = fixture.homeTeamName.trim().toLowerCase();
+  const normalizedAwayName = fixture.awayTeamName.trim().toLowerCase();
+
+  for (const rawEntry of statistics) {
+    const entry = asRecord(rawEntry);
+    if (!entry) {
+      continue;
+    }
+
+    const value = getStatisticValue(entry, matchesType);
+    if (value == null) {
+      continue;
+    }
+
+    const teamApiId = getTeamApiId(entry);
+    const teamName = getTeamName(entry);
+
+    if (
+      teamApiId === fixture.homeTeamApiId ||
+      (teamName && teamName === normalizedHomeName)
+    ) {
+      home = value;
+      continue;
+    }
+
+    if (
+      teamApiId === fixture.awayTeamApiId ||
+      (teamName && teamName === normalizedAwayName)
+    ) {
+      away = value;
+    }
+  }
+
+  if (home == null && away == null) {
+    return null;
+  }
+
+  return { home, away };
+}
+
+function extractCornerPair(
+  cornersSummary: FixtureCornersDto | null | undefined,
+  statistics: FixtureTeamStatisticsDto[] | null | undefined,
+  fixture: Pick<FixtureDto, 'homeTeamApiId' | 'awayTeamApiId' | 'homeTeamName' | 'awayTeamName'>,
+): FixtureStatPairSummary | null {
+  if (cornersSummary?.hasData) {
+    const home = cornersSummary.home?.corners ?? null;
+    const away = cornersSummary.away?.corners ?? null;
+    if (home != null || away != null) {
+      return { home, away };
+    }
+  }
+
+  const derived = extractCornersSummary(statistics, fixture);
+  if (!derived) {
+    return null;
+  }
+
+  return {
+    home: derived.homeCorners,
+    away: derived.awayCorners,
+  };
+}
+
+export function extractFixtureQuickStatsSummary(
+  statistics: FixtureTeamStatisticsDto[] | null | undefined,
+  fixture: Pick<FixtureDto, 'homeTeamApiId' | 'awayTeamApiId' | 'homeTeamName' | 'awayTeamName'>,
+  cornersSummary?: FixtureCornersDto | null,
+): FixtureQuickStatsSummary | null {
+  const yellowCards = extractStatPair(statistics, fixture, isYellowCardStatisticType);
+  const redCards = extractStatPair(statistics, fixture, isRedCardStatisticType);
+  const corners = extractCornerPair(cornersSummary, statistics, fixture);
+  const shotsOnTarget = extractStatPair(statistics, fixture, isShotsOnTargetStatisticType);
+
+  if (!yellowCards && !redCards && !corners && !shotsOnTarget) {
+    return null;
+  }
+
+  return {
+    yellowCards,
+    redCards,
+    corners,
+    shotsOnTarget,
   };
 }
