@@ -181,16 +181,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ height: '100vh', paddingInline: shellGutter, boxSizing: 'border-box', ['--shell-gutter-px' as string]: shellGutter }}>
+    <div style={{ minHeight: '100vh', paddingInline: shellGutter, boxSizing: 'border-box', ['--shell-gutter-px' as string]: shellGutter }}>
       {renderSideAd(sideAdsConfig.left, 'left')}
       {renderSideAd(sideAdsConfig.right, 'right')}
       {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Topbar />
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'flex', position: 'relative' }}>
           <SportSwitcherPanel />
           <Sidebar />
-          <main style={{ flex: 1, overflowY: 'auto' }}>
+          <main style={{ flex: 1, minWidth: 0 }}>
             {children}
             <SiteFooter />
           </main>
