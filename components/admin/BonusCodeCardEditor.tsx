@@ -208,6 +208,16 @@ export function BonusCodeCardEditor({
             />
             Featured card
           </label>
+
+          <label className="flex cursor-pointer select-none items-center gap-2 text-[12px]" style={{ color: 'var(--t-text-3)' }}>
+            <input
+              type="checkbox"
+              checked={entry.isExpandable ?? false}
+              onChange={(event) => onChange(entry.id, { isExpandable: event.target.checked })}
+              className="accent-green-400"
+            />
+            Expandable row
+          </label>
         </div>
       </div>
     </div>

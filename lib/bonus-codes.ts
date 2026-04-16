@@ -25,6 +25,7 @@ export type BonusCodeEntry = {
   isFeatured: boolean;
   toneId: BonusCodeToneId;
   updatedAtUtc?: string;
+  isExpandable?: boolean;
 };
 
 export type BonusCodesPageConfig = {
@@ -158,6 +159,7 @@ export const DEFAULT_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
       isActive: true,
       isFeatured: true,
       toneId: 'amber',
+      isExpandable: false,
     },
     {
       id: 'bet365-bonus',
@@ -172,6 +174,7 @@ export const DEFAULT_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
       isActive: true,
       isFeatured: true,
       toneId: 'emerald',
+      isExpandable: false,
     },
     {
       id: 'unibet-bonus',
@@ -186,6 +189,7 @@ export const DEFAULT_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
       isActive: true,
       isFeatured: false,
       toneId: 'sky',
+      isExpandable: false,
     },
   ],
 };
@@ -246,6 +250,7 @@ function normalizeEntry(value: unknown, fallback: BonusCodeEntry): BonusCodeEntr
       typeof candidate.updatedAtUtc === 'string' && candidate.updatedAtUtc.trim()
         ? candidate.updatedAtUtc
         : fallback.updatedAtUtc,
+    isExpandable: typeof candidate.isExpandable === 'boolean' ? candidate.isExpandable : fallback.isExpandable ?? false,
   };
 }
 
@@ -315,6 +320,7 @@ export function createEmptyBonusCodeEntry(): BonusCodeEntry {
     isFeatured: false,
     toneId: 'emerald',
     updatedAtUtc: new Date().toISOString(),
+    isExpandable: false,
   };
 }
 

@@ -85,8 +85,12 @@ export function MobileBottomNav({ activeOverlay, onOverlayChange }: Props) {
 
   return (
     <nav
-      className="md:hidden flex-shrink-0 flex items-stretch"
+      className="md:hidden flex items-stretch"
       style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
         height: 50,
         background: 'rgba(6,10,20,0.99)',
         backdropFilter: 'blur(12px)',

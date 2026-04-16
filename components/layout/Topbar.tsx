@@ -49,39 +49,62 @@ export function Topbar() {
 
         <Link
           href="/bonus-codes"
-          className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em]"
           style={{
             textDecoration: 'none',
-            background: isBonusCodesRoute ? 'rgba(245,158,11,0.14)' : 'rgba(255,255,255,0.04)',
-            border: isBonusCodesRoute
-              ? '1px solid rgba(251,191,36,0.34)'
-              : '1px solid rgba(255,255,255,0.08)',
-            color: isBonusCodesRoute ? '#fbbf24' : 'var(--t-text-2)',
-            boxShadow: isBonusCodesRoute ? '0 0 0 1px rgba(251,191,36,0.05) inset' : 'none',
+            background: isBonusCodesRoute
+              ? 'linear-gradient(135deg,rgba(251,191,36,0.28),rgba(245,158,11,0.20))'
+              : 'linear-gradient(135deg,rgba(251,191,36,0.18),rgba(245,158,11,0.12))',
+            borderTop: '1px solid rgba(251,191,36,0.4)',
+            borderRight: '1px solid rgba(251,191,36,0.4)',
+            borderBottom: '1px solid rgba(251,191,36,0.4)',
+            borderLeft: '1px solid rgba(251,191,36,0.4)',
+            color: isBonusCodesRoute ? '#fde68a' : '#fbbf24',
+            boxShadow: isBonusCodesRoute
+              ? '0 0 18px rgba(251,191,36,0.25), 0 2px 12px rgba(251,191,36,0.15)'
+              : '0 2px 12px rgba(251,191,36,0.15)',
             whiteSpace: 'nowrap',
           }}
           aria-label="Open bonus codes page"
         >
-          Bonus codes
+          <span
+            style={{
+              display: 'inline-block',
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: '#fbbf24',
+              boxShadow: isBonusCodesRoute ? '0 0 8px #fbbf24' : undefined,
+              flexShrink: 0,
+              animation: 'live-pulse 1.4s ease-in-out infinite',
+            }}
+            aria-hidden="true"
+          />
+          🎁 Bonus Codes
         </Link>
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:gap-3">
         <Link
           href="/bonus-codes"
-          className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:hidden"
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] md:hidden"
           style={{
             textDecoration: 'none',
-            background: isBonusCodesRoute ? 'rgba(245,158,11,0.14)' : 'rgba(255,255,255,0.04)',
-            border: isBonusCodesRoute
-              ? '1px solid rgba(251,191,36,0.34)'
-              : '1px solid rgba(255,255,255,0.08)',
-            color: isBonusCodesRoute ? '#fbbf24' : 'var(--t-text-2)',
-            boxShadow: isBonusCodesRoute ? '0 0 0 1px rgba(251,191,36,0.05) inset' : 'none',
+            background: isBonusCodesRoute
+              ? 'linear-gradient(135deg,rgba(251,191,36,0.28),rgba(245,158,11,0.20))'
+              : 'linear-gradient(135deg,rgba(251,191,36,0.18),rgba(245,158,11,0.12))',
+            borderTop: '1px solid rgba(251,191,36,0.4)',
+            borderRight: '1px solid rgba(251,191,36,0.4)',
+            borderBottom: '1px solid rgba(251,191,36,0.4)',
+            borderLeft: '1px solid rgba(251,191,36,0.4)',
+            color: isBonusCodesRoute ? '#fde68a' : '#fbbf24',
+            boxShadow: isBonusCodesRoute
+              ? '0 0 18px rgba(251,191,36,0.25), 0 2px 12px rgba(251,191,36,0.15)'
+              : '0 2px 12px rgba(251,191,36,0.15)',
           }}
           aria-label="Open bonus codes page"
         >
-          Codes
+          🎁 Codes
         </Link>
 
         {liveCount > 0 ? (
