@@ -67,8 +67,13 @@ export function Sidebar() {
 
   return (
     <aside
-      className="layout-sidebar hidden md:flex md:w-56 md:flex-shrink-0 md:flex-col md:overflow-hidden"
+      className="layout-sidebar hidden md:flex md:w-56 md:flex-shrink-0 md:flex-col"
       style={{
+        position: 'sticky',
+        top: 52,
+        height: 'calc(100vh - 52px)',
+        alignSelf: 'flex-start',
+        overflowY: 'hidden',
         background: 'var(--t-sidebar-bg)',
         borderRight: '1px solid var(--t-border)',
       }}
