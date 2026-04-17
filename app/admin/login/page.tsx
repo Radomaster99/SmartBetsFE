@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { OddsDetectorLogo } from '@/components/branding/OddsDetectorLogo';
 import { ADMIN_SESSION_QUERY_KEY, useAdminSession } from '@/lib/hooks/useAdminSession';
 
 function sanitizeNextPath(value: string | null): string {
@@ -70,8 +71,11 @@ function AdminLoginPageContent() {
           boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
         }}
       >
-        <div className="text-[11px] font-black uppercase tracking-[0.22em]" style={{ color: 'var(--t-accent)' }}>
-          OddsDetector Admin
+        <div className="flex items-center gap-3">
+          <OddsDetectorLogo size={32} showWordmark={false} />
+          <div className="text-[11px] font-black uppercase tracking-[0.22em]" style={{ color: 'var(--t-accent)' }}>
+            OddsDetector Admin
+          </div>
         </div>
         <h1 className="mt-3 text-[28px] font-black tracking-[-0.03em]" style={{ color: 'var(--t-text-1)' }}>
           Sign in

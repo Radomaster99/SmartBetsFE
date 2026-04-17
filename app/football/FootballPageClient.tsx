@@ -23,6 +23,7 @@ import { StandingsTable } from '@/components/standings/StandingsTable';
 import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
 import { deriveBestOddsFromOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 import { buildTeamHref } from '@/lib/team-links';
+import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -809,9 +810,21 @@ function FootballPageClient() {
               standings={standings}
               resolveTeamHref={(standing: StandingDto) =>
                 leagueId && standing.apiTeamId
-                  ? buildTeamHref(standing.apiTeamId, standing.teamName, { leagueId, season })
+                  ? buildTeamHref(standing.apiTeamId, standing.teamName)
                   : null
               }
+              onTeamNavigate={(standing: StandingDto) => {
+                if (!leagueId || !standing.apiTeamId) {
+                  return;
+                }
+
+                writeTeamPageNavigationContext({
+                  teamId: standing.apiTeamId,
+                  leagueId,
+                  season,
+                  fromFixtureId: null,
+                });
+              }}
             />
           )}
         </div>

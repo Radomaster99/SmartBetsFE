@@ -189,7 +189,7 @@ function buildTeamSuggestions(teams: TeamDto[], query: string): ScoredSuggestion
       type: 'team',
       title: team.name,
       subtitle: joinParts([team.countryName ?? 'Team', team.code]),
-      href: buildTeamHref(team.apiTeamId, team.name, { season: DEFAULT_SEASON }),
+      href: buildTeamHref(team.apiTeamId, team.name),
       badge: 'Team',
       score,
     });

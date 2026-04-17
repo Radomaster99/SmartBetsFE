@@ -12,7 +12,7 @@ import { useTeam } from '@/lib/hooks/useTeams';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import type { TeamDto } from '@/lib/types/api';
-import { buildTeamPath } from '@/lib/team-links';
+import { readTeamPageNavigationContext, type TeamPageNavigationContext } from '@/lib/team-page-context';
 
 interface SelectedPlayer {
   apiPlayerId: number;
@@ -82,29 +82,32 @@ export function TeamPageClient({
   teamId,
   initialTeam,
   initialLeagueName,
-  initialLeagueCountryName,
   seasonContext,
 }: {
   teamId: number;
   initialTeam?: TeamDto | null;
   initialLeagueName?: string | null;
-  initialLeagueCountryName?: string | null;
   seasonContext?: number | null;
 }) {
   const searchParams = useSearchParams();
+  const [storedNavigationContext, setStoredNavigationContext] = useState<TeamPageNavigationContext | null>(() =>
+    typeof window !== 'undefined' ? readTeamPageNavigationContext(teamId) : null,
+  );
   const [selectedPlayer, setSelectedPlayer] = useState<SelectedPlayer | null>(null);
   const teamWidgetScopeRef = useRef<HTMLDivElement>(null);
   const playerDetailsSectionRef = useRef<HTMLElement>(null);
   const scrollAnimationFrameRef = useRef<number | null>(null);
   const selectedPlayerRef = useRef<SelectedPlayer | null>(null);
-  const leagueId = parsePositiveInt(searchParams.get('leagueId'));
-  const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
-  const fromFixtureId = parsePositiveInt(searchParams.get('fromFixtureId'));
+  const queryLeagueId = parsePositiveInt(searchParams.get('leagueId'));
+  const querySeason = parsePositiveInt(searchParams.get('season'));
+  const queryFromFixtureId = parsePositiveInt(searchParams.get('fromFixtureId'));
+  const leagueId = queryLeagueId ?? storedNavigationContext?.leagueId ?? null;
+  const season = querySeason ?? storedNavigationContext?.season ?? DEFAULT_SEASON;
+  const fromFixtureId = queryFromFixtureId ?? storedNavigationContext?.fromFixtureId ?? null;
   const { data: team, isLoading: teamLoading, isError: teamError } = useTeam(teamId, initialTeam);
   const { data: leagues } = useLeagues(season);
   const selectedLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
   const resolvedLeagueName = selectedLeague?.name ?? initialLeagueName ?? null;
-  const resolvedLeagueCountryName = selectedLeague?.countryName ?? initialLeagueCountryName ?? null;
 
   const recentFixturesQuery = useFixtures({
     teamId,
@@ -142,6 +145,10 @@ export function TeamPageClient({
       ? `/football/standings?leagueId=${leagueId}&season=${season}`
       : '/football/standings';
   const backLabel = fromFixtureId ? 'Back to match' : 'Back to standings';
+
+  useEffect(() => {
+    setStoredNavigationContext(readTeamPageNavigationContext(teamId));
+  }, [teamId]);
 
   useEffect(() => {
     selectedPlayerRef.current = selectedPlayer;

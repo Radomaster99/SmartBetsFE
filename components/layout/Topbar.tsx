@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { OddsDetectorLogo } from '@/components/branding/OddsDetectorLogo';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
 import { useLiveFixtureCount } from '@/lib/hooks/useLiveFixtureCount';
 import { ADMIN_SESSION_QUERY_KEY, useAdminSession } from '@/lib/hooks/useAdminSession';
@@ -44,18 +45,7 @@ export function Topbar() {
     >
       <div className="flex min-w-0 flex-shrink-0 items-center" style={{ width: 280, minWidth: 280 }}>
         <Link href="/football" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.24)' }}
-          >
-            <span
-              className="block h-2.5 w-2.5 rounded-full"
-              style={{ background: 'var(--t-accent)', boxShadow: '0 0 0 4px rgba(0,230,118,0.12)' }}
-            />
-          </div>
-          <span className="text-[17px] font-black tracking-[-0.02em]" style={{ color: 'var(--t-text-1)' }}>
-            OddsDetector
-          </span>
+          <OddsDetectorLogo size={34} className="min-w-0" wordmarkClassName="text-[17px]" />
         </Link>
       </div>
 

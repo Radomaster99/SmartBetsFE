@@ -216,7 +216,6 @@ export default async function TeamPage({ params, searchParams }: TeamPageProps) 
         teamId={team.apiTeamId}
         initialTeam={team}
         initialLeagueName={selectedLeague?.name ?? null}
-        initialLeagueCountryName={selectedLeague?.countryName ?? null}
         seasonContext={seasonContext}
       />
     </>

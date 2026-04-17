@@ -14,6 +14,11 @@ export const metadata: Metadata = {
     template: '%s | OddsDetector',
   },
   description: 'Football odds comparison, live market tracking, and admin-controlled betting content.',
+  icons: {
+    icon: '/icon',
+    shortcut: '/icon',
+    apple: '/apple-icon',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

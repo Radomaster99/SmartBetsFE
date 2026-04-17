@@ -20,6 +20,7 @@ import {
 import type { LeagueDto, CountryDto } from '@/lib/types/api';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 import { buildTeamHref } from '@/lib/team-links';
+import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -494,9 +495,21 @@ function StandingsContent() {
             standings={standings}
             resolveTeamHref={(standing) =>
               leagueId && standing.apiTeamId
-                ? buildTeamHref(standing.apiTeamId, standing.teamName, { leagueId, season })
+                ? buildTeamHref(standing.apiTeamId, standing.teamName)
                 : null
             }
+            onTeamNavigate={(standing) => {
+              if (!leagueId || !standing.apiTeamId) {
+                return;
+              }
+
+              writeTeamPageNavigationContext({
+                teamId: standing.apiTeamId,
+                leagueId,
+                season,
+                fromFixtureId: null,
+              });
+            }}
           />
         )}
       </div>

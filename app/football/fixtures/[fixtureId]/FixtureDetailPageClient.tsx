@@ -12,7 +12,8 @@ import { OddsComparison } from '@/components/odds/OddsComparison';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { buildTeamHref } from '@/lib/team-links';
+import { buildTeamPath } from '@/lib/team-links';
+import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
 type Tab = 'odds' | 'match' | 'h2h';
 
@@ -122,12 +123,13 @@ function FixtureDetailPageInner({ params }: Props) {
   };
 
   const handleTeamSelect = (team: SelectedFixtureTeam) => {
-    const teamHref = buildTeamHref(team.apiTeamId, team.name, {
-      leagueId: detail?.fixture.leagueApiId ?? '',
-      season: detail?.fixture.season ?? '',
-      fromFixtureId: detail?.fixture.apiFixtureId ?? '',
+    writeTeamPageNavigationContext({
+      teamId: team.apiTeamId,
+      leagueId: detail?.fixture.leagueApiId ?? null,
+      season: detail?.fixture.season ?? null,
+      fromFixtureId: detail?.fixture.apiFixtureId ?? null,
     });
-    router.push(teamHref);
+    router.push(buildTeamPath(team.apiTeamId, team.name));
   };
 
   if (isLoading) {

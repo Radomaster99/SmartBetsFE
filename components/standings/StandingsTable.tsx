@@ -8,6 +8,7 @@ import { TeamLogo } from '@/components/shared/TeamLogo';
 interface Props {
   standings: StandingDto[];
   resolveTeamHref?: (standing: StandingDto) => string | null;
+  onTeamNavigate?: (standing: StandingDto) => void;
 }
 
 const columnHelper = createColumnHelper<StandingDto>();
@@ -42,7 +43,7 @@ function FormDots({ form }: { form: string }) {
   );
 }
 
-export function StandingsTable({ standings, resolveTeamHref }: Props) {
+export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: Props) {
   const columns = useMemo(
     () => [
       columnHelper.accessor('rank', {
@@ -75,6 +76,7 @@ export function StandingsTable({ standings, resolveTeamHref }: Props) {
           return (
             <Link
               href={href}
+              onClick={() => onTeamNavigate?.(row.original)}
               className="transition-colors hover:opacity-90"
               style={{ color: 'inherit', textDecoration: 'none' }}
             >

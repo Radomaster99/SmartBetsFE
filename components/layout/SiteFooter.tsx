@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { OddsDetectorLogo } from '@/components/branding/OddsDetectorLogo';
 
 export function SiteFooter() {
   return (
@@ -79,16 +80,7 @@ export function SiteFooter() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span
-              style={{
-                fontSize: '13px',
-                fontWeight: 900,
-                letterSpacing: '-0.02em',
-                color: 'var(--t-text-6, #374151)',
-              }}
-            >
-              Odds<span style={{ color: 'var(--t-accent, #00e676)' }}>Detector</span>
-            </span>
+            <OddsDetectorLogo size={28} wordmarkClassName="text-[13px]" muted />
             <RespBadge />
           </div>
 
