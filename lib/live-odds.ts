@@ -25,6 +25,22 @@ const COMMON_TEAM_WORDS = new Set([
   'cd',
   'club',
   'the',
+  'women',
+  'woman',
+  'ladies',
+  'youth',
+  'reserve',
+  'reserves',
+  'academy',
+  'u17',
+  'u18',
+  'u19',
+  'u20',
+  'u21',
+  'u22',
+  'u23',
+  'ii',
+  'iii',
 ]);
 
 export interface LiveOddsMappingOptions {
@@ -52,21 +68,27 @@ function normalizeCompactText(value: string): string {
   return normalizeText(value).replace(/\s+/g, '');
 }
 
-function buildTeamMatchers(name: string | null | undefined): string[] {
+function getTeamMatchingParts(name: string | null | undefined): {
+  normalized: string;
+  compact: string;
+  tokens: string[];
+} | null {
   if (!name) {
-    return [];
+    return null;
   }
 
   const normalized = normalizeText(name);
   if (!normalized) {
-    return [];
+    return null;
   }
 
+  const compact = normalizeCompactText(name);
   const tokens = normalized
     .split(' ')
-    .filter((token) => token.length > 1 && !COMMON_TEAM_WORDS.has(token));
+    .filter((token) => token.length > 2 && !COMMON_TEAM_WORDS.has(token))
+    .sort((left, right) => right.length - left.length);
 
-  return Array.from(new Set([normalized, normalizeCompactText(name), ...tokens]));
+  return { normalized, compact, tokens };
 }
 
 function isUsableValue(value: LiveOddsValueDto): value is LiveOddsValueDto & { odd: number } {
@@ -77,30 +99,44 @@ function isDrawValue(value: LiveOddsValueDto): boolean {
   return GENERIC_OUTCOME_MATCHERS.draw.includes(normalizeOutcomeLabel(value.outcomeLabel));
 }
 
-function matchesTeamName(value: LiveOddsValueDto, teamName: string | null | undefined): boolean {
-  const teamMatchers = buildTeamMatchers(teamName);
-  if (teamMatchers.length === 0) {
-    return false;
+function getTeamNameMatchScore(value: LiveOddsValueDto, teamName: string | null | undefined): number {
+  const teamParts = getTeamMatchingParts(teamName);
+  if (!teamParts) {
+    return 0;
   }
 
   const normalizedLabel = normalizeOutcomeLabel(value.outcomeLabel);
   const compactLabel = normalizeCompactText(value.outcomeLabel);
   if (!normalizedLabel || !compactLabel) {
-    return false;
+    return 0;
   }
 
-  return teamMatchers.some((matcher) => {
-    if (!matcher) {
-      return false;
+  if (normalizedLabel === teamParts.normalized || compactLabel === teamParts.compact) {
+    return 10_000;
+  }
+
+  if (
+    normalizedLabel.includes(teamParts.normalized) ||
+    teamParts.normalized.includes(normalizedLabel) ||
+    compactLabel.includes(teamParts.compact) ||
+    teamParts.compact.includes(compactLabel)
+  ) {
+    return 5_000;
+  }
+
+  let bestScore = 0;
+  for (const token of teamParts.tokens) {
+    if (normalizedLabel === token || compactLabel === token) {
+      bestScore = Math.max(bestScore, 1_000 + token.length);
+      continue;
     }
 
-    return (
-      normalizedLabel === matcher ||
-      compactLabel === matcher ||
-      normalizedLabel.includes(matcher) ||
-      matcher.includes(normalizedLabel)
-    );
-  });
+    if (normalizedLabel.includes(token) || compactLabel.includes(token)) {
+      bestScore = Math.max(bestScore, token.length);
+    }
+  }
+
+  return bestScore;
 }
 
 function findOutcomeValue(
@@ -121,16 +157,32 @@ function findOutcomeValue(
   }
 
   if (kind === 'home') {
-    const matched = usableValues.find((value) => matchesTeamName(value, options?.homeTeamName));
-    if (matched) {
-      return matched;
+    let bestMatch: LiveOddsValueDto | null = null;
+    let bestScore = 0;
+    for (const value of usableValues) {
+      const score = getTeamNameMatchScore(value, options?.homeTeamName);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = value;
+      }
+    }
+    if (bestMatch && bestScore > 0) {
+      return bestMatch;
     }
   }
 
   if (kind === 'away') {
-    const matched = usableValues.find((value) => matchesTeamName(value, options?.awayTeamName));
-    if (matched) {
-      return matched;
+    let bestMatch: LiveOddsValueDto | null = null;
+    let bestScore = 0;
+    for (const value of usableValues) {
+      const score = getTeamNameMatchScore(value, options?.awayTeamName);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = value;
+      }
+    }
+    if (bestMatch && bestScore > 0) {
+      return bestMatch;
     }
   }
 
