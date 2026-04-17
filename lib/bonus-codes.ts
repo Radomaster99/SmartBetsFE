@@ -280,8 +280,8 @@ export function readBonusCodesPageConfig(): BonusCodesPageConfig {
     const fallbackEntries = DEFAULT_BONUS_CODES_PAGE_CONFIG.entries;
     const normalizedEntries = parsedEntries.length
       ? parsedEntries.map((entry, index) =>
-          normalizeEntry(entry, fallbackEntries[index] ?? createEmptyBonusCodeEntry()),
-        )
+        normalizeEntry(entry, fallbackEntries[index] ?? createEmptyBonusCodeEntry()),
+      )
       : fallbackEntries;
 
     return {
