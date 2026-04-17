@@ -194,6 +194,11 @@ export const DEFAULT_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
   ],
 };
 
+export const EMPTY_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
+  copy: DEFAULT_BONUS_CODES_PAGE_CONFIG.copy,
+  entries: [],
+};
+
 function normalizeString(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }

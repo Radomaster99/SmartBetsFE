@@ -1,5 +1,6 @@
 import {
   DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  EMPTY_BONUS_CODES_PAGE_CONFIG,
   type BonusCodeEntry,
   type BonusCodeToneId,
   type BonusCodesPageConfig,
@@ -114,7 +115,7 @@ export function serializeBonusCodesDocument(config: BonusCodesPageConfig): unkno
 
 export function deserializeBonusCodesDocument(
   value: unknown,
-  fallback: BonusCodesPageConfig = DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  fallback: BonusCodesPageConfig = EMPTY_BONUS_CODES_PAGE_CONFIG,
 ): BonusCodesPageConfig {
   const rows = asArray(value);
   if (rows.length === 0) {
@@ -160,7 +161,7 @@ export function deserializeBonusCodesDocument(
             },
           ),
         )
-      : fallback.entries;
+      : [];
 
   return { copy, entries };
 }

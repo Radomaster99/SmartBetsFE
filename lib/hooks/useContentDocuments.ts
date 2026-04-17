@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  EMPTY_BONUS_CODES_PAGE_CONFIG,
   readBonusCodesPageConfig,
   type BonusCodesPageConfig,
 } from '@/lib/bonus-codes';
@@ -78,7 +79,7 @@ export function useBonusCodesContent() {
   return useQuery({
     queryKey: CONTENT_QUERY_KEYS.bonusCodes,
     queryFn: async (): Promise<BonusCodesPageConfig> =>
-      deserializeBonusCodesDocument(await fetchContentArray('/api/content/bonus-codes')),
+      deserializeBonusCodesDocument(await fetchContentArray('/api/content/bonus-codes'), EMPTY_BONUS_CODES_PAGE_CONFIG),
     staleTime: 60_000,
     placeholderData: (previousData) => previousData,
   });
@@ -119,8 +120,10 @@ export function useAdminBonusCodesContent() {
     queryKey: CONTENT_QUERY_KEYS.adminBonusCodes,
     queryFn: async (): Promise<BonusCodesPageConfig> => {
       const localFallback =
-        typeof window !== 'undefined' ? readBonusCodesPageConfig() : DEFAULT_BONUS_CODES_PAGE_CONFIG;
-      return deserializeBonusCodesDocument(await fetchContentArray('/api/admin/content/bonus-codes'), localFallback);
+        typeof window !== 'undefined' ? readBonusCodesPageConfig() : EMPTY_BONUS_CODES_PAGE_CONFIG;
+      const safeFallback =
+        localFallback.entries.length > 0 ? localFallback : EMPTY_BONUS_CODES_PAGE_CONFIG;
+      return deserializeBonusCodesDocument(await fetchContentArray('/api/admin/content/bonus-codes'), safeFallback);
     },
     staleTime: 0,
     placeholderData: (previousData) => previousData,

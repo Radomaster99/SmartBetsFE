@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   BONUS_CODE_TONES,
-  DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  EMPTY_BONUS_CODES_PAGE_CONFIG,
   sortBonusCodeEntries,
   type BonusCodeEntry,
   type BonusCodeToneId,
@@ -430,7 +430,7 @@ function CompactRow({
 
 export default function BonusCodesPage() {
   const bonusCodesQuery = useBonusCodesContent();
-  const config = bonusCodesQuery.data ?? DEFAULT_BONUS_CODES_PAGE_CONFIG;
+  const config = bonusCodesQuery.data ?? EMPTY_BONUS_CODES_PAGE_CONFIG;
   const [copiedEntryId, setCopiedEntryId] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 

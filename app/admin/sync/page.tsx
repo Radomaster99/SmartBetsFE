@@ -10,7 +10,7 @@ import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
   createEmptyBonusCodeEntry,
-  DEFAULT_BONUS_CODES_PAGE_CONFIG,
+  EMPTY_BONUS_CODES_PAGE_CONFIG,
   type BonusCodeEntry,
   type BonusCodesPageConfig,
 } from '@/lib/bonus-codes';
@@ -380,7 +380,7 @@ function AdminSyncPageContent() {
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>(DEFAULT_POPULAR_LEAGUES_PRESET);
   const [bonusCodesHydrated, setBonusCodesHydrated] = useState(false);
-  const [bonusCodesConfig, setBonusCodesConfig] = useState<BonusCodesPageConfig>(DEFAULT_BONUS_CODES_PAGE_CONFIG);
+  const [bonusCodesConfig, setBonusCodesConfig] = useState<BonusCodesPageConfig>(EMPTY_BONUS_CODES_PAGE_CONFIG);
   const [heroBannersHydrated, setHeroBannersHydrated] = useState(false);
   const [heroBannerLayoutHydrated, setHeroBannerLayoutHydrated] = useState(false);
   const [heroBanners, setHeroBanners] = useState<HeroBannerConfig[]>(DEFAULT_HERO_BANNERS);
@@ -1395,11 +1395,11 @@ function AdminSyncPageContent() {
   }
 
   function resetBonusCodesConfig() {
-    setBonusCodesConfig(DEFAULT_BONUS_CODES_PAGE_CONFIG);
+    setBonusCodesConfig(EMPTY_BONUS_CODES_PAGE_CONFIG);
     setResult({
       action: 'bonus-codes-reset',
       ok: true,
-      message: 'Bonus codes page content was reset to the default preset.',
+      message: 'All bonus code cards were cleared from the page.',
     });
   }
 
@@ -2424,7 +2424,7 @@ function AdminSyncPageContent() {
                 onClick={resetBonusCodesConfig}
                 className="chrome-btn rounded px-3 py-1.5 text-[12px] font-bold transition-all"
               >
-                Restore default page
+                Clear all bonus codes
               </button>
             </div>
 
