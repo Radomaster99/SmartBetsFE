@@ -27,6 +27,7 @@ import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
+const INITIAL_LIVE_PREFETCH_LIMIT = 8;
 type UpcomingScope = 'today' | 'all';
 
 function todayISO(): string {
@@ -431,9 +432,23 @@ function FootballPageClient() {
 
   const { data, isLoading, isFetching, isError, refetch } = useFixtures(filters);
   const rawFixtures = data?.items ?? [];
+  const effectiveVisibleLiveFixtureIds = useMemo(
+    () =>
+      state === 'Live'
+        ? (
+            visibleLiveFixtureIds.length > 0
+              ? visibleLiveFixtureIds
+              : rawFixtures
+                  .filter((fixture) => !hasCompleteLiveSummary(fixture.liveOddsSummary ?? null))
+                  .slice(0, INITIAL_LIVE_PREFETCH_LIMIT)
+                  .map((fixture) => fixture.apiFixtureId)
+          )
+        : [],
+    [rawFixtures, state, visibleLiveFixtureIds],
+  );
   const visibleLiveFixtureIdSet = useMemo(
-    () => new Set(visibleLiveFixtureIds),
-    [visibleLiveFixtureIds],
+    () => new Set(effectiveVisibleLiveFixtureIds),
+    [effectiveVisibleLiveFixtureIds],
   );
   const visibleLiveFixtureIdsForSummary = useMemo(
     () =>
@@ -474,7 +489,7 @@ function FootballPageClient() {
     state === 'Live' && visibleLiveFixturesNeedingRecovery.length > 0,
     { staleTime: 20_000, refetchInterval: 45_000 },
   );
-  useLiveViewersHeartbeat(visibleLiveFixtureIds, state === 'Live');
+  useLiveViewersHeartbeat(effectiveVisibleLiveFixtureIds, state === 'Live');
 
   const visibleRecoveredLiveSummaries = useMemo(() => {
     return Object.entries(visibleRecoveredLiveOdds).reduce<Record<number, LiveOddsSummaryDto>>((acc, [fixtureId, odds]) => {
@@ -530,14 +545,6 @@ function FootballPageClient() {
     }
 
     const needsRecoveryFixtureIds = visibleLiveFixturesNeedingRecovery.map((fixture) => fixture.apiFixtureId);
-    if (rawFixtures.length > 0 && visibleLiveFixtureIds.length === 0) {
-      return new Set(
-        rawFixtures
-          .filter((fixture) => !hasCompleteLiveSummary(fixture.liveOddsSummary ?? null))
-          .map((fixture) => fixture.apiFixtureId),
-      );
-    }
-
     if (needsRecoveryFixtureIds.length === 0) {
       return new Set<number>();
     }
@@ -552,10 +559,8 @@ function FootballPageClient() {
         .map((fixture) => fixture.apiFixtureId),
     );
   }, [
-    rawFixtures.length,
     settledRecoveredLiveFixtureIds,
     state,
-    visibleLiveFixtureIds.length,
     visibleLiveFixturesNeedingRecovery,
     visibleRecoveredLiveOddsFetching,
   ]);
