@@ -141,7 +141,7 @@ export const DEFAULT_BONUS_CODES_PAGE_CONFIG: BonusCodesPageConfig = {
     eyebrow: 'Bonus Vault',
     title: 'Casino bonus codes in one clean hub',
     subtitle:
-      'Keep the latest welcome codes, claim links, and offer notes in one place. Update everything from the admin panel before sending traffic live.',
+      'Keep the latest welcome codes, claim links, and offer notes in one place.',
     featuredLabel: 'Featured codes',
     allLabel: 'All bonus codes',
   },
