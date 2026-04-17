@@ -25,12 +25,14 @@ function AdminLoginPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get('next')), [searchParams]);
+  const hasConfirmedAdminSession =
+    sessionQuery.isFetched && !sessionQuery.isFetching && Boolean(sessionQuery.data);
 
   useEffect(() => {
-    if (sessionQuery.data) {
+    if (hasConfirmedAdminSession) {
       router.replace(nextPath);
     }
-  }, [nextPath, router, sessionQuery.data]);
+  }, [hasConfirmedAdminSession, nextPath, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
