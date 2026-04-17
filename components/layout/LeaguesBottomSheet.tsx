@@ -6,14 +6,13 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useCountries } from '@/lib/hooks/useCountries';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import {
-  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
-  DEFAULT_POPULAR_LEAGUES_PRESET,
   USER_POPULAR_LEAGUES_STORAGE_KEY,
   USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
   mergePopularLeaguePresets,
   readPopularLeaguePresets,
   readPopularLeagueKeys,
 } from '@/lib/popular-leagues';
+import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -36,14 +35,14 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
   const { data: leagues } = useLeagues(season);
   const { data: worldCupLeagues } = useLeagues(2026);
   const { data: countries } = useCountries();
+  const popularLeaguesQuery = usePopularLeaguesContent();
 
   const popularLeaguePresets = useMemo(() => {
-    if (typeof window === 'undefined') return DEFAULT_POPULAR_LEAGUES_PRESET;
-    const admin = readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET);
+    const admin = popularLeaguesQuery.data ?? [];
     const user = readPopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, []);
     const hidden = readPopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, []);
     return mergePopularLeaguePresets(admin, user, hidden);
-  }, []);
+  }, [popularLeaguesQuery.data]);
 
   const popularLeagues = useMemo(
     () =>

@@ -5,6 +5,26 @@ import type { AdminSessionDto } from '@/lib/admin-auth';
 
 export const ADMIN_SESSION_QUERY_KEY = ['admin-session'] as const;
 
+function normalizeAdminSession(payload: AdminSessionDto | null): AdminSessionDto | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  if (payload.isAuthenticated === false) {
+    return null;
+  }
+
+  const role = typeof payload.role === 'string' ? payload.role.trim().toLowerCase() : '';
+  const username = typeof payload.username === 'string' ? payload.username.trim() : '';
+  const displayName = typeof payload.displayName === 'string' ? payload.displayName.trim() : '';
+
+  if (payload.isAuthenticated === true || role === 'admin' || Boolean(username) || Boolean(displayName)) {
+    return payload;
+  }
+
+  return null;
+}
+
 async function fetchAdminSession(): Promise<AdminSessionDto | null> {
   const res = await fetch('/api/admin/auth/me', {
     cache: 'no-store',
@@ -19,7 +39,8 @@ async function fetchAdminSession(): Promise<AdminSessionDto | null> {
     throw new Error('Failed to fetch admin session');
   }
 
-  return res.json();
+  const payload = (await res.json().catch(() => null)) as AdminSessionDto | null;
+  return normalizeAdminSession(payload);
 }
 
 export function useAdminSession(enabled = true) {
@@ -27,7 +48,9 @@ export function useAdminSession(enabled = true) {
     queryKey: ADMIN_SESSION_QUERY_KEY,
     queryFn: fetchAdminSession,
     enabled,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    retry: false,
   });
 }

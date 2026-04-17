@@ -1,290 +1,165 @@
-'use client';
-import { Suspense, use, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
-import { useFixtureCorners } from '@/lib/hooks/useFixtureCorners';
-import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
-import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
-import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
-import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
-import { OddsComparison } from '@/components/odds/OddsComparison';
-import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { EmptyState } from '@/components/shared/EmptyState';
-
-type Tab = 'odds' | 'match' | 'h2h';
+import type { Metadata } from 'next';
+import { buildAbsoluteUrl } from '@/lib/site';
+import { getFixtureDetail } from '@/lib/api/fixtures';
+import FixtureDetailPageClient from './FixtureDetailPageClient';
 
 interface Props {
   params: Promise<{ fixtureId: string }>;
 }
 
-const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
-
-function WidgetCard({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="rounded-lg overflow-hidden"
-      style={{ background: 'var(--t-surface)', border: '1px solid var(--t-border)' }}
-    >
-      {children}
-    </div>
-  );
+function parsePositiveInt(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function resolveInitialTab(tab: string | null, stateBucket?: string | null): Tab {
-  if (tab === 'odds' || tab === 'h2h' || tab === 'match') {
-    return tab;
+async function resolveFixtureDetail(fixtureIdValue: string) {
+  const fixtureId = parsePositiveInt(fixtureIdValue);
+
+  if (!fixtureId) {
+    return null;
   }
 
-  if (stateBucket === 'Finished') {
-    return 'match';
-  }
-
-  // Default to odds so bettors land on the comparison surface first.
-  return 'odds';
+  return getFixtureDetail(fixtureId).catch(() => null);
 }
 
+function buildFixtureMetadataTitle(detail: Awaited<ReturnType<typeof resolveFixtureDetail>>) {
+  if (!detail) {
+    return 'Match Details';
+  }
 
-function FixtureDetailPageInner({ params }: Props) {
-  const { fixtureId } = use(params);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const requestedTab = searchParams.get('tab');
-  const initialTab = resolveInitialTab(requestedTab);
-  const [tab, setTab] = useState<Tab>(initialTab);
+  return `${detail.fixture.homeTeamName} vs ${detail.fixture.awayTeamName} Odds & Match Details`;
+}
 
-  const {
-    detail,
-    isLoading,
-    isError,
-    error,
-    isLive,
-    displayOdds,
-    resolvedBestOdds,
-    hasAnyOdds,
-    usingPreMatchFallback,
-    hasLiveOdds,
-    shouldUseLiveBookmakerView,
-    liveOddsRealtimeStatus,
-    bestOddsMovements,
-    oddsTableMovements,
-  } = useFixtureOddsData(fixtureId, tab === 'odds');
+function buildFixtureMetadataDescription(detail: Awaited<ReturnType<typeof resolveFixtureDetail>>) {
+  if (!detail) {
+    return 'OddsDetector fixture detail page.';
+  }
 
-  // useFixtureDetail is called inside useFixtureOddsData; we still need refetch
-  const { refetch } = useFixtureDetail(fixtureId);
-  const cornersQuery = useFixtureCorners(fixtureId, {
-    enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
-  });
-  const statisticsQuery = useFixtureStatistics(fixtureId, {
-    enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
-  });
+  const fixture = detail.fixture;
+  const scorePart =
+    fixture.homeGoals != null && fixture.awayGoals != null
+      ? ` Current score ${fixture.homeGoals}-${fixture.awayGoals}.`
+      : '';
+  const venuePart = fixture.venueName
+    ? ` Venue: ${fixture.venueName}${fixture.venueCity ? `, ${fixture.venueCity}` : ''}.`
+    : '';
+  const roundPart = fixture.round ? ` ${fixture.round}.` : '';
 
-  const resolvedRequestedTab = useMemo(
-    () => resolveInitialTab(requestedTab, detail?.fixture.stateBucket ?? null),
-    [detail?.fixture.stateBucket, requestedTab],
-  );
-  const quickStatsSummary = useMemo(
-    () =>
-      detail
-        ? extractFixtureQuickStatsSummary(
-            statisticsQuery.data,
-            detail.fixture,
-            cornersQuery.data,
-          )
-        : null,
-    [cornersQuery.data, detail, statisticsQuery.data],
-  );
+  return `Follow ${fixture.homeTeamName} vs ${fixture.awayTeamName} in ${fixture.leagueName} with live odds, match center context, and H2H data on OddsDetector.${roundPart}${scorePart}${venuePart}`;
+}
 
-  useEffect(() => {
-    setTab(resolvedRequestedTab);
-  }, [resolvedRequestedTab]);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { fixtureId } = await params;
+  const detail = await resolveFixtureDetail(fixtureId);
+  const canonicalPath = `/football/fixtures/${fixtureId}`;
+  const title = buildFixtureMetadataTitle(detail);
+  const description = buildFixtureMetadataDescription(detail);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY)) {
-      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, '/football');
-    }
-  }, []);
-
-  const handleBackToMatches = () => {
-    if (typeof window === 'undefined') {
-      router.push('/football');
-      return;
-    }
-
-    const savedHref = window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY);
-    if (savedHref?.startsWith('/football')) {
-      router.push(savedHref);
-      return;
-    }
-
-    router.push('/football');
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      title: `${title} | OddsDetector`,
+      description,
+      url: canonicalPath,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | OddsDetector`,
+      description,
+    },
   };
-
-  const handleTeamSelect = (team: SelectedFixtureTeam) => {
-    const params = new URLSearchParams({
-      leagueId: String(detail?.fixture.leagueApiId ?? ''),
-      season: String(detail?.fixture.season ?? ''),
-      fromFixtureId: String(detail?.fixture.apiFixtureId ?? ''),
-    });
-    const teamHref = `/football/teams/${team.apiTeamId}?${params.toString()}`;
-    router.push(teamHref);
-  };
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  if (isError || !detail) {
-    const detailError = error instanceof FixtureDetailError ? error : null;
-    const isTimeout = detailError?.status === 408;
-    const title = isTimeout
-      ? 'Loading timed out'
-      : detailError?.status === 404
-        ? 'Fixture not found'
-        : 'Match detail temporarily unavailable';
-    const description = isTimeout
-      ? 'The server is warming up (first load on free tier). Click Retry — it will connect on the next attempt.'
-      : detailError?.status === 404
-        ? 'This fixture may not exist or the data is unavailable.'
-        : 'The fixture detail endpoint is currently slow or unavailable. Try again in a moment.';
-
-    return (
-      <EmptyState
-        title={title}
-        description={description}
-        action={
-          <div className="mt-2 flex gap-2">
-            {(isTimeout || (detailError && detailError.status !== 404)) ? (
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                className="inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
-                style={{
-                  background: 'rgba(0,230,118,0.15)',
-                  color: '#00e676',
-                  border: '1px solid rgba(0,230,118,0.3)',
-                  cursor: 'pointer',
-                }}
-              >
-                Retry
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleBackToMatches}
-              className="inline-flex items-center px-4 py-2 rounded text-[12px] font-medium"
-              style={{
-                background: 'rgba(148,163,184,0.1)',
-                color: 'var(--t-text-3)',
-                border: '1px solid rgba(148,163,184,0.2)',
-                cursor: 'pointer',
-              }}
-            >
-              Back to matches
-            </button>
-          </div>
-        }
-      />
-    );
-  }
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'odds', label: 'Odds' },
-    { id: 'match', label: 'Match' },
-    { id: 'h2h', label: 'H2H' },
-  ];
-
-  return (
-    <div className="flex flex-col">
-      <div className="px-4 pt-3 pb-1">
-        <button
-          type="button"
-          onClick={handleBackToMatches}
-          className="inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors bg-transparent border-0 cursor-pointer"
-          style={{ color: 'var(--t-text-3)' }}
-        >
-          <span aria-hidden="true" style={{ fontSize: '13px', lineHeight: 1 }}>
-            {'<'}
-          </span>
-          <span>Matches</span>
-        </button>
-      </div>
-
-      <FixtureDetailHeader
-        detail={detail}
-        onTeamSelect={handleTeamSelect}
-        quickStats={quickStatsSummary}
-      />
-
-      <div
-        className="flex items-center"
-        style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-topbar-bg)' }}
-      >
-        {tabs.map((currentTab) => (
-          <button
-            key={currentTab.id}
-            onClick={() => setTab(currentTab.id)}
-            className="px-5 py-3 text-[13px] font-medium transition-colors flex-shrink-0"
-            style={{
-              color: tab === currentTab.id ? 'var(--t-text-1)' : 'var(--t-text-4)',
-              borderBottom: tab === currentTab.id ? '2px solid var(--t-accent)' : '2px solid transparent',
-              background: 'transparent',
-            }}
-          >
-            {currentTab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="p-4">
-        {tab === 'match' && (
-          <WidgetCard>
-            <ApiSportsWidget
-              type="game"
-              gameId={detail.fixture.apiFixtureId}
-              refresh={isLive ? 120 : undefined}
-            />
-          </WidgetCard>
-        )}
-
-        {tab === 'h2h' && (
-          <WidgetCard>
-            <ApiSportsWidget
-              type="h2h"
-              h2h={`${detail.fixture.homeTeamApiId}-${detail.fixture.awayTeamApiId}`}
-              className="widget-wrap--match-page-h2h"
-            />
-          </WidgetCard>
-        )}
-
-        {tab === 'odds' &&
-          (hasAnyOdds ? (
-            <OddsComparison
-              bestOdds={resolvedBestOdds ?? null}
-              odds={displayOdds}
-              fixtureId={detail.fixture.apiFixtureId}
-              isLive={isLive}
-              liveOddsRealtimeStatus={liveOddsRealtimeStatus}
-              hasLiveOdds={hasLiveOdds}
-              usingPreMatchFallback={usingPreMatchFallback}
-              shouldUseLiveBookmakerView={shouldUseLiveBookmakerView}
-              bestOddsMovements={isLive ? bestOddsMovements : undefined}
-              oddsMovements={isLive ? oddsTableMovements : undefined}
-            />
-          ) : (
-            <EmptyState title="No odds available" description="No bookmaker odds are available for this fixture." />
-          ))}
-      </div>
-    </div>
-  );
 }
 
-export default function FixtureDetailPage({ params }: Props) {
+export default async function FixtureDetailPage({ params }: Props) {
+  const { fixtureId } = await params;
+  const detail = await resolveFixtureDetail(fixtureId);
+
+  const fixtureStructuredData = detail
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'SportsEvent',
+        name: `${detail.fixture.homeTeamName} vs ${detail.fixture.awayTeamName}`,
+        sport: 'Soccer',
+        startDate: detail.fixture.kickoffAt,
+        url: buildAbsoluteUrl(`/football/fixtures/${detail.fixture.apiFixtureId}`),
+        eventStatus: detail.fixture.stateBucket,
+        location: detail.fixture.venueName
+          ? {
+              '@type': 'Place',
+              name: detail.fixture.venueName,
+              address: detail.fixture.venueCity || undefined,
+            }
+          : undefined,
+        homeTeam: {
+          '@type': 'SportsTeam',
+          name: detail.fixture.homeTeamName,
+        },
+        awayTeam: {
+          '@type': 'SportsTeam',
+          name: detail.fixture.awayTeamName,
+        },
+        competitor: [
+          {
+            '@type': 'SportsTeam',
+            name: detail.fixture.homeTeamName,
+          },
+          {
+            '@type': 'SportsTeam',
+            name: detail.fixture.awayTeamName,
+          },
+        ],
+      }
+    : null;
+
+  const breadcrumbStructuredData = detail
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Football',
+            item: buildAbsoluteUrl('/football'),
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: detail.fixture.leagueName,
+            item: buildAbsoluteUrl(
+              `/football/standings?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`,
+            ),
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: `${detail.fixture.homeTeamName} vs ${detail.fixture.awayTeamName}`,
+            item: buildAbsoluteUrl(`/football/fixtures/${detail.fixture.apiFixtureId}`),
+          },
+        ],
+      }
+    : null;
+
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <FixtureDetailPageInner params={params} />
-    </Suspense>
+    <>
+      {fixtureStructuredData ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(fixtureStructuredData) }}
+        />
+      ) : null}
+      {breadcrumbStructuredData ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
+        />
+      ) : null}
+      <FixtureDetailPageClient params={params} />
+    </>
   );
 }

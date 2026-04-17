@@ -6,8 +6,6 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useCountries } from '@/lib/hooks/useCountries';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import {
-  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
-  DEFAULT_POPULAR_LEAGUES_PRESET,
   USER_POPULAR_LEAGUES_STORAGE_KEY,
   USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
   getPopularLeagueKey,
@@ -19,6 +17,7 @@ import {
   writePopularLeaguePresets,
 } from '@/lib/popular-leagues';
 import type { CountryDto, LeagueDto } from '@/lib/types/api';
+import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -119,9 +118,10 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const normalizedSearch = search.trim().toLowerCase();
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
-  const [adminPopularLeaguePresets, setAdminPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [userPopularLeaguePresets, setUserPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [hiddenPopularLeagueKeys, setHiddenPopularLeagueKeys] = useState<string[]>([]);
+  const popularLeaguesQuery = usePopularLeaguesContent();
+  const adminPopularLeaguePresets = popularLeaguesQuery.data ?? [];
 
   const isMatchesPage = pathname === '/football';
   const isStandingsPage = pathname.startsWith('/football/standings');
@@ -192,21 +192,10 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   );
 
   useEffect(() => {
-    setAdminPopularLeaguePresets(
-      readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET),
-    );
     setUserPopularLeaguePresets(readPopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, []));
     setHiddenPopularLeagueKeys(readPopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, []));
     setPopularStorageHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (!popularStorageHydrated) {
-      return;
-    }
-
-    writePopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, adminPopularLeaguePresets);
-  }, [adminPopularLeaguePresets, popularStorageHydrated]);
 
   useEffect(() => {
     if (!popularStorageHydrated) {

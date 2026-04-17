@@ -2,20 +2,29 @@
 
 import { Suspense, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { AdminRouteGate } from '@/components/admin/AdminRouteGate';
 import { BonusCodeCardEditor } from '@/components/admin/BonusCodeCardEditor';
 import { HeroBannerSlotEditor } from '@/components/admin/HeroBannerSlotEditor';
 import { SideAdSlotEditor } from '@/components/admin/SideAdSlotEditor';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
-  BONUS_CODES_STORAGE_KEY,
   createEmptyBonusCodeEntry,
   DEFAULT_BONUS_CODES_PAGE_CONFIG,
-  readBonusCodesPageConfig,
   type BonusCodeEntry,
   type BonusCodesPageConfig,
-  writeBonusCodesPageConfig,
 } from '@/lib/bonus-codes';
+import {
+  CONTENT_QUERY_KEYS,
+  saveAdminBonusCodesContent,
+  saveAdminHeroBannersContent,
+  saveAdminPopularLeaguesContent,
+  saveAdminSideAdsContent,
+  useAdminBonusCodesContent,
+  useAdminHeroBannersContent,
+  useAdminPopularLeaguesContent,
+  useAdminSideAdsContent,
+} from '@/lib/hooks/useContentDocuments';
 import { useLiveViewersConfig } from '@/lib/hooks/useLiveViewersConfig';
 import {
   DEFAULT_HERO_BANNER_FOCUS_PERCENT,
@@ -30,24 +39,17 @@ import {
   normalizeHeroBannerHeight,
   normalizeHeroBannerImageOpacity,
   normalizeHeroBannerImageZoom,
-  readHeroBannerLayoutConfig,
-  readHeroBannersConfig,
   type HeroBannerConfig,
   type HeroBannerLayoutConfig,
   type HeroBannerThemeId,
-  writeHeroBannerLayoutConfig,
-  writeHeroBannersConfig,
 } from '@/lib/hero-banners';
 import { useSyncStatus } from '@/lib/hooks/useSyncStatus';
 import {
-  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
   DEFAULT_POPULAR_LEAGUES_PRESET,
   USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
   getPopularLeagueKey,
-  readPopularLeaguePresets,
   type PopularLeaguePreset,
   writePopularLeagueKeys,
-  writePopularLeaguePresets,
 } from '@/lib/popular-leagues';
 import {
   DEFAULT_SIDE_AD_FOCUS_PERCENT,
@@ -55,11 +57,9 @@ import {
   EMPTY_SIDE_ADS_CONFIG,
   normalizeSideAdFocusPercent,
   normalizeSideAdZoom,
-  readSideAdsConfig,
   type SideAdSlotConfig,
   type SideAdSlotId,
   type SideAdsConfig,
-  writeSideAdsConfig,
 } from '@/lib/side-ads';
 import type { FixtureDto } from '@/lib/types/api';
 
@@ -367,6 +367,7 @@ function AccordionSection({ title, summary, badge, isOpen, onToggle, children }:
 function AdminSyncPageContent() {
   const ALL_LEAGUES_VALUE = '__all__';
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [season, setSeason] = useState(DEFAULT_SEASON);
   const [syncLeagueId, setSyncLeagueId] = useState(ALL_LEAGUES_VALUE);
   const [syncSeason, setSyncSeason] = useState(String(DEFAULT_SEASON));
@@ -392,6 +393,10 @@ function AdminSyncPageContent() {
   const [uploadingHeroBannerId, setUploadingHeroBannerId] = useState<HeroBannerConfig['id'] | null>(null);
   const [uploadingSideAdSlot, setUploadingSideAdSlot] = useState<SideAdSlotId | null>(null);
   const [result, setResult] = useState<{ action: string; ok: boolean; message: string } | null>(null);
+  const adminPopularLeaguesQuery = useAdminPopularLeaguesContent();
+  const adminBonusCodesQuery = useAdminBonusCodesContent();
+  const adminHeroBannersQuery = useAdminHeroBannersContent();
+  const adminSideAdsQuery = useAdminSideAdsContent();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     quick: true,
     league: true,
@@ -812,7 +817,7 @@ function AdminSyncPageContent() {
             ? `Loaded ${fixtureOptions.length} ${fixtureScopeLabel.toLowerCase()} fixture option${fixtureOptions.length === 1 ? '' : 's'}. Pick one match or keep typing an API fixture id manually.`
             : `No ${fixtureScopeLabel.toLowerCase()} fixtures found for the selected league-season yet.`;
 
-  const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues for new visitors in this browser profile.`;
+  const popularSummary = `${adminPopularLeaguePresets.length} predefined leagues in the global site preset.`;
   const bonusSummary = activeBonusCodesCount
     ? `${activeBonusCodesCount} active bonus code card${activeBonusCodesCount === 1 ? '' : 's'} with ${featuredBonusCodesCount} featured pick${featuredBonusCodesCount === 1 ? '' : 's'}.`
     : 'No active bonus code cards yet.';
@@ -1055,27 +1060,60 @@ function AdminSyncPageContent() {
     : null;
 
   useEffect(() => {
-    setAdminPopularLeaguePresets(
-      readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET),
-    );
-    setPopularStorageHydrated(true);
-    setBonusCodesConfig(readBonusCodesPageConfig());
-    setBonusCodesHydrated(true);
-    setHeroBanners(readHeroBannersConfig());
-    setHeroBannersHydrated(true);
-    setHeroBannerLayout(readHeroBannerLayoutConfig());
-    setHeroBannerLayoutHydrated(true);
-    setSideAdsConfig(readSideAdsConfig());
-    setSideAdsHydrated(true);
-  }, []);
+    if (!popularStorageHydrated && adminPopularLeaguesQuery.data) {
+      setAdminPopularLeaguePresets(adminPopularLeaguesQuery.data);
+      setPopularStorageHydrated(true);
+    }
+  }, [adminPopularLeaguesQuery.data, popularStorageHydrated]);
+
+  useEffect(() => {
+    if (!bonusCodesHydrated && adminBonusCodesQuery.data) {
+      setBonusCodesConfig(adminBonusCodesQuery.data);
+      setBonusCodesHydrated(true);
+    }
+  }, [adminBonusCodesQuery.data, bonusCodesHydrated]);
+
+  useEffect(() => {
+    if (!heroBannersHydrated && adminHeroBannersQuery.data) {
+      setHeroBanners(adminHeroBannersQuery.data.banners);
+      setHeroBannerLayout(adminHeroBannersQuery.data.layout);
+      setHeroBannersHydrated(true);
+      setHeroBannerLayoutHydrated(true);
+    }
+  }, [adminHeroBannersQuery.data, heroBannersHydrated]);
+
+  useEffect(() => {
+    if (!sideAdsHydrated && adminSideAdsQuery.data) {
+      setSideAdsConfig(adminSideAdsQuery.data);
+      setSideAdsHydrated(true);
+    }
+  }, [adminSideAdsQuery.data, sideAdsHydrated]);
 
   useEffect(() => {
     if (!popularStorageHydrated) {
       return;
     }
 
-    writePopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, adminPopularLeaguePresets);
-  }, [adminPopularLeaguePresets, popularStorageHydrated]);
+    const timeoutId = window.setTimeout(() => {
+      void saveAdminPopularLeaguesContent(adminPopularLeaguePresets)
+        .then(() => {
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.adminPopularLeagues, adminPopularLeaguePresets);
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.popularLeagues, adminPopularLeaguePresets);
+        })
+        .catch((error) => {
+          console.error('[admin-content] Failed to save popular leagues:', error);
+          setResult({
+            action: 'popular-leagues-save',
+            ok: false,
+            message: String(error),
+          });
+        });
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [adminPopularLeaguePresets, popularStorageHydrated, queryClient]);
 
   useEffect(() => {
     if (!bonusCodesHydrated) {
@@ -1083,59 +1121,56 @@ function AdminSyncPageContent() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      writeBonusCodesPageConfig(bonusCodesConfig);
-    }, 120);
+      void saveAdminBonusCodesContent(bonusCodesConfig)
+        .then(() => {
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.adminBonusCodes, bonusCodesConfig);
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.bonusCodes, bonusCodesConfig);
+        })
+        .catch((error) => {
+          console.error('[admin-content] Failed to save bonus codes:', error);
+          setResult({
+            action: 'bonus-codes-save',
+            ok: false,
+            message: String(error),
+          });
+        });
+    }, 450);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [bonusCodesConfig, bonusCodesHydrated]);
+  }, [bonusCodesConfig, bonusCodesHydrated, queryClient]);
 
   useEffect(() => {
-    if (!bonusCodesHydrated) {
-      return;
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === BONUS_CODES_STORAGE_KEY) {
-        setBonusCodesConfig(readBonusCodesPageConfig());
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, [bonusCodesHydrated]);
-
-  useEffect(() => {
-    if (!heroBannersHydrated) {
+    if (!heroBannersHydrated || !heroBannerLayoutHydrated) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
-      writeHeroBannersConfig(heroBanners);
-    }, 120);
+      const nextHeroContent = {
+        banners: heroBanners,
+        layout: heroBannerLayout,
+      };
+
+      void saveAdminHeroBannersContent(nextHeroContent)
+        .then(() => {
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.adminHeroBanners, nextHeroContent);
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.heroBanners, nextHeroContent);
+        })
+        .catch((error) => {
+          console.error('[admin-content] Failed to save hero banners:', error);
+          setResult({
+            action: 'hero-banners-save',
+            ok: false,
+            message: String(error),
+          });
+        });
+    }, 450);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [heroBanners, heroBannersHydrated]);
-
-  useEffect(() => {
-    if (!heroBannerLayoutHydrated) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      writeHeroBannerLayoutConfig(heroBannerLayout);
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [heroBannerLayout, heroBannerLayoutHydrated]);
+  }, [heroBannerLayout, heroBannerLayoutHydrated, heroBanners, heroBannersHydrated, queryClient]);
 
   useEffect(() => {
     if (!sideAdsHydrated) {
@@ -1143,13 +1178,25 @@ function AdminSyncPageContent() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      writeSideAdsConfig(sideAdsConfig);
-    }, 180);
+      void saveAdminSideAdsContent(sideAdsConfig)
+        .then(() => {
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.adminSideAds, sideAdsConfig);
+          queryClient.setQueryData(CONTENT_QUERY_KEYS.sideAds, sideAdsConfig);
+        })
+        .catch((error) => {
+          console.error('[admin-content] Failed to save side ads:', error);
+          setResult({
+            action: 'side-ads-save',
+            ok: false,
+            message: String(error),
+          });
+        });
+    }, 450);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [sideAdsConfig, sideAdsHydrated]);
+  }, [queryClient, sideAdsConfig, sideAdsHydrated]);
 
   useEffect(() => {
     if (!popularLeagueOptions.length) {
@@ -1223,7 +1270,7 @@ function AdminSyncPageContent() {
     setResult({
       action: 'popular-refresh',
       ok: true,
-      message: 'Admin popular leagues were restored for this browser profile. Hidden user overrides were cleared.',
+      message: 'Admin popular leagues were restored to the global default preset. Hidden user overrides were cleared for this browser.',
     });
   }
 
@@ -2283,7 +2330,7 @@ function AdminSyncPageContent() {
         >
           <div className="space-y-3">
             <InfoStrip>
-              Manage the content for the new <span className="font-semibold">Bonus codes</span> header tab. This follows the same frontend content model as hero banners and side ads, so changes are stored in this browser profile and reflected on <span className="font-mono">/bonus-codes</span>.
+              Manage the content for the <span className="font-semibold">Bonus codes</span> header tab. Changes now save to the global backend content document and flow through to <span className="font-mono">/bonus-codes</span>.
             </InfoStrip>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -2505,7 +2552,7 @@ function AdminSyncPageContent() {
         >
           <div className="space-y-3">
             <InfoStrip>
-              Upload vertical banner images for the left and right shell gutters. These ads are currently stored in frontend local storage for this browser profile.
+              Upload vertical banner images for the left and right shell gutters. These side ads are now saved globally through the backend content storage layer.
             </InfoStrip>
 
             <div className="grid gap-3 md:grid-cols-2">

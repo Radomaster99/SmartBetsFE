@@ -15,12 +15,9 @@ import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
   DESKTOP_SIDE_AD_WIDTH_PX,
   EMPTY_SIDE_ADS_CONFIG,
-  readSideAdsConfig,
-  SIDE_ADS_STORAGE_KEY,
-  SIDE_ADS_UPDATED_EVENT,
   type SideAdSlotConfig,
-  type SideAdsConfig,
 } from '@/lib/side-ads';
+import { useSideAdsContent } from '@/lib/hooks/useContentDocuments';
 
 function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
   const href = anchor.getAttribute('href');
@@ -43,7 +40,8 @@ function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOverlay, setMobileOverlay] = useState<MobileOverlay>('none');
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [sideAdsConfig, setSideAdsConfig] = useState<SideAdsConfig>(EMPTY_SIDE_ADS_CONFIG);
+  const sideAdsQuery = useSideAdsContent();
+  const sideAdsConfig = sideAdsQuery.data ?? EMPTY_SIDE_ADS_CONFIG;
   const { entries: favoriteEntries, removeFixture } = useFixtureWatchlist();
 
   useEffect(() => {
@@ -115,26 +113,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     return () => {
       document.removeEventListener('click', handleDocumentClick, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    const syncSideAds = () => {
-      setSideAdsConfig(readSideAdsConfig());
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === SIDE_ADS_STORAGE_KEY) {
-        syncSideAds();
-      }
-    };
-
-    syncSideAds();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener(SIDE_ADS_UPDATED_EVENT, syncSideAds);
-
-    return () => {
-      window.removeEventListener(SIDE_ADS_UPDATED_EVENT, syncSideAds);
-      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 

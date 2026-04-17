@@ -2,15 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BONUS_CODES_STORAGE_KEY,
-  BONUS_CODES_UPDATED_EVENT,
   BONUS_CODE_TONES,
   DEFAULT_BONUS_CODES_PAGE_CONFIG,
-  readBonusCodesPageConfig,
   sortBonusCodeEntries,
   type BonusCodeEntry,
   type BonusCodeToneId,
 } from '@/lib/bonus-codes';
+import { useBonusCodesContent } from '@/lib/hooks/useContentDocuments';
 
 // ── Tone helpers ──────────────────────────────────────────────────────────────
 
@@ -431,23 +429,10 @@ function CompactRow({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BonusCodesPage() {
-  const [config, setConfig] = useState(DEFAULT_BONUS_CODES_PAGE_CONFIG);
+  const bonusCodesQuery = useBonusCodesContent();
+  const config = bonusCodesQuery.data ?? DEFAULT_BONUS_CODES_PAGE_CONFIG;
   const [copiedEntryId, setCopiedEntryId] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const sync = () => setConfig(readBonusCodesPageConfig());
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === BONUS_CODES_STORAGE_KEY) sync();
-    };
-    sync();
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener(BONUS_CODES_UPDATED_EVENT, sync);
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener(BONUS_CODES_UPDATED_EVENT, sync);
-    };
-  }, []);
 
   useEffect(() => {
     if (!copiedEntryId) return;

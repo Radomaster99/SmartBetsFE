@@ -14,8 +14,9 @@ export function Topbar() {
   const liveCount = useLiveFixtureCount();
   const isAdminRoute = pathname.startsWith('/admin');
   const isBonusCodesRoute = pathname.startsWith('/bonus-codes');
-  const adminSessionQuery = useAdminSession(isAdminRoute);
+  const adminSessionQuery = useAdminSession(true);
   const adminSession = adminSessionQuery.data;
+  const hasConfirmedAdminSession = !adminSessionQuery.isFetching && Boolean(adminSession);
 
   async function handleAdminLogout() {
     try {
@@ -151,51 +152,52 @@ export function Topbar() {
           </button>
         ) : null}
 
-        {isAdminRoute && adminSession ? (
+        {hasConfirmedAdminSession ? (
           <>
-            <span
-              className="hidden rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex"
-              style={{
-                background: 'rgba(0,230,118,0.12)',
-                border: '1px solid rgba(0,230,118,0.26)',
-                color: 'var(--t-accent)',
-              }}
-            >
-              {String(adminSession.displayName ?? adminSession.username ?? 'Admin')}
-            </span>
-            <button
-              type="button"
-              onClick={() => void handleAdminLogout()}
-              className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: 'var(--t-text-2)',
-                cursor: 'pointer',
-              }}
-              aria-label="Sign out from admin session"
-            >
-              Logout
-            </button>
+            {isAdminRoute ? (
+              <>
+                <span
+                  className="hidden rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex"
+                  style={{
+                    background: 'rgba(0,230,118,0.12)',
+                    border: '1px solid rgba(0,230,118,0.26)',
+                    color: 'var(--t-accent)',
+                  }}
+                >
+                  {String(adminSession?.displayName ?? adminSession?.username ?? 'Admin')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleAdminLogout()}
+                  className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--t-text-2)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="Sign out from admin session"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/admin"
+                className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+                style={{
+                  textDecoration: 'none',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'var(--t-text-2)',
+                }}
+                aria-label="Open admin control panel"
+              >
+                Admin
+              </Link>
+            )}
           </>
-        ) : (
-          <Link
-            href="/admin"
-            className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
-            style={{
-              textDecoration: 'none',
-              background: isAdminRoute ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.04)',
-              border: isAdminRoute
-                ? '1px solid rgba(0,230,118,0.26)'
-                : '1px solid rgba(255,255,255,0.08)',
-              color: isAdminRoute ? 'var(--t-accent)' : 'var(--t-text-2)',
-              boxShadow: isAdminRoute ? '0 0 0 1px rgba(0,230,118,0.04) inset' : 'none',
-            }}
-            aria-label="Open admin control panel"
-          >
-            Admin
-          </Link>
-        )}
+        ) : null}
       </div>
     </header>
   );

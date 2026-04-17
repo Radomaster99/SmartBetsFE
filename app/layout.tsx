@@ -5,9 +5,14 @@ import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/lib/contexts/ThemeContext';
 import { WidgetsProvider } from '@/components/widgets/WidgetsProvider';
 import { AppShell } from '@/components/layout/AppShell';
+import { getSiteUrl } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'OddsDetector - Football Odds Monitor',
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: 'OddsDetector - Football Odds Monitor',
+    template: '%s | OddsDetector',
+  },
   description: 'Football odds comparison, live market tracking, and admin-controlled betting content.',
 };
 

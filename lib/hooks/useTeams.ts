@@ -12,11 +12,12 @@ async function fetchTeam(apiTeamId: number): Promise<TeamDto> {
   return response.json();
 }
 
-export function useTeam(apiTeamId: number | null) {
+export function useTeam(apiTeamId: number | null, initialData?: TeamDto | null) {
   return useQuery({
     queryKey: ['team', apiTeamId],
     queryFn: () => fetchTeam(apiTeamId!),
     staleTime: 300_000,
     enabled: Boolean(apiTeamId),
+    initialData: initialData ?? undefined,
   });
 }

@@ -13,56 +13,84 @@ import { TableSkeleton } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import type { BestOddsDto } from '@/lib/types/api';
 import {
-  ADMIN_POPULAR_LEAGUES_STORAGE_KEY,
-  DEFAULT_POPULAR_LEAGUES_PRESET,
   POPULAR_LEAGUES_UPDATED_EVENT,
   USER_POPULAR_LEAGUES_STORAGE_KEY,
   USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY,
   mergePopularLeaguePresets,
   readPopularLeaguePresets,
   readPopularLeagueKeys,
+  type PopularLeaguePreset,
 } from '@/lib/popular-leagues';
+import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
-function buildOrderMap(presets: typeof DEFAULT_POPULAR_LEAGUES_PRESET): Map<number, number> {
+const EMPTY_POPULAR_PRESETS: PopularLeaguePreset[] = [];
+
+function buildOrderMap(presets: PopularLeaguePreset[]): Map<number, number> {
   return new Map(presets.map((p, i) => [Number(p.leagueId), i]));
 }
 
-function readOrderMapFromStorage(): Map<number, number> {
-  const admin = readPopularLeaguePresets(ADMIN_POPULAR_LEAGUES_STORAGE_KEY, DEFAULT_POPULAR_LEAGUES_PRESET);
+function areOrderMapsEqual(left: Map<number, number>, right: Map<number, number>): boolean {
+  if (left.size !== right.size) {
+    return false;
+  }
+
+  for (const [leagueId, index] of left) {
+    if (right.get(leagueId) !== index) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function readOrderMapFromStorage(adminPresets: PopularLeaguePreset[]): Map<number, number> {
   const user = readPopularLeaguePresets(USER_POPULAR_LEAGUES_STORAGE_KEY, []);
   const hidden = readPopularLeagueKeys(USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY, []);
-  return buildOrderMap(mergePopularLeaguePresets(admin, user, hidden));
+  return buildOrderMap(mergePopularLeaguePresets(adminPresets, user, hidden));
 }
 
 function usePopularLeagueOrder(): Map<number, number> {
+  const popularLeaguesQuery = usePopularLeaguesContent();
+  const adminPresets = popularLeaguesQuery.data ?? EMPTY_POPULAR_PRESETS;
   // Read from localStorage immediately in the initializer so the very first render
   // already has the correct user-customised order (avoids a visible re-sort flash).
   // On SSR window is undefined → falls back to defaults, which is fine because no
   // fixture rows are rendered server-side (isLoading = true shows skeleton instead).
   const [orderMap, setOrderMap] = useState<Map<number, number>>(() =>
-    typeof window !== 'undefined' ? readOrderMapFromStorage() : buildOrderMap(DEFAULT_POPULAR_LEAGUES_PRESET),
+    typeof window !== 'undefined' ? readOrderMapFromStorage(adminPresets) : buildOrderMap(adminPresets),
   );
 
   useEffect(() => {
+    const nextOrderMap = readOrderMapFromStorage(adminPresets);
+    setOrderMap((currentOrderMap) => (
+      areOrderMapsEqual(currentOrderMap, nextOrderMap) ? currentOrderMap : nextOrderMap
+    ));
+  }, [adminPresets]);
+
+  useEffect(() => {
     // Same-tab updates: fired by writePopularLeaguePresets / writePopularLeagueKeys.
-    const onUpdated = () => setOrderMap(readOrderMapFromStorage());
+    const syncOrderMap = () => {
+      const nextOrderMap = readOrderMapFromStorage(adminPresets);
+      setOrderMap((currentOrderMap) => (
+        areOrderMapsEqual(currentOrderMap, nextOrderMap) ? currentOrderMap : nextOrderMap
+      ));
+    };
     // Cross-tab updates: the native storage event only fires in other tabs.
     const onStorage = (e: StorageEvent) => {
       if (
-        e.key === ADMIN_POPULAR_LEAGUES_STORAGE_KEY ||
         e.key === USER_POPULAR_LEAGUES_STORAGE_KEY ||
         e.key === USER_HIDDEN_POPULAR_LEAGUES_STORAGE_KEY
       ) {
-        setOrderMap(readOrderMapFromStorage());
+        syncOrderMap();
       }
     };
-    window.addEventListener(POPULAR_LEAGUES_UPDATED_EVENT, onUpdated);
+    window.addEventListener(POPULAR_LEAGUES_UPDATED_EVENT, syncOrderMap);
     window.addEventListener('storage', onStorage);
     return () => {
-      window.removeEventListener(POPULAR_LEAGUES_UPDATED_EVENT, onUpdated);
+      window.removeEventListener(POPULAR_LEAGUES_UPDATED_EVENT, syncOrderMap);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [adminPresets]);
 
   return orderMap;
 }

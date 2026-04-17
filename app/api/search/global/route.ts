@@ -4,6 +4,7 @@ import { getLeagues } from '@/lib/api/leagues';
 import { getTeams } from '@/lib/api/teams';
 import type { FixtureDto, LeagueDto, TeamDto } from '@/lib/types/api';
 import type { GlobalSearchResponse, GlobalSearchSuggestion } from '@/lib/types/search';
+import { buildTeamHref } from '@/lib/team-links';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,7 +189,7 @@ function buildTeamSuggestions(teams: TeamDto[], query: string): ScoredSuggestion
       type: 'team',
       title: team.name,
       subtitle: joinParts([team.countryName ?? 'Team', team.code]),
-      href: `/football/teams/${team.apiTeamId}?season=${DEFAULT_SEASON}`,
+      href: buildTeamHref(team.apiTeamId, team.name, { season: DEFAULT_SEASON }),
       badge: 'Team',
       score,
     });
