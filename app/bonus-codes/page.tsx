@@ -543,9 +543,6 @@ export default function BonusCodesPage() {
           >
             No bonus codes are live yet
           </h2>
-          <p className="mt-2 text-[13px] leading-6" style={{ color: 'var(--t-text-4)' }}>
-            Open the admin panel and activate bonus code cards. They appear here instantly.
-          </p>
         </section>
       ) : null}
 
