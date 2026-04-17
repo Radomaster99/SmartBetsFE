@@ -19,6 +19,7 @@ import {
 } from '@/lib/popular-leagues';
 import type { LeagueDto, CountryDto } from '@/lib/types/api';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
+import { buildStandingsPath } from '@/lib/league-links';
 import { buildTeamHref } from '@/lib/team-links';
 import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
@@ -28,14 +29,6 @@ function parsePositiveInt(value: string | null): number | null {
   if (!value) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function buildStandingsHref(leagueId: number | null, season: number) {
-  const params = new URLSearchParams();
-  if (leagueId) params.set('leagueId', String(leagueId));
-  if (leagueId || season !== DEFAULT_SEASON) params.set('season', String(season));
-  const query = params.toString();
-  return query ? `/football/standings?${query}` : '/football/standings';
 }
 
 function normalizeCountryName(value: string) {
@@ -338,29 +331,58 @@ function LeaguePicker({
   );
 }
 
-function StandingsContent() {
+function StandingsContent({
+  initialLeagueId = null,
+  initialSeason = null,
+  initialLeagueName = null,
+}: {
+  initialLeagueId?: number | null;
+  initialSeason?: number | null;
+  initialLeagueName?: string | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const leagueId = parsePositiveInt(searchParams.get('leagueId'));
-  const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
+  const hasCanonicalRouteContext = initialLeagueId != null && initialSeason != null;
+  const queryLeagueId = parsePositiveInt(searchParams.get('leagueId'));
+  const querySeason = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
+  const leagueId = hasCanonicalRouteContext ? initialLeagueId : queryLeagueId;
+  const season = hasCanonicalRouteContext ? initialSeason : querySeason;
 
   const { data: leagues, isLoading: leaguesLoading } = useLeagues(season);
   const { data: worldCupLeagues } = useLeagues(2026);
   const { data: countries } = useCountries();
   const { data: standings, isLoading: standingsLoading, isError: standingsError } = useStandings(leagueId, season);
   const selectedLeague = leagues?.find((l) => l.apiLeagueId === leagueId) ?? null;
+  const selectedLeagueName = selectedLeague?.name ?? initialLeagueName ?? null;
+
+  const resolveStandingsHref = (nextLeagueId: number | null, nextSeason: number) => {
+    if (!nextLeagueId) {
+      return buildStandingsPath(null, nextSeason);
+    }
+
+    const sourceLeagues = nextSeason === 2026 ? worldCupLeagues ?? [] : leagues ?? [];
+    const leagueName =
+      sourceLeagues.find((league) => league.apiLeagueId === nextLeagueId)?.name ??
+      (nextLeagueId === leagueId ? selectedLeagueName : null);
+
+    return buildStandingsPath(nextLeagueId, nextSeason, leagueName);
+  };
 
   useEffect(() => {
-    const canonicalHref = buildStandingsHref(leagueId, season);
+    if (hasCanonicalRouteContext) {
+      return;
+    }
+
+    const canonicalHref = resolveStandingsHref(leagueId, season);
     const currentQuery = searchParams.toString();
     const currentHref = currentQuery ? `/football/standings?${currentQuery}` : '/football/standings';
     if (canonicalHref !== currentHref) {
       router.replace(canonicalHref, { scroll: false });
     }
-  }, [leagueId, router, searchParams, season]);
+  }, [hasCanonicalRouteContext, leagueId, router, searchParams, season, leagues, worldCupLeagues, selectedLeagueName]);
 
   const handleSelect = (selectedLeagueId: number, selectedSeason: number) => {
-    router.replace(buildStandingsHref(selectedLeagueId, selectedSeason), { scroll: false });
+    router.replace(resolveStandingsHref(selectedLeagueId, selectedSeason), { scroll: false });
   };
 
   return (
@@ -382,30 +404,30 @@ function StandingsContent() {
             <Link href="/football/standings" style={{ color: 'inherit', textDecoration: 'none' }}>
               Standings
             </Link>
-            {selectedLeague ? (
+            {selectedLeagueName ? (
               <>
                 <span style={{ color: 'var(--t-border-2)' }}>{'>'}</span>
-                <span style={{ color: 'var(--t-text-4)' }}>{selectedLeague.name}</span>
+                <span style={{ color: 'var(--t-text-4)' }}>{selectedLeagueName}</span>
               </>
             ) : null}
           </nav>
 
           <h1 className="text-[17px] font-bold" style={{ color: 'var(--t-text-1)' }}>Standings</h1>
-          <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
-            {leagueId
-              ? `Track the current ${selectedLeague?.name ?? 'league'} table, club positions, and recent form for the ${season}/${season + 1} season.`
-              : 'Select a league to view its table, compare club form, and jump into team pages.'}
-          </p>
+            <p className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+              {leagueId
+                ? `Track the current ${selectedLeagueName ?? 'league'} table, club positions, and recent form for the ${season}/${season + 1} season.`
+                : 'Select a league to view its table, compare club form, and jump into team pages.'}
+            </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {leagueId ? (
             <select
               value={String(leagueId)}
-              onChange={(e) => {
-                const val = parsePositiveInt(e.target.value);
-                router.replace(buildStandingsHref(val, season), { scroll: false });
-              }}
+                onChange={(e) => {
+                  const val = parsePositiveInt(e.target.value);
+                  router.replace(resolveStandingsHref(val, season), { scroll: false });
+                }}
               disabled={leaguesLoading}
               className="min-w-[220px] rounded px-3 py-1.5 text-[12px] outline-none"
               style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
@@ -421,7 +443,7 @@ function StandingsContent() {
 
           <select
             value={season}
-            onChange={(e) => router.replace(buildStandingsHref(leagueId, Number(e.target.value)), { scroll: false })}
+            onChange={(e) => router.replace(resolveStandingsHref(leagueId, Number(e.target.value)), { scroll: false })}
             className="rounded px-3 py-1.5 text-[12px] outline-none"
             style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-2)' }}
           >
@@ -433,7 +455,7 @@ function StandingsContent() {
           {leagueId ? (
             <button
               type="button"
-              onClick={() => router.replace(buildStandingsHref(null, season), { scroll: false })}
+              onClick={() => router.replace(resolveStandingsHref(null, season), { scroll: false })}
               className="rounded px-2.5 py-1.5 text-[11px] font-medium"
               style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)', color: 'var(--t-text-3)', cursor: 'pointer' }}
             >
@@ -443,14 +465,14 @@ function StandingsContent() {
         </div>
       </div>
 
-      {selectedLeague ? (
+      {leagueId && selectedLeagueName ? (
         <div
           className="px-5 py-2 text-[12px]"
           style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)', flexShrink: 0 }}
         >
           <span style={{ color: 'var(--t-text-5)' }}>Viewing:</span>{' '}
           <span className="font-semibold" style={{ color: 'var(--t-text-2)' }}>
-            {selectedLeague.countryName} - {selectedLeague.name}
+            {selectedLeague?.countryName ?? ''}{selectedLeague?.countryName ? ' - ' : ''}{selectedLeagueName}
           </span>
           <span style={{ color: 'var(--t-text-5)' }}> · {season}/{season + 1}</span>
         </div>
@@ -465,11 +487,11 @@ function StandingsContent() {
           }}
         >
           <div className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--t-text-6)' }}>
-            {selectedLeague ? 'League table overview' : 'Standings overview'}
+            {selectedLeagueName ? 'League table overview' : 'Standings overview'}
           </div>
           <p className="mt-2 text-[13px] leading-6" style={{ color: 'var(--t-text-4)' }}>
-            {selectedLeague
-              ? `${selectedLeague.name} standings for ${season}/${season + 1}. Compare rank, points, goal difference, and recent form, then open any club page for team-specific odds and fixture context.`
+            {leagueId && selectedLeagueName
+              ? `${selectedLeagueName} standings for ${season}/${season + 1}. Compare rank, points, goal difference, and recent form, then open any club page for team-specific odds and fixture context.`
               : 'Browse football league tables, search competitions, and jump into the standings view for each tournament. Popular leagues stay surfaced first so you can reach the most important tables faster.'}
           </p>
         </div>
@@ -517,10 +539,14 @@ function StandingsContent() {
   );
 }
 
-export default function StandingsPageClient() {
+export default function StandingsPageClient(props: {
+  initialLeagueId?: number | null;
+  initialSeason?: number | null;
+  initialLeagueName?: string | null;
+}) {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <StandingsContent />
+      <StandingsContent {...props} />
     </Suspense>
   );
 }

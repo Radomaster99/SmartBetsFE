@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { buildStandingsPath } from '@/lib/league-links';
 import { buildAbsoluteUrl } from '@/lib/site';
 import { getFixtureDetail } from '@/lib/api/fixtures';
 import FixtureDetailPageClient from './FixtureDetailPageClient';
@@ -132,7 +133,11 @@ export default async function FixtureDetailPage({ params }: Props) {
             position: 2,
             name: detail.fixture.leagueName,
             item: buildAbsoluteUrl(
-              `/football/standings?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`,
+              buildStandingsPath(
+                detail.fixture.leagueApiId,
+                detail.fixture.season,
+                detail.fixture.leagueName,
+              ),
             ),
           },
           {

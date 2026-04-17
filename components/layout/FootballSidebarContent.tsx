@@ -18,6 +18,7 @@ import {
 } from '@/lib/popular-leagues';
 import type { CountryDto, LeagueDto } from '@/lib/types/api';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
+import { buildStandingsPath } from '@/lib/league-links';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -57,14 +58,6 @@ function buildMatchesHref(currentParams: SearchParamsLike, leagueId: number | nu
 
   const query = next.toString();
   return query ? `/football?${query}` : '/football';
-}
-
-function buildStandingsHref(leagueId: number | null, season: number) {
-  const next = new URLSearchParams();
-  if (leagueId) next.set('leagueId', String(leagueId));
-  if (leagueId || season !== DEFAULT_SEASON) next.set('season', String(season));
-  const query = next.toString();
-  return query ? `/football/standings?${query}` : '/football/standings';
 }
 
 function buildUpcomingLeagueHref(leagueId: number, season: number) {
@@ -236,7 +229,8 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   }, [activeLeagueId, allCountryGroups]);
 
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
-  const standingsHref = buildStandingsHref(activeLeagueId, season);
+  const activeLeagueName = leagues?.find((league) => league.apiLeagueId === activeLeagueId)?.name ?? null;
+  const standingsHref = buildStandingsPath(activeLeagueId, season, activeLeagueName);
   const clearLeagueHref = buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
   const isAllLeaguesActive = isMatchesPage && !activeLeagueId;
 
@@ -286,7 +280,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
 
   const getLeagueHref = (league: LeagueDto) =>
     isStandingsPage
-      ? buildStandingsHref(league.apiLeagueId, league.season)
+      ? buildStandingsPath(league.apiLeagueId, league.season, league.name)
       : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
   const pinnedSection = (
@@ -321,7 +315,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
       ) : popularLeagues.length ? (
         popularLeagues.map((item) => {
           const href = isStandingsPage
-            ? buildStandingsHref(item.leagueId, item.targetSeason)
+            ? buildStandingsPath(item.leagueId, item.targetSeason, item.displayName)
             : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
           const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
 

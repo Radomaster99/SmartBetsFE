@@ -17,15 +17,11 @@ function isAdminPage(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
-function isAdminLoginPath(pathname: string): boolean {
-  return pathname === '/admin/login';
-}
-
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasAdminCookie = hasAdminSessionCookie(request);
 
-  if (isAdminPage(pathname) && !isAdminLoginPath(pathname) && !hasAdminCookie) {
+  if (isAdminPage(pathname) && pathname !== '/admin/login' && !hasAdminCookie) {
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
@@ -33,10 +29,6 @@ export function proxy(request: NextRequest) {
 
   if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth/') && !hasAdminCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (isAdminLoginPath(pathname) && hasAdminCookie) {
-    return NextResponse.redirect(new URL('/admin/sync', request.url));
   }
 
   return NextResponse.next();

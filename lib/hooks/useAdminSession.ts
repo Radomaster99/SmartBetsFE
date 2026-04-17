@@ -28,6 +28,7 @@ function normalizeAdminSession(payload: AdminSessionDto | null): AdminSessionDto
 async function fetchAdminSession(): Promise<AdminSessionDto | null> {
   const res = await fetch('/api/admin/auth/me', {
     cache: 'no-store',
+    credentials: 'include',
     signal: AbortSignal.timeout(15_000),
   });
 

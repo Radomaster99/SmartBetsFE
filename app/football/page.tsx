@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getLeagues } from '@/lib/api/leagues';
+import { buildStandingsPath } from '@/lib/league-links';
 import FootballPageClient from './FootballPageClient';
 
 interface FootballPageProps {
@@ -161,7 +162,10 @@ export async function generateMetadata({ searchParams }: FootballPageProps): Pro
   const view = resolvedSearchParams.get('view');
   const state = parseState(resolvedSearchParams.get('state'));
   const leagueName = await resolveLeagueName(leagueId, season);
-  const canonicalPath = buildFootballCanonicalPath(resolvedSearchParams);
+  const canonicalPath =
+    view === 'standings'
+      ? buildStandingsPath(leagueId, season, leagueName)
+      : buildFootballCanonicalPath(resolvedSearchParams);
   const title = buildFootballMetadataTitle({ view, state, leagueName });
   const description = buildFootballMetadataDescription({ view, state, leagueName, season });
 

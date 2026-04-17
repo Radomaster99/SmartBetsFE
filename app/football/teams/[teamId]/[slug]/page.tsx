@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getLeagues } from '@/lib/api/leagues';
+import { buildStandingsPath } from '@/lib/league-links';
 import { getTeam } from '@/lib/api/teams';
 import { buildAbsoluteUrl } from '@/lib/site';
 import { appendSearchParams, buildTeamPath, teamNameToSlug } from '@/lib/team-links';
@@ -182,7 +183,9 @@ export default async function TeamPage({ params, searchParams }: TeamPageProps) 
     selectedLeague
       ? {
           name: selectedLeague.name,
-          item: buildAbsoluteUrl(`/football/standings?leagueId=${selectedLeague.apiLeagueId}&season=${seasonContext}`),
+          item: buildAbsoluteUrl(
+            buildStandingsPath(selectedLeague.apiLeagueId, seasonContext, selectedLeague.name),
+          ),
         }
       : {
           name: 'Standings',

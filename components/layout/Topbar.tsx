@@ -23,6 +23,7 @@ export function Topbar() {
     try {
       await fetch('/api/admin/auth/logout', {
         method: 'POST',
+        credentials: 'include',
       });
     } finally {
       await queryClient.invalidateQueries({ queryKey: ADMIN_SESSION_QUERY_KEY });

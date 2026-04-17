@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { getLeagues } from '@/lib/api/leagues';
+import { buildStandingsPath } from '@/lib/league-links';
 import { buildAbsoluteUrl } from '@/lib/site';
 import StandingsPageClient from './StandingsPageClient';
 
@@ -40,20 +42,8 @@ function buildSearchParams(params: Record<string, string | string[] | undefined>
 }
 
 function buildStandingsCanonicalPath(searchParams: URLSearchParams): string {
-  const leagueId = parsePositiveInt(searchParams.get('leagueId'));
   const season = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
-  const next = new URLSearchParams();
-
-  if (leagueId) {
-    next.set('leagueId', String(leagueId));
-  }
-
-  if (leagueId || season !== DEFAULT_SEASON) {
-    next.set('season', String(season));
-  }
-
-  const query = next.toString();
-  return query ? `/football/standings?${query}` : '/football/standings';
+  return buildStandingsPath(null, season);
 }
 
 async function resolveLeagueContext(leagueId: number | null, season: number) {
@@ -70,7 +60,9 @@ export async function generateMetadata({ searchParams }: StandingsPageProps): Pr
   const leagueId = parsePositiveInt(resolvedSearchParams.get('leagueId'));
   const season = parsePositiveInt(resolvedSearchParams.get('season')) ?? DEFAULT_SEASON;
   const selectedLeague = await resolveLeagueContext(leagueId, season);
-  const canonicalPath = buildStandingsCanonicalPath(resolvedSearchParams);
+  const canonicalPath = selectedLeague
+    ? buildStandingsPath(selectedLeague.apiLeagueId, season, selectedLeague.name)
+    : buildStandingsCanonicalPath(resolvedSearchParams);
   const title = selectedLeague ? `${selectedLeague.name} Standings` : 'Football Standings';
   const description = selectedLeague
     ? `Browse the latest ${selectedLeague.name} standings, club positions, and table context for the ${season}/${season + 1} season on OddsDetector.`
@@ -101,8 +93,12 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
   const leagueId = parsePositiveInt(resolvedSearchParams.get('leagueId'));
   const season = parsePositiveInt(resolvedSearchParams.get('season')) ?? DEFAULT_SEASON;
   const selectedLeague = await resolveLeagueContext(leagueId, season);
-  const canonicalPath = buildStandingsCanonicalPath(resolvedSearchParams);
 
+  if (selectedLeague) {
+    redirect(buildStandingsPath(selectedLeague.apiLeagueId, season, selectedLeague.name));
+  }
+
+  const canonicalPath = buildStandingsCanonicalPath(resolvedSearchParams);
   const breadcrumbStructuredData = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -119,31 +115,19 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
         name: 'Standings',
         item: buildAbsoluteUrl('/football/standings'),
       },
-      ...(selectedLeague
-        ? [
-            {
-              '@type': 'ListItem',
-              position: 3,
-              name: selectedLeague.name,
-              item: buildAbsoluteUrl(canonicalPath),
-            },
-          ]
-        : []),
     ],
   };
 
-  const collectionStructuredData = selectedLeague
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'CollectionPage',
-        name: `${selectedLeague.name} standings`,
-        url: buildAbsoluteUrl(canonicalPath),
-        about: {
-          '@type': 'SportsOrganization',
-          name: selectedLeague.name,
-        },
-      }
-    : null;
+  const collectionStructuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Football standings',
+    url: buildAbsoluteUrl(canonicalPath),
+    about: {
+      '@type': 'SportsOrganization',
+      name: 'Football standings',
+    },
+  };
 
   return (
     <>
@@ -151,12 +135,10 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
       />
-      {collectionStructuredData ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionStructuredData) }}
-        />
-      ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionStructuredData) }}
+      />
       <StandingsPageClient />
     </>
   );

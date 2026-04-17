@@ -1,7 +1,11 @@
 import type { MetadataRoute } from 'next';
+import { getLeagues } from '@/lib/api/leagues';
 import { getTeams } from '@/lib/api/teams';
+import { buildStandingsPath } from '@/lib/league-links';
 import { buildAbsoluteUrl } from '@/lib/site';
 import { buildTeamPath } from '@/lib/team-links';
+
+const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
 const STATIC_ROUTES: Array<{
   path: string;
@@ -33,5 +37,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticEntries, ...teamEntries];
+  const leagues = await getLeagues(DEFAULT_SEASON).catch(() => []);
+  const standingsEntries: MetadataRoute.Sitemap = leagues.map((league) => ({
+    url: buildAbsoluteUrl(buildStandingsPath(league.apiLeagueId, league.season, league.name)),
+    lastModified: now,
+    changeFrequency: 'daily',
+    priority: 0.78,
+  }));
+
+  return [...staticEntries, ...teamEntries, ...standingsEntries];
 }

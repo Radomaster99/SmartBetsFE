@@ -12,6 +12,7 @@ import { OddsComparison } from '@/components/odds/OddsComparison';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { buildStandingsPath } from '@/lib/league-links';
 import { buildTeamPath } from '@/lib/team-links';
 import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
@@ -196,7 +197,11 @@ function FixtureDetailPageInner({ params }: Props) {
     { id: 'h2h', label: 'H2H' },
   ];
   const leagueHref = `/football?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`;
-  const standingsHref = `/football/standings?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`;
+  const standingsHref = buildStandingsPath(
+    detail.fixture.leagueApiId,
+    detail.fixture.season,
+    detail.fixture.leagueName,
+  );
 
   return (
     <div className="flex flex-col">

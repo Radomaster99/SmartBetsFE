@@ -13,6 +13,7 @@ import {
   readPopularLeagueKeys,
 } from '@/lib/popular-leagues';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
+import { buildStandingsPath } from '@/lib/league-links';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -84,7 +85,11 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
 
   function buildLeagueHref(leagueId: number, leagueSeason: number) {
     if (isStandingsPage) {
-      return `/football/standings?leagueId=${leagueId}&season=${leagueSeason}`;
+      const leagueName =
+        (leagueSeason === 2026 ? worldCupLeagues ?? [] : leagues ?? []).find((league) => league.apiLeagueId === leagueId)?.name ??
+        popularLeagues.find((item) => item.leagueId === leagueId && item.targetSeason === leagueSeason)?.displayName ??
+        null;
+      return buildStandingsPath(leagueId, leagueSeason, leagueName);
     }
     return `/football?state=Upcoming&leagueId=${leagueId}&upcomingScope=all&season=${leagueSeason}`;
   }

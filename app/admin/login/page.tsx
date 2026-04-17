@@ -40,6 +40,7 @@ function AdminLoginPageContent() {
     try {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

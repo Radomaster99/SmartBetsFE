@@ -11,6 +11,7 @@ import { TeamLogo } from '@/components/shared/TeamLogo';
 import { useTeam } from '@/lib/hooks/useTeams';
 import { useFixtures } from '@/lib/hooks/useFixtures';
 import { useLeagues } from '@/lib/hooks/useLeagues';
+import { buildStandingsPath } from '@/lib/league-links';
 import type { TeamDto } from '@/lib/types/api';
 import { readTeamPageNavigationContext, type TeamPageNavigationContext } from '@/lib/team-page-context';
 
@@ -142,7 +143,7 @@ export function TeamPageClient({
   const backHref = fromFixtureId
     ? `/football/fixtures/${fromFixtureId}?tab=match`
     : leagueId
-      ? `/football/standings?leagueId=${leagueId}&season=${season}`
+      ? buildStandingsPath(leagueId, season, resolvedLeagueName)
       : '/football/standings';
   const backLabel = fromFixtureId ? 'Back to match' : 'Back to standings';
 
@@ -405,7 +406,7 @@ export function TeamPageClient({
           {leagueId && resolvedLeagueName ? (
             <>
               <Link
-                href={`/football/standings?leagueId=${leagueId}&season=${seasonContext ?? season}`}
+                href={buildStandingsPath(leagueId, seasonContext ?? season, resolvedLeagueName)}
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
                 {resolvedLeagueName}
