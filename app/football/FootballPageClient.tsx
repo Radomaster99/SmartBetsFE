@@ -851,6 +851,7 @@ function FootballPageClient() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
                 <FixtureTable
                   fixtures={fixtures}
+                  viewState={state}
                   isLoading={isLoading}
                   isFetching={isFetching}
                   oddsMovements={liveOddsListRealtime.movements}

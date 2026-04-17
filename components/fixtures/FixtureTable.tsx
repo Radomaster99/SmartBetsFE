@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { FixtureDto, OddDto } from '@/lib/types/api';
+import type { FixtureDto, OddDto, StateBucket } from '@/lib/types/api';
 import type { LiveOddsMovementByFixture } from '@/lib/hooks/useLiveOdds';
 import { fetchBestOddsBatch } from '@/lib/hooks/useOdds';
 import { buildBookmakerHref } from '@/lib/bookmakers';
@@ -97,6 +97,7 @@ function usePopularLeagueOrder(): Map<number, number> {
 
 interface Props {
   fixtures: FixtureDto[];
+  viewState?: StateBucket | 'All';
   isLoading?: boolean;
   isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
@@ -151,6 +152,49 @@ function truncateBookmaker(name: string, max = 14): string {
 
 function resolveBookmakerForDisplay(name: string | null | undefined): string | null {
   return name?.trim() || null;
+}
+
+function hasOddsSummaryValues(summary: FixtureDto['liveOddsSummary'] | null | undefined): boolean {
+  return Boolean(summary?.bestHomeOdd || summary?.bestDrawOdd || summary?.bestAwayOdd);
+}
+
+function hasBestOddsValues(bestOdds: BestOddsDto | null | undefined): boolean {
+  return Boolean(bestOdds?.bestHomeOdd || bestOdds?.bestDrawOdd || bestOdds?.bestAwayOdd);
+}
+
+function getLeagueOddsMetrics(
+  fixtures: FixtureDto[],
+  bestOddsMap: Map<number, BestOddsDto | null>,
+): {
+  liveCount: number;
+  prematchCount: number;
+  noOddsCount: number;
+} {
+  let liveCount = 0;
+  let prematchCount = 0;
+  let noOddsCount = 0;
+
+  for (const fixture of fixtures) {
+    const summary = fixture.liveOddsSummary ?? null;
+    const bestOdds = bestOddsMap.get(fixture.apiFixtureId) ?? null;
+
+    if (summary?.source === 'live' && hasOddsSummaryValues(summary)) {
+      liveCount += 1;
+      continue;
+    }
+
+    if (
+      (summary?.source === 'prematch' && hasOddsSummaryValues(summary)) ||
+      hasBestOddsValues(bestOdds)
+    ) {
+      prematchCount += 1;
+      continue;
+    }
+
+    noOddsCount += 1;
+  }
+
+  return { liveCount, prematchCount, noOddsCount };
 }
 
 function MobileOddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
@@ -493,6 +537,7 @@ function FetchingBar() {
 
 export function FixtureTable({
   fixtures,
+  viewState = 'All',
   isLoading,
   isFetching,
   oddsMovements,
@@ -548,10 +593,59 @@ export function FixtureTable({
     return entries.sort(([, a], [, b]) => {
       const aRank = popularLeagueOrder.get(Number(a.leagueApiId)) ?? Number.MAX_SAFE_INTEGER;
       const bRank = popularLeagueOrder.get(Number(b.leagueApiId)) ?? Number.MAX_SAFE_INTEGER;
-      if (aRank !== bRank) return aRank - bRank;
+
+      const aPinned = aRank !== Number.MAX_SAFE_INTEGER;
+      const bPinned = bRank !== Number.MAX_SAFE_INTEGER;
+      if (aPinned || bPinned) {
+        if (aRank !== bRank) return aRank - bRank;
+        return a.name.localeCompare(b.name);
+      }
+
+      if (viewState === 'Upcoming' || viewState === 'Live') {
+        const aMetrics = getLeagueOddsMetrics(a.items, bestOddsMap);
+        const bMetrics = getLeagueOddsMetrics(b.items, bestOddsMap);
+
+        const aAvailabilityRank =
+          viewState === 'Live'
+            ? aMetrics.liveCount > 0
+              ? 0
+              : aMetrics.prematchCount > 0
+                ? 1
+                : 2
+            : aMetrics.prematchCount > 0
+              ? 0
+              : 1;
+        const bAvailabilityRank =
+          viewState === 'Live'
+            ? bMetrics.liveCount > 0
+              ? 0
+              : bMetrics.prematchCount > 0
+                ? 1
+                : 2
+            : bMetrics.prematchCount > 0
+              ? 0
+              : 1;
+
+        if (aAvailabilityRank !== bAvailabilityRank) {
+          return aAvailabilityRank - bAvailabilityRank;
+        }
+
+        if (viewState === 'Live' && aMetrics.liveCount !== bMetrics.liveCount) {
+          return bMetrics.liveCount - aMetrics.liveCount;
+        }
+
+        if (aMetrics.prematchCount !== bMetrics.prematchCount) {
+          return bMetrics.prematchCount - aMetrics.prematchCount;
+        }
+
+        if (aMetrics.noOddsCount !== bMetrics.noOddsCount) {
+          return aMetrics.noOddsCount - bMetrics.noOddsCount;
+        }
+      }
+
       return a.name.localeCompare(b.name);
     });
-  }, [byLeague, popularLeagueOrder]);
+  }, [bestOddsMap, byLeague, popularLeagueOrder, viewState]);
 
   useEffect(() => {
     callbackRef.current = onVisibleLiveFixtureIdsChange;
