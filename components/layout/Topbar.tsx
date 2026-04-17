@@ -155,33 +155,18 @@ export function Topbar() {
         {hasConfirmedAdminSession ? (
           <>
             {isAdminRoute ? (
-              <>
-                <span
-                  className="hidden rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex"
-                  style={{
-                    background: 'rgba(0,230,118,0.12)',
-                    border: '1px solid rgba(0,230,118,0.26)',
-                    color: 'var(--t-accent)',
-                  }}
-                >
-                  {String(adminSession?.displayName ?? adminSession?.username ?? 'Admin')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void handleAdminLogout()}
-                  className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'var(--t-text-2)',
-                    cursor: 'pointer',
-                  }}
-                  aria-label="Sign out from admin session"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
+              <span
+                className="hidden rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] md:inline-flex"
+                style={{
+                  background: 'rgba(0,230,118,0.12)',
+                  border: '1px solid rgba(0,230,118,0.26)',
+                  color: 'var(--t-accent)',
+                }}
+              >
+                {String(adminSession?.displayName ?? adminSession?.username ?? 'Admin')}
+              </span>
+            ) : null}
+            {!isAdminRoute ? (
               <Link
                 href="/admin"
                 className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
@@ -195,7 +180,21 @@ export function Topbar() {
               >
                 Admin
               </Link>
-            )}
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleAdminLogout()}
+              className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--t-text-2)',
+                cursor: 'pointer',
+              }}
+              aria-label="Sign out from admin session"
+            >
+              Logout
+            </button>
           </>
         ) : null}
       </div>

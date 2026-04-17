@@ -817,24 +817,6 @@ function FootballPageClient() {
         </div>
       ) : (
         <>
-          {state === 'Live' ? (
-            <div className="flex items-center gap-3 px-4 py-2 text-[12px]" style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
-              <LiveListStatusPill
-                status={liveOddsListRealtime.status}
-                count={liveFixtureIds.length}
-                providerCount={liveProviderCount}
-                fallbackCount={liveFallbackCount}
-              />
-              <div className="flex flex-wrap items-center gap-1.5">
-                <FeedLegendPill label="live prices" count={liveProviderCount} tone="provider" />
-                <FeedLegendPill label="pre-match" count={liveFallbackCount} tone="fallback" />
-              </div>
-              <span style={{ color: 'var(--t-text-5)' }}>
-                Live-price rows can flash and move in real time. Pre-match rows stay on the latest snapshot until provider markets appear.
-              </span>
-            </div>
-          ) : null}
-
           {isError ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-red-400 mb-3">Failed to load fixtures.</p>

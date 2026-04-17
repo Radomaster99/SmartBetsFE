@@ -212,6 +212,8 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
                 shouldUseLiveBookmakerView={shouldUseLiveBookmakerView}
                 bestOddsMovements={isLive ? bestOddsMovements : undefined}
                 oddsMovements={isLive ? oddsTableMovements : undefined}
+                hidePreMatchFallbackPill
+                hideLiveStatusPill
               />
             ) : (
               <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>

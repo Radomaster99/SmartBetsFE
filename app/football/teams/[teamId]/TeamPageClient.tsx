@@ -417,35 +417,23 @@ export function TeamPageClient({
         </nav>
         <Link
           href={backHref}
-          className="flex items-center gap-1 text-[11px] transition-colors"
-          style={{ color: 'var(--t-text-5)', textDecoration: 'none' }}
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors"
+          style={{
+            color: 'var(--t-accent)',
+            textDecoration: 'none',
+            background: 'rgba(0,230,118,0.12)',
+            border: '1px solid rgba(0,230,118,0.24)',
+            boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
+          }}
         >
+          <span aria-hidden="true" style={{ fontSize: 13, lineHeight: 1 }}>
+            {'<'}
+          </span>
           {backLabel}
         </Link>
       </div>
 
       <div style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
-        <div
-          className="flex items-center gap-2 px-4 py-2"
-          style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-page-bg)' }}
-        >
-          {selectedLeague ? (
-            <>
-              <span className="text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-                {selectedLeague.countryName}
-              </span>
-              <span style={{ color: 'var(--t-border-2)' }}>{'>'}</span>
-              <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-4)' }}>
-                {selectedLeague.name}
-              </span>
-              <span style={{ color: 'var(--t-border-2)' }}>{'>'}</span>
-            </>
-          ) : null}
-          <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-4)' }}>
-            Team details
-          </span>
-        </div>
-
         <div className="flex flex-wrap items-center gap-5 px-6 py-6">
           <TeamLogo src={team.logoUrl} alt={team.name} size={72} />
 
@@ -501,22 +489,25 @@ export function TeamPageClient({
           </div>
 
           {summaryFacts.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div
+              className="mt-3 grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${summaryFacts.length}, minmax(0, 1fr))` }}
+            >
               {summaryFacts.map((fact) => (
                 <div
                   key={fact.label}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
+                  className="rounded-lg px-3 py-2.5 text-center"
                   style={{
                     background: 'var(--t-page-bg)',
                     border: '1px solid var(--t-border)',
                   }}
                 >
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-6)' }}>
                     {fact.label}
-                  </span>
-                  <span className="text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
+                  </div>
+                  <div className="mt-1 text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
                     {fact.value}
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>

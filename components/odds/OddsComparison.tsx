@@ -22,6 +22,8 @@ export interface OddsComparisonProps {
   shouldUseLiveBookmakerView: boolean;
   bestOddsMovements?: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   oddsMovements?: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
+  hidePreMatchFallbackPill?: boolean;
+  hideLiveStatusPill?: boolean;
 }
 
 function minutesAgo(iso: string): string {
@@ -35,10 +37,12 @@ function LiveStatusPill({
   status,
   hasLiveOdds,
   usingPreMatchFallback,
+  hidePreMatchFallbackPill = false,
 }: {
   status: LiveOddsRealtimeStatus;
   hasLiveOdds: boolean;
   usingPreMatchFallback: boolean;
+  hidePreMatchFallbackPill?: boolean;
 }) {
   let copy = 'Live odds idle';
   let styles = {
@@ -47,7 +51,7 @@ function LiveStatusPill({
     color: 'var(--t-text-3)',
   };
 
-  if (usingPreMatchFallback) {
+  if (usingPreMatchFallback && !hidePreMatchFallbackPill) {
     copy = 'Pre-match fallback';
     styles = {
       background: 'rgba(245,158,11,0.12)',
@@ -206,6 +210,8 @@ export function OddsComparison({
   shouldUseLiveBookmakerView,
   bestOddsMovements,
   oddsMovements,
+  hidePreMatchFallbackPill = false,
+  hideLiveStatusPill = false,
 }: OddsComparisonProps) {
   const orderedOdds = useMemo(
     () => sortOddsByStrength(dedupeOddsByBookmakerName(dedupeOddsByBookmaker(odds))),
@@ -245,11 +251,14 @@ export function OddsComparison({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {isLive ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <LiveStatusPill
-            status={liveOddsRealtimeStatus}
-            hasLiveOdds={hasLiveOdds}
-            usingPreMatchFallback={usingPreMatchFallback}
-          />
+          {!hideLiveStatusPill ? (
+            <LiveStatusPill
+              status={liveOddsRealtimeStatus}
+              hasLiveOdds={hasLiveOdds}
+              usingPreMatchFallback={usingPreMatchFallback}
+              hidePreMatchFallbackPill={hidePreMatchFallbackPill}
+            />
+          ) : null}
           {usingPreMatchFallback ? (
             <div
               style={{
