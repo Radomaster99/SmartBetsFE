@@ -423,6 +423,7 @@ function FootballPageClient() {
     state: state === 'All' ? undefined : state,
     season,
     includeLiveOddsSummary: true,
+    fetchAllPages: true,
     pageSize: state === 'Live' ? 100 : 60,
     // Live: sort newest-kickoff first so today's active matches surface above old stuck fixtures.
     direction: state === 'Live' ? ('desc' as const) : undefined,

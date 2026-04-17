@@ -12,4 +12,5 @@ export interface FixtureFilters {
   page?: number;
   pageSize?: number;
   direction?: 'asc' | 'desc';
+  fetchAllPages?: boolean;
 }
