@@ -154,7 +154,6 @@ function OddsButton({
   fixtureId,
   outcomeKey,
   movement,
-  isBest,
   isLoading = false,
   onFallbackClick,
 }: {
@@ -164,7 +163,6 @@ function OddsButton({
   fixtureId: number;
   outcomeKey: 'home' | 'draw' | 'away';
   movement?: LiveOddsMovementDirection;
-  isBest: boolean;
   isLoading?: boolean;
   onFallbackClick: (event: React.MouseEvent) => void;
 }) {
@@ -192,12 +190,8 @@ function OddsButton({
     gap: 2,
     height: 32,
     borderRadius: 6,
-    border: isLoading
-      ? '1px solid rgba(0,230,118,0.2)'
-      : isBest
-        ? '1px solid rgba(0,230,118,0.35)'
-        : '1px solid var(--t-border)',
-    background: isLoading ? 'rgba(0,230,118,0.06)' : isBest ? 'rgba(0,230,118,0.1)' : 'var(--t-surface-2)',
+    border: isLoading ? '1px solid rgba(0,230,118,0.2)' : '1px solid var(--t-border)',
+    background: isLoading ? 'rgba(0,230,118,0.06)' : 'var(--t-surface-2)',
     cursor: value && bookmaker ? 'pointer' : 'default',
     position: 'relative',
     overflow: 'hidden',
@@ -271,7 +265,7 @@ function OddsButton({
         style={{
           fontSize: 12,
           fontWeight: 700,
-          color: isBest ? 'var(--t-accent)' : value ? 'var(--t-text-2)' : 'var(--t-text-6)',
+          color: value ? 'var(--t-text-2)' : 'var(--t-text-6)',
           lineHeight: 1,
         }}
       >
@@ -284,7 +278,7 @@ function OddsButton({
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          color: isBest ? 'rgba(0,230,118,0.7)' : 'var(--t-text-5)',
+          color: 'var(--t-text-5)',
           lineHeight: 1,
           maxWidth: '100%',
           overflow: 'hidden',
@@ -448,10 +442,6 @@ export function FixtureRow({
     prevScoreRef.current = { home: fixture.homeGoals, away: fixture.awayGoals };
   }, [fixture.homeGoals, fixture.awayGoals, fixture.stateBucket]);
 
-  // Highest value among the three = loosest market (gets green highlight)
-  const allOdds = [resolvedHomeOdd, resolvedDrawOdd, resolvedAwayOdd].filter((o): o is number => o !== null);
-  const bestOddValue = allOdds.length > 0 ? Math.max(...allOdds) : null;
-
   const homeWin = hasScore && fixture.homeGoals! > fixture.awayGoals!;
   const awayWin = hasScore && fixture.awayGoals! > fixture.homeGoals!;
 
@@ -586,7 +576,6 @@ export function FixtureRow({
             fixtureId={fixture.apiFixtureId}
             outcomeKey="home"
             movement={oddsMovement?.home}
-            isBest={bestOddValue !== null && resolvedHomeOdd === bestOddValue}
             isLoading={hideFallbackWhilePending && resolvedHomeOdd == null}
             onFallbackClick={handleOpenOdds}
           />
@@ -597,7 +586,6 @@ export function FixtureRow({
             fixtureId={fixture.apiFixtureId}
             outcomeKey="draw"
             movement={oddsMovement?.draw}
-            isBest={bestOddValue !== null && resolvedDrawOdd === bestOddValue}
             isLoading={hideFallbackWhilePending && resolvedDrawOdd == null}
             onFallbackClick={handleOpenOdds}
           />
@@ -608,7 +596,6 @@ export function FixtureRow({
             fixtureId={fixture.apiFixtureId}
             outcomeKey="away"
             movement={oddsMovement?.away}
-            isBest={bestOddValue !== null && resolvedAwayOdd === bestOddValue}
             isLoading={hideFallbackWhilePending && resolvedAwayOdd == null}
             onFallbackClick={handleOpenOdds}
           />
