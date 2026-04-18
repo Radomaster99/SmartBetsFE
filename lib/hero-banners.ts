@@ -24,6 +24,7 @@ export type HeroBannerContentAlign = 'left' | 'center';
 
 export type HeroBannerLayoutConfig = {
   heightPx: number;
+  isVisible: boolean;
 };
 
 export type HeroBannerConfig = {
@@ -227,6 +228,7 @@ export const DEFAULT_HERO_BANNERS: HeroBannerConfig[] = [
 
 export const DEFAULT_HERO_BANNER_LAYOUT: HeroBannerLayoutConfig = {
   heightPx: DEFAULT_HERO_BANNER_HEIGHT_PX,
+  isVisible: true,
 };
 
 function normalizeString(value: unknown, fallback: string): string {
@@ -479,6 +481,7 @@ export function readHeroBannerLayoutConfig(): HeroBannerLayoutConfig {
 
     return {
       heightPx: normalizeHeroBannerHeight(parsed.heightPx, DEFAULT_HERO_BANNER_HEIGHT_PX),
+      isVisible: typeof parsed.isVisible === 'boolean' ? parsed.isVisible : DEFAULT_HERO_BANNER_LAYOUT.isVisible,
     };
   } catch {
     return DEFAULT_HERO_BANNER_LAYOUT;
@@ -492,6 +495,7 @@ export function writeHeroBannerLayoutConfig(config: HeroBannerLayoutConfig) {
 
   window.localStorage.setItem(HERO_BANNER_LAYOUT_STORAGE_KEY, JSON.stringify({
     heightPx: normalizeHeroBannerHeight(config.heightPx, DEFAULT_HERO_BANNER_HEIGHT_PX),
+    isVisible: typeof config.isVisible === 'boolean' ? config.isVisible : DEFAULT_HERO_BANNER_LAYOUT.isVisible,
   }));
   window.dispatchEvent(new CustomEvent(HERO_BANNERS_UPDATED_EVENT));
 }

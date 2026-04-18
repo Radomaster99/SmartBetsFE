@@ -237,6 +237,7 @@ export function serializeHeroBannersDocument(content: HeroBannersContentDocument
     {
       kind: 'layout',
       heightPx: content.layout.heightPx,
+      isVisible: content.layout.isVisible,
     },
     ...content.banners.map((banner) => ({
       kind: 'banner',
@@ -266,6 +267,10 @@ export function deserializeHeroBannersDocument(
   const layoutCandidate = asRecord(layoutRow);
   const layout: HeroBannerLayoutConfig = {
     heightPx: normalizeHeroBannerHeight(layoutCandidate?.heightPx, fallback.layout.heightPx ?? DEFAULT_HERO_BANNER_HEIGHT_PX),
+    isVisible:
+      typeof layoutCandidate?.isVisible === 'boolean'
+        ? layoutCandidate.isVisible
+        : (fallback.layout.isVisible ?? DEFAULT_HERO_BANNER_LAYOUT.isVisible),
   };
 
   const banners = fallback.banners.map((fallbackBanner) => {

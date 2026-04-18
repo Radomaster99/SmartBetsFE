@@ -1509,7 +1509,7 @@ function AdminSyncPageContent() {
     setResult({
       action: 'hero-banner-layout-reset',
       ok: true,
-      message: 'Hero banner height was reset to the default size.',
+      message: 'Hero banner layout was reset to the default settings.',
     });
   }
 
@@ -2459,7 +2459,11 @@ function AdminSyncPageContent() {
         {activeSection === 'hero' ? (
         <AccordionSection
           title="Hero Banners"
-          summary={heroSummary}
+          summary={
+            heroBannerLayout.isVisible
+              ? heroSummary
+              : 'Hero banner strip is hidden site-wide.'
+          }
           badge="3 slots"
           isOpen={openSections.hero}
           onToggle={() => toggleSection('hero')}
@@ -2475,11 +2479,37 @@ function AdminSyncPageContent() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
+                  <div className="flex flex-wrap items-center gap-5">
+                    <label className="flex cursor-pointer select-none items-center gap-2 text-[12px]" style={{ color: 'var(--t-text-3)' }}>
+                      <input
+                        type="checkbox"
+                        checked={heroBannerLayout.isVisible}
+                        onChange={(event) =>
+                          setHeroBannerLayout((current) => ({
+                            ...current,
+                            isVisible: event.target.checked,
+                          }))
+                        }
+                        className="accent-green-400"
+                      />
+                      Show hero banners on site
+                    </label>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                      style={{
+                        background: heroBannerLayout.isVisible ? 'rgba(0,230,118,0.08)' : 'rgba(148,163,184,0.08)',
+                        color: heroBannerLayout.isVisible ? 'var(--t-accent)' : 'var(--t-text-5)',
+                        border: '1px solid var(--t-border)',
+                      }}
+                    >
+                      {heroBannerLayout.isVisible ? 'Visible' : 'Hidden'}
+                    </span>
+                  </div>
                   <div className="text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
                     Hero strip height
                   </div>
                   <div className="mt-1 text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-                    One shared controller for all 3 hero ad tiles. Lower values shrink the strip and the page immediately consumes the freed space.
+                    One shared controller for all 3 hero ad tiles. Lower values shrink the strip, and turning visibility off removes the entire section so the rest of the page moves up immediately.
                   </div>
                 </div>
                 <div className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: 'rgba(0,230,118,0.08)', color: 'var(--t-accent)', border: '1px solid rgba(0,230,118,0.16)' }}>
@@ -2495,12 +2525,13 @@ function AdminSyncPageContent() {
                   step="2"
                   value={heroBannerLayout.heightPx}
                   onChange={(event) =>
-                    setHeroBannerLayout({
+                    setHeroBannerLayout((current) => ({
+                      ...current,
                       heightPx: normalizeHeroBannerHeight(
                         Number(event.target.value),
                         DEFAULT_HERO_BANNER_HEIGHT_PX,
                       ),
-                    })
+                    }))
                   }
                   className="min-w-[220px] flex-1 accent-green-400"
                 />

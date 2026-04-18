@@ -18,13 +18,12 @@ export function PromoStrip() {
     [heroBannersQuery.isError, heroBannersQuery.isSuccess],
   );
 
+  if (!isHydrated || !layout.isVisible) {
+    return null;
+  }
+
   return (
-    <div
-      className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]"
-      style={{
-        visibility: isHydrated ? 'visible' : 'hidden',
-      }}
-    >
+    <div className="grid grid-cols-3 items-stretch gap-1.5 rounded-[10px]">
       {banners.map((banner) => {
         const meta = getBookmakerMeta(banner.bookmaker);
         const href =
