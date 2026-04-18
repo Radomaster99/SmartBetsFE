@@ -847,7 +847,7 @@ function FootballPageClient() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', flex: 1, overflow: 'visible', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
                 <FixtureTable
                   fixtures={fixtures}

@@ -19,6 +19,7 @@ interface Props {
 export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('odds');
   const fixtureIdStr = String(fixtureId);
+  const stickyOffsetPx = 60;
 
   const {
     detail,
@@ -70,6 +71,11 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
       style={{
         width: 380,
         flexShrink: 0,
+        alignSelf: 'flex-start',
+        position: 'sticky',
+        top: stickyOffsetPx,
+        height: `calc(100vh - ${stickyOffsetPx}px)`,
+        maxHeight: `calc(100vh - ${stickyOffsetPx}px)`,
         borderLeft: '1px solid var(--t-border)',
         background: 'var(--t-sidebar-bg)',
         overflow: 'hidden',
