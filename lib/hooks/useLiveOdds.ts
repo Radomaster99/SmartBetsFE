@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   HubConnectionBuilder,
@@ -75,10 +75,15 @@ async function fetchJwtToken(): Promise<JwtTokenResponseDto> {
   return _tokenPromise;
 }
 
-async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
+async function fetchLiveOdds(fixtureId: string, signal?: AbortSignal): Promise<LiveOddsMarketDto[]> {
+  const timeoutSignal = AbortSignal.timeout(5_000);
+  const combined = signal
+    ? AbortSignal.any([signal, timeoutSignal])
+    : timeoutSignal;
+
   const res = await fetch(`/api/fixtures/${fixtureId}/odds/live`, {
     cache: 'no-store',
-    signal: AbortSignal.timeout(15_000),
+    signal: combined,
   });
 
   if (!res.ok) {
@@ -88,7 +93,10 @@ async function fetchLiveOdds(fixtureId: string): Promise<LiveOddsMarketDto[]> {
   return res.json();
 }
 
-async function fetchLiveOddsSummaries(fixtureIds: number[]): Promise<Record<number, LiveOddsSummaryDto>> {
+async function fetchLiveOddsSummaries(fixtureIds: number[], signal?: AbortSignal): Promise<Record<number, LiveOddsSummaryDto>> {
+  const timeoutSignal = AbortSignal.timeout(8_000);
+  const combined = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+
   const res = await fetch('/api/odds/live/summary', {
     method: 'POST',
     cache: 'no-store',
@@ -96,7 +104,7 @@ async function fetchLiveOddsSummaries(fixtureIds: number[]): Promise<Record<numb
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ fixtureIds }),
-    signal: AbortSignal.timeout(15_000),
+    signal: combined,
   });
 
   if (!res.ok) {
@@ -192,12 +200,14 @@ function getSummaryMovements(
 
 function findFixtureSummaryInCache(
   fixtureId: number,
-  cachedQueries: Array<[unknown, PagedResultDto<FixtureDto> | undefined]>,
+  cachedQueries: Array<[unknown, { pages?: { items?: FixtureDto[] }[] } | undefined]>,
 ): LiveOddsSummaryDto | null {
   for (const [, cachedResult] of cachedQueries) {
-    const fixture = cachedResult?.items.find((item) => item.apiFixtureId === fixtureId);
-    if (fixture) {
-      return fixture.liveOddsSummary ?? null;
+    for (const page of cachedResult?.pages ?? []) {
+      const fixture = page.items?.find((item) => item.apiFixtureId === fixtureId);
+      if (fixture) {
+        return fixture.liveOddsSummary ?? null;
+      }
     }
   }
 
@@ -206,12 +216,14 @@ function findFixtureSummaryInCache(
 
 function findFixtureInCache(
   fixtureId: number,
-  cachedQueries: Array<[unknown, PagedResultDto<FixtureDto> | undefined]>,
+  cachedQueries: Array<[unknown, { pages?: { items?: FixtureDto[] }[] } | undefined]>,
 ): FixtureDto | null {
   for (const [, cachedResult] of cachedQueries) {
-    const fixture = cachedResult?.items.find((item) => item.apiFixtureId === fixtureId);
-    if (fixture) {
-      return fixture;
+    for (const page of cachedResult?.pages ?? []) {
+      const fixture = page.items?.find((item) => item.apiFixtureId === fixtureId);
+      if (fixture) {
+        return fixture;
+      }
     }
   }
 
@@ -222,17 +234,17 @@ function isConnectedState(connection: HubConnection): boolean {
   return connection.state === HubConnectionState.Connected || connection.state === HubConnectionState.Connecting;
 }
 
-async function stopConnectionQuietly(connection: HubConnection | null): Promise<void> {
+function stopConnectionQuietly(connection: HubConnection | null): void {
   if (!connection || connection.state === HubConnectionState.Disconnected) {
     return;
   }
 
-  try {
-    await connection.stop();
-  } catch {
-    // The connection can already be closing during route changes/unmounts.
-    // In that case we intentionally suppress the expected cancellation noise.
-  }
+  // Fire-and-forget with a hard 2 s timeout so LongPolling in-flight requests
+  // never block navigation. The browser will abort the underlying XHR when the
+  // page unloads anyway; we just don't want to await it.
+  const stopPromise = connection.stop().catch(() => undefined);
+  const timeoutPromise = new Promise<void>((resolve) => window.setTimeout(resolve, 2_000));
+  void Promise.race([stopPromise, timeoutPromise]);
 }
 
 interface LiveOddsQueryOptions {
@@ -244,7 +256,7 @@ interface LiveOddsQueryOptions {
 export function useLiveOdds(fixtureId: string, enabled = true, options?: LiveOddsQueryOptions) {
   return useQuery({
     queryKey: ['live-odds', fixtureId],
-    queryFn: () => fetchLiveOdds(fixtureId),
+    queryFn: ({ signal }) => fetchLiveOdds(fixtureId, signal),
     staleTime: options?.staleTime ?? 15_000,
     refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
@@ -253,23 +265,31 @@ export function useLiveOdds(fixtureId: string, enabled = true, options?: LiveOdd
 }
 
 export function useVisibleLiveSummaries(fixtureIds: number[], enabled = true, options?: LiveOddsQueryOptions) {
-  const stableFixtureIds = Array.from(
-    new Set(fixtureIds.filter((fixtureId) => Number.isFinite(fixtureId) && fixtureId > 0)),
-  ).sort((left, right) => left - right);
-  const fixtureIdsKey = stableFixtureIds.join(',');
+  const fixtureIdsKey = useMemo(
+    () =>
+      Array.from(new Set(fixtureIds.filter((id) => Number.isFinite(id) && id > 0)))
+        .sort((a, b) => a - b)
+        .join(','),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fixtureIds.join(',')],
+  );
+  const stableFixtureIds = useMemo(
+    () => fixtureIdsKey ? fixtureIdsKey.split(',').map(Number) : [],
+    [fixtureIdsKey],
+  );
 
-  return useQuery({
+  return useQuery<Record<number, LiveOddsSummaryDto>>({
     queryKey: ['visible-live-summaries', fixtureIdsKey],
     enabled: enabled && stableFixtureIds.length > 0,
     staleTime: options?.staleTime ?? 30_000,
     refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     placeholderData: (previousData) => previousData,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        return await fetchLiveOddsSummaries(stableFixtureIds);
+        return await fetchLiveOddsSummaries(stableFixtureIds, signal);
       } catch (error) {
-        if (!(error instanceof Error && error.name === 'TimeoutError')) {
+        if (!(error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) {
           console.warn('[useVisibleLiveSummaries] Failed to fetch live odds summaries:', error);
         }
         return {};
@@ -285,46 +305,64 @@ export function useVisibleLiveOddsByFixture(
   enabled = true,
   options?: LiveOddsQueryOptions,
 ) {
-  const stableFixtures = Array.from(
-    new Map(
-      fixtures
-        .filter((fixture) => Number.isFinite(fixture.apiFixtureId) && fixture.apiFixtureId > 0)
-        .map((fixture) => [fixture.apiFixtureId, fixture]),
-    ).values(),
-  ).sort((left, right) => left.apiFixtureId - right.apiFixtureId);
-
-  const fixtureIdsKey = stableFixtures
-    .map((fixture) => `${fixture.apiFixtureId}:${fixture.homeTeamName}:${fixture.awayTeamName}`)
+  const rawKey = fixtures
+    .filter((f) => Number.isFinite(f.apiFixtureId) && f.apiFixtureId > 0)
+    .map((f) => `${f.apiFixtureId}:${f.homeTeamName}:${f.awayTeamName}`)
     .join('|');
 
-  return useQuery({
+  const stableFixtures = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          fixtures
+            .filter((fixture) => Number.isFinite(fixture.apiFixtureId) && fixture.apiFixtureId > 0)
+            .map((fixture) => [fixture.apiFixtureId, fixture]),
+        ).values(),
+      ).sort((left, right) => left.apiFixtureId - right.apiFixtureId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rawKey],
+  );
+
+  const fixtureIdsKey = useMemo(
+    () => stableFixtures.map((f) => `${f.apiFixtureId}:${f.homeTeamName}:${f.awayTeamName}`).join('|'),
+    [stableFixtures],
+  );
+
+  return useQuery<Record<number, OddDto[]>>({
     queryKey: ['visible-live-odds', fixtureIdsKey],
     enabled: enabled && stableFixtures.length > 0,
     staleTime: options?.staleTime ?? 30_000,
     refetchInterval: enabled ? (options?.refetchInterval ?? false) : false,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
-    placeholderData: (previousData) => previousData,
-    queryFn: async () => {
-      const results = await Promise.all(
-        stableFixtures.map(async (fixture) => {
-          try {
-            const markets = await fetchLiveOdds(String(fixture.apiFixtureId));
-            const odds = mapLiveOddsToMainMatchOdds(markets, {
-              homeTeamName: fixture.homeTeamName,
-              awayTeamName: fixture.awayTeamName,
-            });
-            return [fixture.apiFixtureId, odds] as const;
-          } catch (error) {
-            if (!(error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) {
-              console.warn(
-                `[useVisibleLiveOddsByFixture] Failed to fetch live odds for fixture ${fixture.apiFixtureId}:`,
-                error,
-              );
+    queryFn: async ({ signal }) => {
+      const CONCURRENCY = 8;
+      const results: Array<readonly [number, OddDto[]]> = [];
+
+      for (let i = 0; i < stableFixtures.length; i += CONCURRENCY) {
+        if (signal?.aborted) break;
+        const batch = stableFixtures.slice(i, i + CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map(async (fixture) => {
+            try {
+              const markets = await fetchLiveOdds(String(fixture.apiFixtureId), signal);
+              const odds = mapLiveOddsToMainMatchOdds(markets, {
+                homeTeamName: fixture.homeTeamName,
+                awayTeamName: fixture.awayTeamName,
+              });
+              return [fixture.apiFixtureId, odds] as const;
+            } catch (error) {
+              if (!(error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) {
+                console.warn(
+                  `[useVisibleLiveOddsByFixture] Failed to fetch live odds for fixture ${fixture.apiFixtureId}:`,
+                  error,
+                );
+              }
+              return [fixture.apiFixtureId, [] as OddDto[]] as const;
             }
-            return [fixture.apiFixtureId, [] as OddDto[]] as const;
-          }
-        }),
-      );
+          }),
+        );
+        results.push(...batchResults);
+      }
 
       return Object.fromEntries(results) as Record<number, OddDto[]>;
     },
@@ -403,31 +441,29 @@ function applyFixtureSummaryUpdate(
   setMovements: React.Dispatch<React.SetStateAction<LiveOddsMovementByFixture>>,
   movementTimeoutsRef: React.MutableRefObject<Map<string, number>>,
 ) {
-  const cachedQueries = queryClient.getQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] });
+  const cachedQueries = queryClient.getQueriesData<{ pages?: { items?: FixtureDto[] }[] }>({ queryKey: ['fixtures'] });
   const previousSummary = findFixtureSummaryInCache(fixtureId, cachedQueries);
   const movement = getSummaryMovements(previousSummary, nextSummary);
 
-  queryClient.setQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] }, (current) => {
-    if (!current) {
+  queryClient.setQueriesData<{ pages?: { items?: FixtureDto[] }[]; pageParams?: unknown[] }>({ queryKey: ['fixtures'] }, (current) => {
+    if (!current || !Array.isArray(current.pages)) {
       return current;
     }
 
     let changed = false;
 
-    const items = current.items.map((fixture) => {
-      if (fixture.apiFixtureId !== fixtureId) {
-        return fixture;
-      }
-
-      changed = true;
-      const mergedSummary = mergeLiveSummaryOutcomes(fixture.liveOddsSummary ?? null, nextSummary);
-      return {
-        ...fixture,
-        liveOddsSummary: mergedSummary,
-      };
+    const pages = current.pages.map((page) => {
+      if (!Array.isArray(page.items)) return page;
+      const items = page.items.map((fixture) => {
+        if (fixture.apiFixtureId !== fixtureId) return fixture;
+        changed = true;
+        const mergedSummary = mergeLiveSummaryOutcomes(fixture.liveOddsSummary ?? null, nextSummary);
+        return { ...fixture, liveOddsSummary: mergedSummary };
+      });
+      return changed ? { ...page, items } : page;
     });
 
-    return changed ? { ...current, items } : current;
+    return changed ? { ...current, pages } : current;
   });
 
   if (Object.keys(movement).length === 0) {
@@ -536,7 +572,7 @@ export function useLiveOddsSignalR(fixtureId: string, enabled = true) {
             transport: HttpTransportType.LongPolling,
             withCredentials: false,
           })
-          .withAutomaticReconnect()
+          .withAutomaticReconnect([1000, 2000, 5000, 10000])
           .configureLogging(LogLevel.Error)
           .build();
 
@@ -625,10 +661,18 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
   const movementTimeoutsRef = useRef(new Map<string, number>());
   const [status, setStatus] = useState<LiveOddsRealtimeStatus>(enabled ? 'connecting' : 'idle');
   const [movements, setMovements] = useState<LiveOddsMovementByFixture>({});
-  const stableFixtureIds = Array.from(new Set(fixtureIds.filter((fixtureId) => Number.isFinite(fixtureId) && fixtureId > 0))).sort(
-    (left, right) => left - right,
+  const fixtureIdsKey = useMemo(
+    () =>
+      Array.from(new Set(fixtureIds.filter((id) => Number.isFinite(id) && id > 0)))
+        .sort((a, b) => a - b)
+        .join(','),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fixtureIds.join(',')],
   );
-  const fixtureIdsKey = stableFixtureIds.join(',');
+  const stableFixtureIds = useMemo(
+    () => fixtureIdsKey ? fixtureIdsKey.split(',').map(Number) : [],
+    [fixtureIdsKey],
+  );
 
   useEffect(() => {
     if (!enabled || stableFixtureIds.length === 0) {
@@ -682,7 +726,7 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
             transport: HttpTransportType.LongPolling,
             withCredentials: false,
           })
-          .withAutomaticReconnect()
+          .withAutomaticReconnect([1000, 2000, 5000, 10000])
           .configureLogging(LogLevel.Error)
           .build();
 
@@ -731,7 +775,7 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
             return;
           }
 
-          const cachedQueries = queryClient.getQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] });
+          const cachedQueries = queryClient.getQueriesData<{ pages?: { items?: FixtureDto[] }[] }>({ queryKey: ['fixtures'] });
           const fixture = findFixtureInCache(Number(payload.apiFixtureId), cachedQueries);
           const nextSummary = mapMarketsToSummary(payload.markets ?? [], {
             homeTeamName: fixture?.homeTeamName,

@@ -49,8 +49,8 @@ export function useAdminSession(enabled = true) {
     queryKey: ADMIN_SESSION_QUERY_KEY,
     queryFn: fetchAdminSession,
     enabled,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 60_000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     retry: false,
   });

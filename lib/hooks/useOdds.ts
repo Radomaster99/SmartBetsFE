@@ -23,6 +23,7 @@ export async function fetchBestOdds(fixtureId: string, marketName?: string): Pro
 export async function fetchBestOddsBatch(
   fixtureIds: number[],
   marketName?: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, BestOddsDto | null>> {
   if (fixtureIds.length === 0) {
     return {};
@@ -34,6 +35,7 @@ export async function fetchBestOddsBatch(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ fixtureIds, marketName }),
+    signal,
   });
 
   if (!res.ok) {

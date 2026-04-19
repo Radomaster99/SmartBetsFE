@@ -7,30 +7,7 @@ interface BatchRequestBody {
   marketName?: string;
 }
 
-const CHUNK_SIZE = 8;
-
-async function fetchBestOddsChunk(
-  fixtureIds: number[],
-  marketName?: string,
-): Promise<Record<string, BestOddsDto | null>> {
-  const entries = await Promise.all(
-    fixtureIds.map(async (fixtureId) => {
-      try {
-        const data = await getFixtureBestOdds(fixtureId, marketName);
-        return [String(fixtureId), data] as const;
-      } catch (error) {
-        const message = String(error);
-        if (message.includes('404')) {
-          return [String(fixtureId), null] as const;
-        }
-
-        return [String(fixtureId), null] as const;
-      }
-    }),
-  );
-
-  return Object.fromEntries(entries);
-}
+const CONCURRENCY = 20;
 
 export async function POST(req: NextRequest) {
   let body: BatchRequestBody;
@@ -56,10 +33,20 @@ export async function POST(req: NextRequest) {
   const marketName = typeof body.marketName === 'string' && body.marketName.trim() ? body.marketName.trim() : undefined;
   const items: Record<string, BestOddsDto | null> = {};
 
-  for (let index = 0; index < fixtureIds.length; index += CHUNK_SIZE) {
-    const chunk = fixtureIds.slice(index, index + CHUNK_SIZE);
-    const chunkResults = await fetchBestOddsChunk(chunk, marketName);
-    Object.assign(items, chunkResults);
+  // Process in parallel batches to stay within backend concurrency limits
+  for (let i = 0; i < fixtureIds.length; i += CONCURRENCY) {
+    const batch = fixtureIds.slice(i, i + CONCURRENCY);
+    const entries = await Promise.all(
+      batch.map(async (fixtureId) => {
+        try {
+          const data = await getFixtureBestOdds(fixtureId, marketName);
+          return [String(fixtureId), data] as const;
+        } catch {
+          return [String(fixtureId), null] as const;
+        }
+      }),
+    );
+    for (const [k, v] of entries) items[k] = v;
   }
 
   return NextResponse.json({ items });

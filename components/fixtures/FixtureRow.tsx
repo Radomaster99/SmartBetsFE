@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { BestOddsDto, FixtureDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
 import { TeamLogo } from '@/components/shared/TeamLogo';
@@ -113,7 +113,7 @@ function StatusCell({ fixture }: { fixture: FixtureDto }) {
   );
 }
 
-function OddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
+function OddsLoadingSnake({ radius }: { fill: string; radius: number }) {
   return (
     <span
       aria-hidden="true"
@@ -123,27 +123,10 @@ function OddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
         borderRadius: radius,
         overflow: 'hidden',
         pointerEvents: 'none',
+        background: 'rgba(148,163,184,0.13)',
+        animation: 'skeleton-pulse 1.4s ease-in-out infinite',
       }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          inset: -1,
-          borderRadius: radius + 1,
-          background:
-            'conic-gradient(from 0deg, rgba(0,230,118,0) 0deg, rgba(0,230,118,0) 250deg, rgba(0,230,118,0.14) 288deg, rgba(0,230,118,0.98) 324deg, rgba(0,230,118,0) 360deg)',
-          animation: 'odds-loading-spin 1.05s linear infinite',
-        }}
-      />
-      <span
-        style={{
-          position: 'absolute',
-          inset: 1,
-          borderRadius: Math.max(radius - 1, 0),
-          background: fill,
-        }}
-      />
-    </span>
+    />
   );
 }
 
@@ -190,8 +173,8 @@ function OddsButton({
     gap: 2,
     height: 32,
     borderRadius: 6,
-    border: isLoading ? '1px solid rgba(0,230,118,0.2)' : '1px solid var(--t-border)',
-    background: isLoading ? 'rgba(0,230,118,0.06)' : 'var(--t-surface-2)',
+    border: '1px solid var(--t-border)',
+    background: 'var(--t-surface-2)',
     cursor: value && bookmaker ? 'pointer' : 'default',
     position: 'relative',
     overflow: 'hidden',
@@ -326,7 +309,7 @@ function OddsButton({
   );
 }
 
-export function FixtureRow({
+export const FixtureRow = memo(function FixtureRow({
   fixture,
   bestOddsFallback,
   liveOddsRows = [],
@@ -628,4 +611,4 @@ export function FixtureRow({
       </td>
     </tr>
   );
-}
+});

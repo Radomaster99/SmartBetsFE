@@ -125,7 +125,7 @@ export function useAdminBonusCodesContent() {
         localFallback.entries.length > 0 ? localFallback : EMPTY_BONUS_CODES_PAGE_CONFIG;
       return deserializeBonusCodesDocument(await fetchContentArray('/api/admin/content/bonus-codes'), safeFallback);
     },
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -147,7 +147,7 @@ export function useAdminHeroBannersContent() {
 
       return deserializeHeroBannersDocument(await fetchContentArray('/api/admin/content/hero-banners'), localFallback);
     },
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -159,7 +159,7 @@ export function useAdminSideAdsContent() {
       const localFallback = typeof window !== 'undefined' ? readSideAdsConfig() : EMPTY_SIDE_ADS_CONFIG;
       return deserializeSideAdsDocument(await fetchContentArray('/api/admin/content/side-ads'), localFallback);
     },
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -178,7 +178,7 @@ export function useAdminPopularLeaguesContent() {
         localFallback,
       );
     },
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
   });
 }

@@ -108,6 +108,9 @@ interface Props {
   selectedFixtureId?: number;
   onRowClick?: (fixture: FixtureDto) => void;
   onVisibleLiveFixtureIdsChange?: (fixtureIds: number[]) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 function needsBestOddsFallback(fixture: FixtureDto): boolean {
@@ -548,6 +551,9 @@ export function FixtureTable({
   selectedFixtureId,
   onRowClick,
   onVisibleLiveFixtureIdsChange,
+  onLoadMore,
+  hasMore = false,
+  isLoadingMore = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const callbackRef = useRef<Props['onVisibleLiveFixtureIdsChange']>(onVisibleLiveFixtureIdsChange);
@@ -557,11 +563,12 @@ export function FixtureTable({
     () => fixtures.filter(needsBestOddsFallback).map((fixture) => fixture.apiFixtureId),
     [fixtures],
   );
+  const fallbackFixtureIdsKey = useMemo(() => fallbackFixtureIds.join(','), [fallbackFixtureIds]);
 
   const { data: bestOddsBatch = {} } = useQuery({
-    queryKey: ['best-odds-batch', fallbackFixtureIds],
-    queryFn: () => fetchBestOddsBatch(fallbackFixtureIds),
-    staleTime: 60_000,
+    queryKey: ['best-odds-batch', fallbackFixtureIdsKey],
+    queryFn: ({ signal }) => fetchBestOddsBatch(fallbackFixtureIds, undefined, signal),
+    staleTime: 5 * 60_000,
     enabled: fallbackFixtureIds.length > 0,
     placeholderData: (previousData) => previousData,
     refetchOnWindowFocus: false,
@@ -588,6 +595,16 @@ export function FixtureTable({
     [fixtures],
   );
 
+  // Pre-compute per-league metrics so the sort comparator doesn't call getLeagueOddsMetrics
+  // inside the comparator (which runs O(n log n) times). Keyed by leagueApiId.
+  const leagueMetrics = useMemo(() => {
+    const map = new Map<number, { liveCount: number; prematchCount: number; noOddsCount: number }>();
+    for (const [, league] of Object.entries(byLeague)) {
+      map.set(league.leagueApiId, getLeagueOddsMetrics(league.items, bestOddsMap));
+    }
+    return map;
+  }, [byLeague, bestOddsMap]);
+
   const sortedLeagueEntries = useMemo(() => {
     const entries = Object.entries(byLeague);
     return entries.sort(([, a], [, b]) => {
@@ -602,8 +619,8 @@ export function FixtureTable({
       }
 
       if (viewState === 'Upcoming' || viewState === 'Live') {
-        const aMetrics = getLeagueOddsMetrics(a.items, bestOddsMap);
-        const bMetrics = getLeagueOddsMetrics(b.items, bestOddsMap);
+        const aMetrics = leagueMetrics.get(a.leagueApiId) ?? { liveCount: 0, prematchCount: 0, noOddsCount: 0 };
+        const bMetrics = leagueMetrics.get(b.leagueApiId) ?? { liveCount: 0, prematchCount: 0, noOddsCount: 0 };
 
         const aAvailabilityRank =
           viewState === 'Live'
@@ -645,7 +662,7 @@ export function FixtureTable({
 
       return a.name.localeCompare(b.name);
     });
-  }, [bestOddsMap, byLeague, popularLeagueOrder, viewState]);
+  }, [leagueMetrics, byLeague, popularLeagueOrder, viewState]);
 
   useEffect(() => {
     callbackRef.current = onVisibleLiveFixtureIdsChange;
@@ -845,6 +862,32 @@ export function FixtureTable({
           </div>
         );
       })}
+
+      {hasMore && (
+        <div
+          ref={(node) => {
+            if (!node) return;
+            const observer = new IntersectionObserver(
+              (entries) => {
+                if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) {
+                  onLoadMore?.();
+                }
+              },
+              { rootMargin: '200px' },
+            );
+            observer.observe(node);
+          }}
+          style={{ height: 1 }}
+          aria-hidden="true"
+        />
+      )}
+      {isLoadingMore && (
+        <div className="flex justify-center py-4">
+          <span className="text-[12px]" style={{ color: 'var(--t-text-5)' }}>
+            Loading more fixtures…
+          </span>
+        </div>
+      )}
     </div>
   );
 }

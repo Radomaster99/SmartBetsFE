@@ -347,29 +347,24 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
       return;
     }
 
-    queryClient.setQueriesData<PagedResultDto<FixtureDto>>({ queryKey: ['fixtures'] }, (current) => {
-      if (!current) {
+    queryClient.setQueriesData<{ pages?: { items?: FixtureDto[] }[]; pageParams?: unknown[] }>({ queryKey: ['fixtures'] }, (current) => {
+      if (!current || !Array.isArray(current.pages)) {
         return current;
       }
 
       let changed = false;
-      const items = current.items.map((fixture) => {
-        if (fixture.apiFixtureId !== detail.fixture.apiFixtureId) {
-          return fixture;
-        }
-
-        if (areLiveSummariesEqual(fixture.liveOddsSummary, derivedLiveSummary)) {
-          return fixture;
-        }
-
-        changed = true;
-        return {
-          ...fixture,
-          liveOddsSummary: derivedLiveSummary,
-        };
+      const pages = current.pages.map((page) => {
+        if (!Array.isArray(page.items)) return page;
+        const items = page.items.map((fixture) => {
+          if (fixture.apiFixtureId !== detail.fixture.apiFixtureId) return fixture;
+          if (areLiveSummariesEqual(fixture.liveOddsSummary, derivedLiveSummary)) return fixture;
+          changed = true;
+          return { ...fixture, liveOddsSummary: derivedLiveSummary };
+        });
+        return changed ? { ...page, items } : page;
       });
 
-      return changed ? { ...current, items } : current;
+      return changed ? { ...current, pages } : current;
     });
 
     queryClient.setQueryData<FixtureDetailDto | undefined>(['fixture', fixtureId], (current) => {

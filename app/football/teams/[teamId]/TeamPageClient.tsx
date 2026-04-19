@@ -9,7 +9,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import { useTeam } from '@/lib/hooks/useTeams';
-import { useFixtures } from '@/lib/hooks/useFixtures';
+import { useFixtures, flattenFixturePages } from '@/lib/hooks/useFixtures';
 import { useLeagues } from '@/lib/hooks/useLeagues';
 import { buildStandingsPath } from '@/lib/league-links';
 import type { TeamDto } from '@/lib/types/api';
@@ -553,7 +553,7 @@ export function TeamPageClient({
           </section>
 
           <div className="flex flex-col gap-5">
-            {liveFixturesQuery.isLoading || (liveFixturesQuery.data?.items?.length ?? 0) > 0 ? (
+            {liveFixturesQuery.isLoading || flattenFixturePages(liveFixturesQuery.data).length > 0 ? (
               <TeamFixturesList
                 title="Live now"
                 description={
@@ -561,7 +561,7 @@ export function TeamPageClient({
                     ? `${team.name} currently has a live match in ${selectedLeague.name}.`
                     : `${team.name} currently has a live match.`
                 }
-                fixtures={liveFixturesQuery.data?.items ?? []}
+                fixtures={flattenFixturePages(liveFixturesQuery.data)}
                 teamApiId={team.apiTeamId}
                 emptyTitle="No live matches right now"
                 emptyDescription="There is no active live fixture for this team in the selected context."
@@ -576,7 +576,7 @@ export function TeamPageClient({
                   ? `Most recent results for ${team.name} in ${selectedLeague.name}.`
                   : `Most recent results for ${team.name}.`
               }
-              fixtures={recentFixturesQuery.data?.items ?? []}
+              fixtures={flattenFixturePages(recentFixturesQuery.data)}
               teamApiId={team.apiTeamId}
               emptyTitle="No finished matches yet"
               emptyDescription="There are no finished fixtures for this team in the selected context."
@@ -590,7 +590,7 @@ export function TeamPageClient({
                   ? `Upcoming fixtures for ${team.name} in ${selectedLeague.name}.`
                   : `Upcoming fixtures for ${team.name}.`
               }
-              fixtures={upcomingFixturesQuery.data?.items ?? []}
+              fixtures={flattenFixturePages(upcomingFixturesQuery.data)}
               teamApiId={team.apiTeamId}
               emptyTitle="No upcoming matches yet"
               emptyDescription="There are no upcoming fixtures for this team in the selected context."
