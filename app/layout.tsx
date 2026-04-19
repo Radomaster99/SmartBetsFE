@@ -28,6 +28,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     process.env.NEXT_PUBLIC_API_SPORTS_WIDGET_KEY ??
     process.env.API_SPORTS_WIDGET_KEY ??
     '';
+  const widgetFootballUrl =
+    process.env.NEXT_PUBLIC_WIDGET_FOOTBALL_URL ??
+    process.env.WIDGET_FOOTBALL_URL ??
+    '';
+  const widgetMediaUrl =
+    process.env.NEXT_PUBLIC_WIDGET_MEDIA_URL ??
+    process.env.WIDGET_MEDIA_URL ??
+    '';
 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
@@ -39,7 +47,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ background: 'var(--t-page-bg)', color: 'var(--t-text-2)', margin: 0, padding: 0 }} suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
-            <WidgetsProvider widgetKey={widgetKey}>
+            <WidgetsProvider
+              widgetKey={widgetKey}
+              widgetFootballUrl={widgetFootballUrl}
+              widgetMediaUrl={widgetMediaUrl}
+            >
               <AppShell>{children}</AppShell>
             </WidgetsProvider>
           </ThemeProvider>

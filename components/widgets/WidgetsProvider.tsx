@@ -15,6 +15,8 @@ import {
 interface Props {
   children: ReactNode;
   widgetKey: string;
+  widgetFootballUrl: string;
+  widgetMediaUrl: string;
 }
 
 function getInitialScriptStatus(): WidgetScriptStatus {
@@ -29,9 +31,12 @@ function getInitialScriptStatus(): WidgetScriptStatus {
   return window.__smartbetsWidgetsScriptStatus ?? 'loading';
 }
 
-export function WidgetsProvider({ children, widgetKey }: Props) {
+export function WidgetsProvider({ children, widgetKey, widgetFootballUrl, widgetMediaUrl }: Props) {
   const [scriptStatus, setScriptStatus] = useState<WidgetScriptStatus>(getInitialScriptStatus);
-  const hasWidgetKey = widgetKey.trim().length > 0;
+  const hasWidgetConfig =
+    widgetKey.trim().length > 0 ||
+    widgetFootballUrl.trim().length > 0 ||
+    widgetMediaUrl.trim().length > 0;
 
   useEffect(() => {
     if (customElements.get('api-sports-widget')) {
@@ -61,10 +66,11 @@ export function WidgetsProvider({ children, widgetKey }: Props) {
   const value = useMemo(
     () => ({
       widgetKey,
-      hasWidgetKey,
+      widgetFootballUrl,
+      hasWidgetConfig,
       scriptStatus,
     }),
-    [hasWidgetKey, scriptStatus, widgetKey],
+    [hasWidgetConfig, scriptStatus, widgetFootballUrl, widgetKey],
   );
 
   return (
@@ -83,7 +89,11 @@ export function WidgetsProvider({ children, widgetKey }: Props) {
           window.dispatchEvent(new Event(WIDGETS_ERROR_EVENT));
         }}
       />
-      <WidgetConfig widgetKey={widgetKey} />
+      <WidgetConfig
+        widgetKey={widgetKey}
+        widgetFootballUrl={widgetFootballUrl}
+        widgetMediaUrl={widgetMediaUrl}
+      />
       {children}
     </WidgetsContext.Provider>
   );

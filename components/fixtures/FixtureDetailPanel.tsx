@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
-import { useFixtureCorners } from '@/lib/hooks/useFixtureCorners';
+import { usePageVisibility } from '@/lib/hooks/usePageVisibility';
+import { useLiveStatsRefresh } from '@/lib/hooks/useLiveStatsRefresh';
 import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
 import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
@@ -20,6 +21,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('odds');
   const fixtureIdStr = String(fixtureId);
   const stickyOffsetPx = 60;
+  const isPageVisible = usePageVisibility();
 
   const {
     detail,
@@ -38,26 +40,26 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
     oddsTableMovements,
   } = useFixtureOddsData(fixtureIdStr, activeTab === 'odds');
 
-  const cornersQuery = useFixtureCorners(fixtureIdStr, {
-    enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
-  });
   const statisticsQuery = useFixtureStatistics(fixtureIdStr, {
     enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
+    refetchInterval: detail && isLive && isPageVisible ? 30_000 : false,
+  });
+  useLiveStatsRefresh({
+    enabled: Boolean(detail),
+    isLive,
+    isPageVisible,
+    refetch: statisticsQuery.refetch,
   });
 
-  const cornersSummary = cornersQuery.data;
   const quickStatsSummary = useMemo(
     () =>
       detail
         ? extractFixtureQuickStatsSummary(
             statisticsQuery.data,
             detail.fixture,
-            cornersSummary,
           )
         : null,
-    [cornersSummary, detail, statisticsQuery.data],
+    [detail, statisticsQuery.data],
   );
 
   const tabs: { id: PanelTab; label: string }[] = [
@@ -253,7 +255,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
                 <ApiSportsWidget
                   type="game"
                   gameId={detail.fixture.apiFixtureId}
-                  refresh={isLive ? 120 : undefined}
+                  refresh={isLive ? 150 : undefined}
                   compactPlayerDetails
                 />
               </div>

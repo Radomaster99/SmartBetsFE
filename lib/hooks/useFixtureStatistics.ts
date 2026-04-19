@@ -27,5 +27,6 @@ export function useFixtureStatistics(
     enabled: (options?.enabled ?? true) && !!fixtureId,
     refetchInterval: options?.refetchInterval ?? false,
     refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 }

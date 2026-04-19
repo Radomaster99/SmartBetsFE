@@ -12,6 +12,8 @@ NEXT_PUBLIC_API_BASE_URL=https://api.oddsdetector.com
 API_KEY=your-backend-api-key
 NEXT_PUBLIC_DEFAULT_SEASON=2026
 NEXT_PUBLIC_WIDGET_KEY=your-api-sports-widget-key
+NEXT_PUBLIC_WIDGET_FOOTBALL_URL=https://oddsdetector-widgets.b-cdn.net/
+NEXT_PUBLIC_WIDGET_MEDIA_URL=https://oddsdetector-widgets-media.b-cdn.net/
 ADMIN_AUTH_COOKIE_NAME=oddsdetector_admin
 ```
 
@@ -19,7 +21,9 @@ Notes:
 - `SMARTBETS_API_BASE_URL` is a legacy variable name. Keep it exactly as-is until a future env cleanup pass.
 - `NEXT_PUBLIC_API_BASE_URL` must be set for browser-side SignalR and live widget flows.
 - `API_KEY` is server-only. It is used by Next.js route handlers and must not be exposed in public client code.
-- `NEXT_PUBLIC_WIDGET_KEY` powers API-Sports widgets.
+- `NEXT_PUBLIC_WIDGET_KEY` powers API-Sports widgets in the direct mode fallback.
+- `NEXT_PUBLIC_WIDGET_FOOTBALL_URL` points football widget data requests to the BunnyCDN pull zone. When this is set, the frontend intentionally leaves `data-key` blank in page source for football widget config.
+- `NEXT_PUBLIC_WIDGET_MEDIA_URL` points widget logo/media requests to the BunnyCDN media pull zone.
 - `ADMIN_AUTH_COOKIE_NAME` must match the backend cookie name exactly.
 
 ## 2. Matching Backend Settings

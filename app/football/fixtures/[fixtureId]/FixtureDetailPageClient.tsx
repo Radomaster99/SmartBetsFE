@@ -3,7 +3,8 @@ import { Suspense, use, useEffect, useMemo, useState, type ReactNode } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FixtureDetailError, useFixtureDetail } from '@/lib/hooks/useFixtureDetail';
-import { useFixtureCorners } from '@/lib/hooks/useFixtureCorners';
+import { usePageVisibility } from '@/lib/hooks/usePageVisibility';
+import { useLiveStatsRefresh } from '@/lib/hooks/useLiveStatsRefresh';
 import { useFixtureOddsData } from '@/lib/hooks/useFixtureOddsData';
 import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
 import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
@@ -54,6 +55,7 @@ function FixtureDetailPageInner({ params }: Props) {
   const requestedTab = searchParams.get('tab');
   const initialTab = resolveInitialTab(requestedTab);
   const [tab, setTab] = useState<Tab>(initialTab);
+  const isPageVisible = usePageVisibility();
 
   const {
     detail,
@@ -74,13 +76,15 @@ function FixtureDetailPageInner({ params }: Props) {
   } = useFixtureOddsData(fixtureId, tab === 'odds');
 
   const { refetch } = useFixtureDetail(fixtureId);
-  const cornersQuery = useFixtureCorners(fixtureId, {
-    enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
-  });
   const statisticsQuery = useFixtureStatistics(fixtureId, {
     enabled: Boolean(detail),
-    refetchInterval: isLive ? 60_000 : false,
+    refetchInterval: detail && isLive && isPageVisible ? 30_000 : false,
+  });
+  useLiveStatsRefresh({
+    enabled: Boolean(detail),
+    isLive,
+    isPageVisible,
+    refetch: statisticsQuery.refetch,
   });
 
   const resolvedRequestedTab = useMemo(
@@ -93,10 +97,9 @@ function FixtureDetailPageInner({ params }: Props) {
         ? extractFixtureQuickStatsSummary(
             statisticsQuery.data,
             detail.fixture,
-            cornersQuery.data,
           )
         : null,
-    [cornersQuery.data, detail, statisticsQuery.data],
+    [detail, statisticsQuery.data],
   );
 
   useEffect(() => {
@@ -285,7 +288,7 @@ function FixtureDetailPageInner({ params }: Props) {
             <ApiSportsWidget
               type="game"
               gameId={detail.fixture.apiFixtureId}
-              refresh={isLive ? 120 : undefined}
+              refresh={isLive ? 150 : undefined}
             />
           </WidgetCard>
         )}

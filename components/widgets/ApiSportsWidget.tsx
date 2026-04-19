@@ -52,7 +52,7 @@ export function ApiSportsWidget({
   date,
   className,
 }: Props) {
-  const { hasWidgetKey, scriptStatus } = useWidgets();
+  const { hasWidgetConfig, scriptStatus } = useWidgets();
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const wrapperClassName = [
@@ -74,7 +74,7 @@ export function ApiSportsWidget({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    if (!hasWidgetKey) {
+    if (!hasWidgetConfig) {
       setStatus('error');
       container.innerHTML = '';
       return;
@@ -298,12 +298,12 @@ export function ApiSportsWidget({
     date,
     shouldCompactGamePlayers,
     isLeaguesWidget,
-    hasWidgetKey,
+    hasWidgetConfig,
     scriptStatus,
   ]);
 
-  const errorCopy = !hasWidgetKey
-    ? 'Widget key is missing.'
+  const errorCopy = !hasWidgetConfig
+    ? 'Widget configuration is missing.'
     : scriptStatus === 'error'
       ? 'Widget script failed to load.'
       : 'Widget failed to initialize.';

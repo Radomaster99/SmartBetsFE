@@ -26,12 +26,16 @@ NEXT_PUBLIC_API_BASE_URL=https://api.oddsdetector.com
 API_KEY=your-backend-api-key
 NEXT_PUBLIC_DEFAULT_SEASON=2026
 NEXT_PUBLIC_WIDGET_KEY=your-api-sports-widget-key
+NEXT_PUBLIC_WIDGET_FOOTBALL_URL=https://oddsdetector-widgets.b-cdn.net/
+NEXT_PUBLIC_WIDGET_MEDIA_URL=https://oddsdetector-widgets-media.b-cdn.net/
 ADMIN_AUTH_COOKIE_NAME=oddsdetector_admin
 ```
 
 Important:
 - `SMARTBETS_API_BASE_URL` is still the real server-side env key. The name is legacy, but the code still uses it.
 - `NEXT_PUBLIC_API_BASE_URL` is required for browser-side live SignalR and direct public backend calls.
+- `NEXT_PUBLIC_WIDGET_FOOTBALL_URL` is the preferred production path for football widgets when BunnyCDN sits in front of API-Sports.
+- `NEXT_PUBLIC_WIDGET_MEDIA_URL` is the preferred production path for widget logos and other API-Sports media assets when BunnyCDN sits in front of `media.api-sports.io`.
 - `ADMIN_AUTH_COOKIE_NAME` must match the backend `AdminAuth__CookieName`.
 
 ## Production Notes
