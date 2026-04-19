@@ -32,6 +32,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
     usingPreMatchFallback,
     hasLiveOdds,
     shouldUseLiveBookmakerView,
+    isLiveOddsPending,
     liveOddsRealtimeStatus,
     bestOddsMovements,
     oddsTableMovements,
@@ -202,9 +203,20 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {activeTab === 'odds' ? (
           <div style={{ padding: 12 }}>
-            {isLoading ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--t-text-5)', fontSize: 12 }}>
-                Loading odds...
+            {isLoading || isLiveOddsPending ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 44,
+                      borderRadius: 8,
+                      background: 'var(--t-surface-2)',
+                      animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+                      animationDelay: `${i * 0.08}s`,
+                    }}
+                  />
+                ))}
               </div>
             ) : hasAnyOdds && detail ? (
               <OddsComparison

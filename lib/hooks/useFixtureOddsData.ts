@@ -156,6 +156,7 @@ export interface FixtureOddsData {
   hasPerMarketLiveOdds: boolean;
   shouldUseLiveBookmakerView: boolean;
   isLiveBookmakerRowsPending: boolean;
+  isLiveOddsPending: boolean;
   liveOddsRealtimeStatus: LiveOddsRealtimeStatus;
   bestOddsMovements: Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>;
   oddsTableMovements: Record<string, Partial<Record<'home' | 'draw' | 'away', LiveOddsMovementDirection>>>;
@@ -307,9 +308,10 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
   const hasPreMatchFallback = Boolean((odds?.length ?? 0) > 0 || detail?.bestOdds || liveSummarySource === 'prematch');
   const shouldUseLiveBookmakerView = Boolean(isLive && hasPerMarketLiveOdds);
   const isLiveBookmakerRowsPending = Boolean(isLive && liveSummarySource === 'live' && !hasPerMarketLiveOdds);
+  // Hold off showing pre-match fallback while the live odds request is in-flight,
+  // whether or not we have a cached summary — prevents the flash of pre-match odds.
   const shouldHoldForLiveRows = Boolean(
     isLive &&
-      liveSummarySource === 'live' &&
       !hasPerMarketLiveOdds &&
       (liveOddsQuery.isLoading || liveOddsQuery.isFetching),
   );
@@ -566,6 +568,7 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
     hasPerMarketLiveOdds,
     shouldUseLiveBookmakerView,
     isLiveBookmakerRowsPending,
+    isLiveOddsPending: shouldHoldForLiveRows,
     liveOddsRealtimeStatus,
     bestOddsMovements,
     oddsTableMovements,

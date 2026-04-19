@@ -67,6 +67,7 @@ function FixtureDetailPageInner({ params }: Props) {
     usingPreMatchFallback,
     hasLiveOdds,
     shouldUseLiveBookmakerView,
+    isLiveOddsPending,
     liveOddsRealtimeStatus,
     bestOddsMovements,
     oddsTableMovements,
@@ -300,7 +301,22 @@ function FixtureDetailPageInner({ params }: Props) {
         )}
 
         {tab === 'odds' &&
-          (hasAnyOdds ? (
+          (isLiveOddsPending ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 16px' }}>
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 44,
+                    borderRadius: 8,
+                    background: 'var(--t-surface-2)',
+                    animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+                    animationDelay: `${i * 0.08}s`,
+                  }}
+                />
+              ))}
+            </div>
+          ) : hasAnyOdds ? (
             <OddsComparison
               bestOdds={resolvedBestOdds ?? null}
               odds={displayOdds}
