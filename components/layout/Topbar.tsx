@@ -38,6 +38,7 @@ export function Topbar() {
         position: 'sticky',
         top: 0,
         height: '52px',
+        paddingRight: 'calc(20px + env(safe-area-inset-right))',
         background: 'var(--t-topbar-bg)',
         borderBottom: '1px solid var(--t-border)',
         boxShadow: '0 1px 0 rgba(0, 230, 118, 0.07)',
@@ -111,6 +112,7 @@ export function Topbar() {
               : '0 2px 12px rgba(251,191,36,0.15)',
             whiteSpace: 'nowrap',
             flexShrink: 0,
+            marginRight: '4px',
           }}
           aria-label="Open bonus codes page"
         >
