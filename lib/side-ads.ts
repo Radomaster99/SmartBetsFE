@@ -1,8 +1,10 @@
 export const SIDE_ADS_STORAGE_KEY = 'smartbets:side-ads';
 export const SIDE_ADS_UPDATED_EVENT = 'smartbets:side-ads-updated';
-export const DESKTOP_SIDE_AD_WIDTH_PX = 248;
-export const DESKTOP_SIDE_AD_MIN_WIDTH_PX = 132;
-export const DESKTOP_SIDE_AD_WIDTH_CSS = `clamp(${DESKTOP_SIDE_AD_MIN_WIDTH_PX}px, 14vw, ${DESKTOP_SIDE_AD_WIDTH_PX}px)`;
+export const DESKTOP_SIDE_AD_WIDTH_PX = 208;
+export const DESKTOP_SIDE_AD_MIN_WIDTH_PX = 88;
+export const DESKTOP_SIDE_AD_WIDTH_CSS = `clamp(${DESKTOP_SIDE_AD_MIN_WIDTH_PX}px, 9vw, ${DESKTOP_SIDE_AD_WIDTH_PX}px)`;
+export const DESKTOP_SIDE_AD_SHOW_MIN_WIDTH_PX = 1360;
+export const DESKTOP_SIDE_AD_SHOW_MIN_HEIGHT_PX = 820;
 export const DESKTOP_SIDE_AD_HEIGHT_RATIO = 2.2;
 export const DEFAULT_SIDE_AD_FOCUS_PERCENT = 50;
 export const DEFAULT_SIDE_AD_ZOOM = 1;

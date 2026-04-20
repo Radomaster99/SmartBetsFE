@@ -246,7 +246,7 @@ function FixtureDetailPageInner({ params }: Props) {
           <button
             type="button"
             onClick={handleBackToMatches}
-            className="inline-flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors bg-transparent border-0 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-md border border-transparent px-2.5 py-1.5 text-[12px] font-medium transition-colors bg-transparent cursor-pointer hover:bg-white/[0.04] hover:border-white/[0.08]"
             style={{ color: 'var(--t-text-3)' }}
           >
             <span aria-hidden="true" style={{ fontSize: '13px', lineHeight: 1 }}>
@@ -257,7 +257,7 @@ function FixtureDetailPageInner({ params }: Props) {
 
           <Link
             href={leagueHref}
-            className="inline-flex items-center rounded-md px-2.5 py-1.5 text-[11px] font-medium"
+            className="inline-flex items-center rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors hover:bg-white/[0.04] hover:border-white/[0.1]"
             style={{
               color: 'var(--t-text-4)',
               textDecoration: 'none',

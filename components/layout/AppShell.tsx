@@ -14,6 +14,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
   DESKTOP_SIDE_AD_WIDTH_CSS,
+  DESKTOP_SIDE_AD_SHOW_MIN_HEIGHT_PX,
+  DESKTOP_SIDE_AD_SHOW_MIN_WIDTH_PX,
   EMPTY_SIDE_ADS_CONFIG,
   type SideAdSlotConfig,
 } from '@/lib/side-ads';
@@ -40,6 +42,7 @@ function shouldOpenExternallyInNewTab(anchor: HTMLAnchorElement): boolean {
 export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOverlay, setMobileOverlay] = useState<MobileOverlay>('none');
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [canShowDesktopSideAds, setCanShowDesktopSideAds] = useState(false);
   const sideAdsQuery = useSideAdsContent();
   const sideAdsConfig = sideAdsQuery.data ?? EMPTY_SIDE_ADS_CONFIG;
   const { entries: favoriteEntries, removeFixture } = useFixtureWatchlist();
@@ -47,6 +50,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
     const apply = () => setIsMobileViewport(media.matches);
+
+    apply();
+    media.addEventListener('change', apply);
+
+    return () => {
+      media.removeEventListener('change', apply);
+    };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia(
+      `(min-width: ${DESKTOP_SIDE_AD_SHOW_MIN_WIDTH_PX}px) and (min-height: ${DESKTOP_SIDE_AD_SHOW_MIN_HEIGHT_PX}px)`,
+    );
+    const apply = () => setCanShowDesktopSideAds(media.matches);
 
     apply();
     media.addEventListener('change', apply);
@@ -116,10 +133,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const shellGutter = isMobileViewport ? '5px' : DESKTOP_SIDE_AD_WIDTH_CSS;
+  const shouldRenderDesktopSideAds = !isMobileViewport && canShowDesktopSideAds;
+  const shellGutter = shouldRenderDesktopSideAds ? DESKTOP_SIDE_AD_WIDTH_CSS : '5px';
 
   function renderSideAd(slot: SideAdSlotConfig | null, side: 'left' | 'right') {
-    if (isMobileViewport || !slot?.imageSrc) {
+    if (!shouldRenderDesktopSideAds || !slot?.imageSrc) {
       return null;
     }
 
