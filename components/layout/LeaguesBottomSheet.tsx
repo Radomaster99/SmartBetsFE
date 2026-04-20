@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useCountries } from '@/lib/hooks/useCountries';
@@ -16,6 +16,9 @@ import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 import { buildStandingsPath } from '@/lib/league-links';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
+const MOBILE_LEAGUES_SHEET_BG = '#07101a';
+const MOBILE_LEAGUES_SHEET_HEADER_BG = '#090e1a';
+const MOBILE_LEAGUES_CLOSE_DRAG_PX = 88;
 
 function parsePositiveInt(value: string | null): number | null {
   if (!value) return null;
@@ -27,6 +30,12 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [expandedCountries, setExpandedCountries] = useState<Record<string, boolean>>({});
+  const [dragOffsetY, setDragOffsetY] = useState(0);
+  const touchStateRef = useRef<{
+    startY: number;
+    startX: number;
+    dragging: boolean;
+  } | null>(null);
 
   const isStandingsPage = pathname.startsWith('/football/standings');
   const activeLeagueId = parsePositiveInt(searchParams.get('leagueId'));
@@ -94,159 +103,273 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
     return `/football?state=Upcoming&leagueId=${leagueId}&upcomingScope=all&season=${leagueSeason}`;
   }
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(0,0,0,0.5)' }}
-        onClick={onClose}
-        aria-hidden="true"
-      />
+  function handleSheetTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.touches[0];
+    touchStateRef.current = {
+      startY: touch.clientY,
+      startX: touch.clientX,
+      dragging: false,
+    };
+  }
 
-      {/* Sheet */}
+  function handleSheetTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    const state = touchStateRef.current;
+    if (!state) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - state.startY;
+    const deltaX = touch.clientX - state.startX;
+
+    if (!state.dragging) {
+      if (Math.abs(deltaX) > Math.abs(deltaY) + 4) {
+        touchStateRef.current = null;
+        setDragOffsetY(0);
+        return;
+      }
+
+      if (Math.abs(deltaY) < 6) {
+        return;
+      }
+
+      state.dragging = true;
+    }
+
+    setDragOffsetY(Math.max(0, deltaY));
+  }
+
+  function handleSheetTouchEnd() {
+    const offsetY = dragOffsetY;
+    touchStateRef.current = null;
+    setDragOffsetY(0);
+
+    if (offsetY >= MOBILE_LEAGUES_CLOSE_DRAG_PX) {
+      onClose();
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        top: 'var(--topbar-h)',
+        bottom: 0,
+        zIndex: 60,
+        display: 'flex',
+        flexDirection: 'column',
+        background: MOBILE_LEAGUES_SHEET_BG,
+        borderTop: '1px solid var(--t-border)',
+        transform: `translateY(${dragOffsetY}px)`,
+        transition: dragOffsetY === 0 ? 'transform 180ms ease' : 'none',
+      }}
+    >
       <div
+        onTouchStart={handleSheetTouchStart}
+        onTouchMove={handleSheetTouchMove}
+        onTouchEnd={handleSheetTouchEnd}
+        onTouchCancel={handleSheetTouchEnd}
         style={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 50,
-          zIndex: 60,
-          height: '55vh',
           display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--t-sidebar-bg)',
-          borderTop: '1px solid var(--t-border)',
-          borderRadius: '14px 14px 0 0',
+          justifyContent: 'center',
+          padding: '10px 0 6px',
+          background: MOBILE_LEAGUES_SHEET_HEADER_BG,
+          touchAction: 'none',
         }}
       >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)' }} />
-        </div>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)' }} />
+      </div>
 
-        <div style={{ padding: '0 16px 8px', borderBottom: '1px solid var(--t-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--t-text-3)' }}>
-            Leagues
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-text-4)', fontSize: 13, padding: '2px 4px' }}
-          >
-            ✕
-          </button>
-        </div>
+      <div
+        onTouchStart={handleSheetTouchStart}
+        onTouchMove={handleSheetTouchMove}
+        onTouchEnd={handleSheetTouchEnd}
+        onTouchCancel={handleSheetTouchEnd}
+        style={{
+          padding: '0 16px 10px',
+          borderBottom: '1px solid var(--t-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: MOBILE_LEAGUES_SHEET_HEADER_BG,
+          touchAction: 'none',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            color: 'var(--t-text-3)',
+          }}
+        >
+          Leagues
+        </span>
+      </div>
 
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {/* Popular chips */}
-          {popularLeagues.length > 0 ? (
-            <div style={{ padding: '10px 12px 4px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--t-text-5)', marginBottom: 6 }}>
-                Popular
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {popularLeagues.map((item) => {
-                  const isActive = item.leagueId === activeLeagueId;
-                  return (
-                    <Link
-                      key={`${item.leagueId}-${item.targetSeason}`}
-                      href={buildLeagueHref(item.leagueId, item.targetSeason)}
-                      onClick={onClose}
-                      style={{
-                        padding: '5px 10px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        textDecoration: 'none',
-                        background: isActive ? 'rgba(0,230,118,0.14)' : 'rgba(255,255,255,0.07)',
-                        border: isActive ? '1px solid rgba(0,230,118,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                        color: isActive ? 'var(--t-accent)' : 'var(--t-text-2)',
-                      }}
-                    >
-                      {item.displayName}
-                    </Link>
-                  );
-                })}
-              </div>
+      <div style={{ flex: 1, overflowY: 'auto', background: MOBILE_LEAGUES_SHEET_BG }}>
+        {popularLeagues.length > 0 ? (
+          <div style={{ padding: '10px 12px 4px' }}>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: 'var(--t-text-5)',
+                marginBottom: 6,
+              }}
+            >
+              Popular
             </div>
-          ) : null}
-
-          {/* Divider */}
-          <div style={{ margin: '8px 0', borderTop: '1px solid var(--t-border)' }} />
-
-          {/* Country groups */}
-          <div style={{ padding: '0 8px 8px' }}>
-            {countryGroups.map((group) => {
-              const isExpanded = expandedCountries[group.countryName] ?? false;
-              const hasActive = group.leagues.some((l) => l.apiLeagueId === activeLeagueId);
-              return (
-                <div key={group.countryName} style={{ marginTop: 2, borderRadius: 6, overflow: 'hidden', background: 'var(--t-surface)' }}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedCountries((current) => ({
-                        ...current,
-                        [group.countryName]: !isExpanded,
-                      }))
-                    }
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {popularLeagues.map((item) => {
+                const isActive = item.leagueId === activeLeagueId;
+                return (
+                  <Link
+                    key={`${item.leagueId}-${item.targetSeason}`}
+                    href={buildLeagueHref(item.leagueId, item.targetSeason)}
+                    onClick={onClose}
                     style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '8px 10px',
-                      background: hasActive ? 'rgba(255,255,255,0.04)' : 'transparent',
-                      borderTop: 'none',
-                      borderRight: 'none',
-                      borderLeft: 'none',
-                      borderBottom: isExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
+                      padding: '5px 10px',
+                      borderRadius: 20,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      background: isActive ? 'rgba(0,230,118,0.14)' : 'rgba(255,255,255,0.07)',
+                      border: isActive ? '1px solid rgba(0,230,118,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                      color: isActive ? 'var(--t-accent)' : 'var(--t-text-2)',
                     }}
                   >
-                    {group.flagUrl ? (
-                      <img src={group.flagUrl} alt={group.countryName} width={14} height={10} style={{ objectFit: 'cover', borderRadius: 2, flexShrink: 0 }} />
-                    ) : (
-                      <span style={{ width: 14, fontSize: 9, color: 'var(--t-text-5)', textAlign: 'center', flexShrink: 0 }}>○</span>
-                    )}
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--t-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {group.countryName}
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--t-text-5)', marginRight: 4 }}>{group.leagues.length}</span>
-                    <span style={{ fontSize: 10, color: 'var(--t-text-5)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease' }}>›</span>
-                  </button>
-                  {isExpanded ? (
-                    <div style={{ paddingBottom: 4 }}>
-                      {group.leagues.map((league) => {
-                        const isActive = league.apiLeagueId === activeLeagueId;
-                        return (
-                          <Link
-                            key={`${league.apiLeagueId}-${league.season}`}
-                            href={buildLeagueHref(league.apiLeagueId, league.season)}
-                            onClick={onClose}
-                            style={{
-                              display: 'block',
-                              padding: '7px 10px 7px 32px',
-                              fontSize: 12,
-                              textDecoration: 'none',
-                              color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)',
-                              background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
-                              borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
-                            }}
-                          >
-                            {league.name}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                    {item.displayName}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
+        ) : null}
+
+        <div style={{ margin: '8px 0', borderTop: '1px solid var(--t-border)' }} />
+
+        <div style={{ padding: '0 8px 8px' }}>
+          {countryGroups.map((group) => {
+            const isExpanded = expandedCountries[group.countryName] ?? false;
+            const hasActive = group.leagues.some((league) => league.apiLeagueId === activeLeagueId);
+            return (
+              <div
+                key={group.countryName}
+                style={{
+                  marginTop: 2,
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  background: 'var(--t-surface)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedCountries((current) => ({
+                      ...current,
+                      [group.countryName]: !isExpanded,
+                    }))
+                  }
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 10px',
+                    background: hasActive ? 'rgba(255,255,255,0.04)' : 'transparent',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
+                    borderBottom: isExpanded ? '1px solid var(--t-border)' : '1px solid transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {group.flagUrl ? (
+                    <img
+                      src={group.flagUrl}
+                      alt={group.countryName}
+                      width={14}
+                      height={10}
+                      style={{ objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        width: 14,
+                        fontSize: 9,
+                        color: 'var(--t-text-5)',
+                        textAlign: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      ○
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: 'var(--t-text-2)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {group.countryName}
+                  </span>
+                  <span style={{ fontSize: 10, color: 'var(--t-text-5)', marginRight: 4 }}>
+                    {group.leagues.length}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: 'var(--t-text-5)',
+                      transform: isExpanded ? 'rotate(90deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  >
+                    ›
+                  </span>
+                </button>
+                {isExpanded ? (
+                  <div style={{ paddingBottom: 4 }}>
+                    {group.leagues.map((league) => {
+                      const isActive = league.apiLeagueId === activeLeagueId;
+                      return (
+                        <Link
+                          key={`${league.apiLeagueId}-${league.season}`}
+                          href={buildLeagueHref(league.apiLeagueId, league.season)}
+                          onClick={onClose}
+                          style={{
+                            display: 'block',
+                            padding: '7px 10px 7px 32px',
+                            fontSize: 12,
+                            textDecoration: 'none',
+                            color: isActive ? 'var(--t-text-1)' : 'var(--t-text-4)',
+                            background: isActive ? 'rgba(0,230,118,0.07)' : 'transparent',
+                            borderLeft: isActive ? '2px solid rgba(0,230,118,0.45)' : '2px solid transparent',
+                          }}
+                        >
+                          {league.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
