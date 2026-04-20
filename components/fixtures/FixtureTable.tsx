@@ -250,39 +250,39 @@ function MobileOddsCell({
   if (isLoading && odd == null) {
     return (
       <div
-        className="odds-btn odds-btn-grid min-h-[48px]"
+        className="odds-btn odds-btn-grid min-h-[40px]"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderColor: 'rgba(0,230,118,0.2)',
           background: 'rgba(0,230,118,0.06)',
         }}
-      >
-        <MobileOddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={12} />
-        <span
-          style={{
+        >
+          <MobileOddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={12} />
+          <span
+            style={{
             position: 'relative',
             zIndex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 4,
-            width: '100%',
-            height: '100%',
-          }}
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
-            Live
-          </span>
-          <span
-            aria-hidden="true"
-            style={{
-              width: 26,
-              height: 8,
-              borderRadius: 999,
-              background: 'rgba(148,163,184,0.26)',
-              animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+              gap: 3,
+              width: '100%',
+              height: '100%',
+            }}
+          >
+            <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
+              Live
+            </span>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 22,
+                height: 7,
+                borderRadius: 999,
+                background: 'rgba(148,163,184,0.26)',
+                animation: 'skeleton-pulse 1.2s ease-in-out infinite',
             }}
           />
         </span>
@@ -292,8 +292,8 @@ function MobileOddsCell({
 
   if (!odd) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[48px]">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+      <div className="odds-btn odds-btn-grid min-h-[40px]">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value na">-</span>
@@ -303,8 +303,8 @@ function MobileOddsCell({
 
   if (!bookmaker) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[48px]">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+      <div className="odds-btn odds-btn-grid min-h-[40px]">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value">{odd.toFixed(2)}</span>
@@ -320,13 +320,13 @@ function MobileOddsCell({
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="block" style={{ textDecoration: 'none' }}>
-      <div className="odds-btn odds-btn-grid min-h-[48px]">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+      <div className="odds-btn odds-btn-grid min-h-[40px]">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value">{odd.toFixed(2)}</span>
         <span className="odds-bk">
-          {truncateBookmaker(bookmaker)}
+          {truncateBookmaker(bookmaker, 9)}
         </span>
       </div>
     </a>
@@ -417,25 +417,25 @@ function MobileFixtureCard({
           router.push(buildFixtureHref(fixture.apiFixtureId));
         }
       }}
-      className="panel-shell w-full rounded-xl p-3 text-left"
+      className="panel-shell w-full rounded-lg p-2.5 text-left"
       style={{
         position: 'relative',
         ...(isLive ? { boxShadow: 'inset 3px 0 0 rgba(239,83,80,0.65), var(--t-shadow-soft)' } : null),
       }}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
             {isLive ? 'Live' : formatKickoffDate(fixture.kickoffAt)}
           </span>
-          <span className="text-[12px] font-semibold" style={{ color: isLive ? '#fca5a5' : 'var(--t-text-3)' }}>
+          <span className="text-[11px] font-semibold" style={{ color: isLive ? '#fca5a5' : 'var(--t-text-3)' }}>
             {isLive ? `${fixture.elapsed ?? ''}${fixture.elapsed != null ? "'" : ''}` : formatKickoff(fixture.kickoffAt)}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           {isLive ? (
             <span
-              className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+              className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
               style={{ color: statusTone.color, background: statusTone.bg, borderColor: statusTone.border }}
             >
               {hideFallbackWhilePending ? 'Loading live' : statusTone.label}
@@ -447,7 +447,7 @@ function MobileFixtureCard({
               event.stopPropagation();
               onToggleSave?.(fixture);
             }}
-            className="flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-black"
+            className="flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-black"
             style={{
               background: isSaved ? 'rgba(0,230,118,0.12)' : 'var(--t-surface-2)',
               borderColor: isSaved ? 'rgba(0,230,118,0.28)' : 'var(--t-border-2)',
@@ -461,33 +461,33 @@ function MobileFixtureCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto] gap-2">
-        <div className="space-y-2">
+      <div className="grid grid-cols-[1fr_auto] gap-1.5">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={18} />
-            <span className="min-w-0 truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
+            <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={16} />
+            <span className="min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
               {fixture.homeTeamName}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={18} />
-            <span className="min-w-0 truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
+            <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={16} />
+            <span className="min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
               {fixture.awayTeamName}
             </span>
           </div>
         </div>
 
-        <div className="flex min-w-[54px] items-center justify-center">
+        <div className="flex min-w-[48px] items-center justify-center">
           <div
-            className="rounded-lg px-2 py-1 text-center odds-cell"
+            className="rounded-md px-2 py-0.5 text-center odds-cell"
             style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}
           >
             {scoreReady ? (
-              <div className="text-[13px] font-bold">
+              <div className="text-[12px] font-bold">
                 {fixture.homeGoals} - {fixture.awayGoals}
               </div>
             ) : (
-              <div className="text-[12px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
+              <div className="text-[11px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
                 vs
               </div>
             )}
@@ -495,7 +495,7 @@ function MobileFixtureCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2" onClick={(event) => event.stopPropagation()}>
+      <div className="mt-2 grid grid-cols-3 gap-1.5" onClick={(event) => event.stopPropagation()}>
         <MobileOddsCell
           fixtureId={fixture.apiFixtureId}
           label="1"

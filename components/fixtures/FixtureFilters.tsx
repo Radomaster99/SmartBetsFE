@@ -76,7 +76,7 @@ export function FixtureFilters({
       }}
     >
       <div className="md:hidden">
-        <div className="flex items-center gap-0.5 overflow-x-auto">
+        <div className="hide-scrollbar flex items-center gap-0.5 overflow-x-auto">
           <button
             type="button"
             onClick={() => onDateChange(fmt(new Date(new Date(`${date}T12:00:00`).getTime() - 86400000)))}
@@ -129,7 +129,7 @@ export function FixtureFilters({
           </button>
         </div>
 
-        <div className="mt-2 flex items-center gap-1 overflow-x-auto">
+        <div className="hide-scrollbar mt-2 flex items-center gap-1 overflow-x-auto">
           {visibleStates.map((item) => {
             const active = item.value === state;
             const isLiveBtn = item.value === 'Live';
