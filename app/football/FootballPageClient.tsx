@@ -328,10 +328,12 @@ function FootballPageClient() {
     (!isToday && rawStateValue === 'Live');
   const { data: leagues } = useLeagues(season);
   const { fixtureIdSet, toggleFixture, upsertFixtures } = useFixtureWatchlist();
+  const [hasMounted, setHasMounted] = useState(false);
   const [stickyLiveSummaries, setStickyLiveSummaries] = useState<Record<number, LiveOddsSummaryDto>>({});
   const [visibleLiveFixtureIds, setVisibleLiveFixtureIds] = useState<number[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
   const activeLeague = leagues?.find((league) => league.apiLeagueId === leagueId) ?? null;
+  const hydrationSafeActiveLeague = hasMounted ? activeLeague : null;
   const view = searchParams.get('view') === 'standings' ? 'standings' : 'matches';
 
   // View toggle hrefs — preserve all current params, just swap view
@@ -348,6 +350,10 @@ function FootballPageClient() {
   })();
 
   const { data: standings, isLoading: standingsLoading, isError: standingsError } = useStandings(leagueId, season);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (shouldCanonicalize && canonicalHref !== currentHref) {
@@ -732,15 +738,13 @@ function FootballPageClient() {
         pastOnlyFinished={isPastDate}
       />
 
-      {activeLeague ? (
-        <div
-          className="flex items-center gap-3 px-4 py-2 text-[12px]"
-          style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
-        >
+      {hydrationSafeActiveLeague ? (
+        <div style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
+          <div className="hidden items-center gap-3 px-4 py-2 text-[12px] md:flex">
           {/* Left: league name + season */}
           <div className="min-w-0 flex-1">
             <span className="font-semibold" style={{ color: 'var(--t-text-2)' }}>
-              {activeLeague.name}
+              {hydrationSafeActiveLeague.name}
             </span>
             <span style={{ color: 'var(--t-text-4)', marginLeft: 4 }}>{season}</span>
           </div>
@@ -814,6 +818,68 @@ function FootballPageClient() {
           >
             × clear
           </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 px-3 py-2.5 md:hidden">
+            <div
+              className="inline-flex items-center rounded-xl p-0.5"
+              style={{ background: '#161922', border: '1px solid rgba(255,255,255,0.08)', minWidth: 0 }}
+            >
+              {([
+                { label: 'Matches', href: matchesViewHref, active: view === 'matches' },
+                { label: 'Standings', href: standingsViewHref, active: view === 'standings' },
+              ] as const).map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="rounded-[10px] px-3 py-1.5 text-[12px] font-semibold transition-all"
+                  style={{
+                    color: item.active ? '#ffffff' : 'var(--t-text-4)',
+                    background: item.active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {state === 'Upcoming' && !isFutureDate ? (
+                <button
+                  type="button"
+                  onClick={() => handleUpcomingScopeChange(upcomingScope === 'all' ? 'today' : 'all')}
+                  className="rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all"
+                  style={{
+                    color: upcomingScope === 'all' ? 'var(--t-accent)' : 'var(--t-text-4)',
+                    background: upcomingScope === 'all' ? 'rgba(30,158,110,0.16)' : 'transparent',
+                    border: upcomingScope === 'all'
+                      ? '1px solid rgba(30,158,110,0.34)'
+                      : '1px solid rgba(255,255,255,0.08)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  All upcoming
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, DEFAULT_SEASON, 'today'))}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-medium transition-colors"
+                aria-label="Clear selected league"
+                style={{
+                  color: 'var(--t-text-4)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  cursor: 'pointer',
+                }}
+              >
+                X
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

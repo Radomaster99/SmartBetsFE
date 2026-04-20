@@ -35,6 +35,10 @@ function labelDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+function dateNumberLabel(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit' });
+}
+
 export function FixtureFilters({
   state,
   onStateChange,
@@ -76,13 +80,15 @@ export function FixtureFilters({
       }}
     >
       <div className="md:hidden">
-        <div className="hide-scrollbar flex items-center gap-0.5 overflow-x-auto">
+        <div className="grid grid-cols-[28px_repeat(5,minmax(0,1fr))_28px] items-center gap-1">
           <button
             type="button"
             onClick={() => onDateChange(fmt(new Date(new Date(`${date}T12:00:00`).getTime() - 86400000)))}
-            className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
+            className="filter-hover-chip flex h-11 items-center justify-center rounded-xl text-[13px] font-semibold transition-colors"
             style={{
               color: 'var(--t-text-5)',
+              background: '#161922',
+              border: '1px solid rgba(255,255,255,0.06)',
               cursor: 'pointer',
               ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
             }}
@@ -98,18 +104,26 @@ export function FixtureFilters({
                 key={day}
                 type="button"
                 onClick={() => onDateChange(day)}
-                className="filter-hover-chip flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-all"
+                className="filter-hover-chip min-w-0 rounded-xl px-1.5 py-2 text-center transition-all"
                 data-active={active ? 'true' : 'false'}
                 style={{
-                  color: active ? 'var(--filter-date-active-color)' : day === today ? 'var(--t-text-3)' : 'var(--t-text-5)',
-                  background: active ? 'var(--filter-date-active-bg)' : 'transparent',
-                  fontWeight: active ? 700 : 500,
-                  borderRadius: '20px',
-                  ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.07)',
-                  ['--filter-active-hover-bg' as string]: 'rgba(255,255,255,0.16)',
+                  background: active ? '#1e9e6e' : '#161922',
+                  color: active ? '#ffffff' : 'var(--t-text-2)',
+                  border: active ? '1px solid rgba(30,158,110,0.9)' : '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: active ? '0 8px 18px rgba(30,158,110,0.22)' : 'none',
+                  ['--filter-hover-bg' as string]: active ? '#229f71' : 'rgba(255,255,255,0.08)',
+                  ['--filter-active-hover-bg' as string]: active ? '#229f71' : 'rgba(255,255,255,0.08)',
                 }}
               >
-                {labelDate(day)}
+                <div
+                  className="truncate text-[9px] font-medium leading-none"
+                  style={{ color: active ? 'rgba(255,255,255,0.82)' : 'var(--t-text-5)' }}
+                >
+                  {labelDate(day)}
+                </div>
+                <div className="mt-1 text-[17px] font-bold leading-none">
+                  {dateNumberLabel(day)}
+                </div>
               </button>
             );
           })}
@@ -117,9 +131,11 @@ export function FixtureFilters({
           <button
             type="button"
             onClick={() => onDateChange(fmt(new Date(new Date(`${date}T12:00:00`).getTime() + 86400000)))}
-            className="filter-hover-chip flex-shrink-0 rounded px-2 py-1 text-[12px] transition-colors"
+            className="filter-hover-chip flex h-11 items-center justify-center rounded-xl text-[13px] font-semibold transition-colors"
             style={{
               color: 'var(--t-text-5)',
+              background: '#161922',
+              border: '1px solid rgba(255,255,255,0.06)',
               cursor: 'pointer',
               ['--filter-hover-bg' as string]: 'rgba(255,255,255,0.08)',
             }}
@@ -129,7 +145,7 @@ export function FixtureFilters({
           </button>
         </div>
 
-        <div className="hide-scrollbar mt-2 flex items-center gap-1 overflow-x-auto">
+        <div className="hide-scrollbar mt-2 flex items-center gap-2 overflow-x-auto pb-0.5">
           {visibleStates.map((item) => {
             const active = item.value === state;
             const isLiveBtn = item.value === 'Live';
@@ -138,28 +154,37 @@ export function FixtureFilters({
                 key={item.value}
                 type="button"
                 onClick={() => onStateChange(item.value)}
-                className="filter-hover-chip flex-shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all"
+                className="filter-hover-chip flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all"
                 data-active={active ? 'true' : 'false'}
                 style={{
-                  color: active
-                    ? isLiveBtn ? '#fff' : 'var(--filter-active-color)'
-                    : 'var(--t-text-4)',
-                  background: active
-                    ? isLiveBtn ? '#ef5350' : 'var(--filter-active-bg)'
-                    : 'transparent',
-                  borderRadius: '20px',
-                  border: active && !isLiveBtn ? '1px solid var(--filter-active-border)' : '1px solid transparent',
+                  color: active ? '#ffffff' : 'var(--t-text-4)',
+                  background: active ? '#1e9e6e' : 'transparent',
+                  borderRadius: '999px',
+                  border: active ? '1px solid rgba(30,158,110,0.95)' : '1px solid rgba(255,255,255,0.1)',
                   cursor: 'pointer',
-                  ['--filter-hover-bg' as string]: active && isLiveBtn ? '#f26763' : 'rgba(255,255,255,0.07)',
-                  ['--filter-active-hover-bg' as string]: active && isLiveBtn ? '#f26763' : 'rgba(255,255,255,0.16)',
+                  ['--filter-hover-bg' as string]: active ? '#229f71' : 'rgba(255,255,255,0.08)',
+                  ['--filter-active-hover-bg' as string]: active ? '#229f71' : 'rgba(255,255,255,0.08)',
                 }}
               >
-                {item.label}
+                {isLiveBtn ? (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: '#ef5350',
+                      boxShadow: '0 0 0 3px rgba(239,83,80,0.12)',
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : null}
+                <span>{item.label}</span>
               </button>
             );
           })}
 
-          <div className="ml-1 flex-shrink-0">
+          <div className="ml-0.5 flex-shrink-0">
             <CalendarPicker value={date} onChange={onDateChange} />
           </div>
         </div>

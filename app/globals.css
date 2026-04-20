@@ -263,6 +263,24 @@ html[data-theme="light"] .layout-sidebar {
   color: var(--t-text-5);
 }
 
+@media (max-width: 767px) {
+  .mobile-odds-btn {
+    min-height: 34px !important;
+    padding: 4px 3px !important;
+    border-radius: 9px;
+  }
+
+  .mobile-odds-btn .odds-value {
+    font-size: 15px !important;
+    line-height: 1;
+  }
+
+  .mobile-odds-btn .odds-bk {
+    font-size: 11px;
+    line-height: 1.1;
+  }
+}
+
 /* ── Light theme: odds buttons flip to dark navy for contrast ── */
 html[data-theme="light"] .odds-btn {
   background: #1a2638;

@@ -250,7 +250,7 @@ function MobileOddsCell({
   if (isLoading && odd == null) {
     return (
       <div
-        className="odds-btn odds-btn-grid min-h-[40px]"
+        className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]"
         style={{
           position: 'relative',
           overflow: 'hidden',
@@ -292,7 +292,7 @@ function MobileOddsCell({
 
   if (!odd) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[40px]">
+      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -303,7 +303,7 @@ function MobileOddsCell({
 
   if (!bookmaker) {
     return (
-      <div className="odds-btn odds-btn-grid min-h-[40px]">
+      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -320,7 +320,7 @@ function MobileOddsCell({
 
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="block" style={{ textDecoration: 'none' }}>
-      <div className="odds-btn odds-btn-grid min-h-[40px]">
+      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
