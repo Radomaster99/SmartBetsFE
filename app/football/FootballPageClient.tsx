@@ -428,6 +428,7 @@ function FootballPageClient() {
     direction: state === 'Live' ? ('desc' as const) : undefined,
     date: usesUpcomingRange ? undefined : date,
     from: usesUpcomingRange ? today : undefined,
+    fetchAllPages: leagueId == null,
   };
 
   const { data, isLoading, isFetching, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useFixtures(filters);

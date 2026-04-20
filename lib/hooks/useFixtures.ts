@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { PagedResultDto, FixtureDto } from '../types/api';
 import type { FixtureFilters } from '../types/filters';
@@ -37,7 +38,7 @@ async function fetchFixturesPage(
 
 export function useFixtures(filters: FixtureFilters) {
   const isLive = filters.state === 'Live';
-  return useInfiniteQuery({
+  const query = useInfiniteQuery({
     queryKey: ['fixtures', filters],
     queryFn: ({ pageParam }) => fetchFixturesPage(filters, pageParam as number | undefined),
     initialPageParam: undefined as number | undefined,
@@ -47,6 +48,26 @@ export function useFixtures(filters: FixtureFilters) {
     refetchInterval: isLive ? 30_000 : false,
     refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (!filters.fetchAllPages) {
+      return;
+    }
+
+    if (!query.hasNextPage || query.isFetchingNextPage || query.isFetching) {
+      return;
+    }
+
+    void query.fetchNextPage();
+  }, [
+    filters.fetchAllPages,
+    query.fetchNextPage,
+    query.hasNextPage,
+    query.isFetching,
+    query.isFetchingNextPage,
+  ]);
+
+  return query;
 }
 
 /** Flatten all loaded pages into a single array. */
