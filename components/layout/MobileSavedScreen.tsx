@@ -5,6 +5,8 @@ import Link from 'next/link';
 import type { WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
 
 const SAVED_DELETE_ACTION_WIDTH = 78;
+const MOBILE_SAVED_OPAQUE_BG = '#07101a';
+const MOBILE_SAVED_OPAQUE_HEADER_BG = '#090e1a';
 
 function formatKickoff(iso: string | undefined): string {
   if (!iso) return '';
@@ -193,7 +195,7 @@ function SavedCard({
         position: 'relative',
         borderBottom: '1px solid var(--t-border)',
         overflow: 'hidden',
-        background: 'var(--t-page-bg)',
+        background: MOBILE_SAVED_OPAQUE_BG,
       }}
     >
       <button
@@ -250,7 +252,7 @@ function SavedCard({
           touchAction: 'pan-y',
           willChange: 'transform',
           borderLeft: isLive ? '2px solid rgba(239,83,80,0.4)' : '2px solid transparent',
-          background: isLive ? 'rgba(239,83,80,0.03)' : 'var(--t-page-bg)',
+          background: isLive ? 'rgba(30, 10, 14, 0.98)' : MOBILE_SAVED_OPAQUE_BG,
         }}
       >
         <div style={{ width: 44, flexShrink: 0 }}>
@@ -332,8 +334,8 @@ export function MobileSavedScreen({ entries, onClose, onRemove }: Props) {
         flexDirection: 'column',
         // Use a solid dark background — var(--t-page-bg) is semi-transparent in dark mode
         // so fall back to a fully opaque colour so text is always readable.
-        background: 'var(--t-page-bg, #07101a)',
-        backgroundColor: 'var(--t-topbar-bg, #090e1a)',
+        background: MOBILE_SAVED_OPAQUE_BG,
+        backgroundColor: MOBILE_SAVED_OPAQUE_BG,
       }}
     >
       <div
@@ -344,7 +346,7 @@ export function MobileSavedScreen({ entries, onClose, onRemove }: Props) {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexShrink: 0,
-          background: 'var(--t-topbar-bg)',
+          background: MOBILE_SAVED_OPAQUE_HEADER_BG,
         }}
       >
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--t-text-1)' }}>Saved matches</span>
@@ -368,7 +370,7 @@ export function MobileSavedScreen({ entries, onClose, onRemove }: Props) {
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', background: 'var(--t-page-bg)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: MOBILE_SAVED_OPAQUE_BG }}>
         {entries.length === 0 ? (
           <div
             style={{
