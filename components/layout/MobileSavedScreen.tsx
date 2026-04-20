@@ -174,7 +174,7 @@ function SavedCard({
     }
 
     state.moved = true;
-    setDragOffset(clampOffset(deltaX));
+    setDragOffset(deltaX);
   }
 
   function handleTouchEnd() {
