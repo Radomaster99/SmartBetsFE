@@ -399,13 +399,6 @@ function MobileFixtureCard({
       bestOddsFallback?.bestAwayBookmaker,
   );
 
-  const statusTone =
-    liveSource === 'live'
-      ? { label: 'Live prices', color: 'var(--t-accent)', bg: 'rgba(0,230,118,0.12)', border: 'rgba(0,230,118,0.24)' }
-      : liveSource === 'prematch'
-        ? { label: 'Pre-match', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.24)' }
-        : { label: 'Waiting', color: 'var(--t-text-4)', bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.18)' };
-
   return (
     <div
       role="button"
@@ -433,14 +426,6 @@ function MobileFixtureCard({
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {isLive ? (
-            <span
-              className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-              style={{ color: statusTone.color, background: statusTone.bg, borderColor: statusTone.border }}
-            >
-              {hideFallbackWhilePending ? 'Loading live' : statusTone.label}
-            </span>
-          ) : null}
           <button
             type="button"
             onClick={(event) => {
