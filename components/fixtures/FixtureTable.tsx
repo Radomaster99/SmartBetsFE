@@ -250,39 +250,40 @@ function MobileOddsCell({
   if (isLoading && odd == null) {
     return (
       <div
-        className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]"
+        className="odds-btn odds-btn-grid mobile-odds-btn"
         style={{
           position: 'relative',
           overflow: 'hidden',
+          width: '100%',
           borderColor: 'rgba(0,230,118,0.2)',
           background: 'rgba(0,230,118,0.06)',
         }}
-        >
-          <MobileOddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={12} />
-          <span
-            style={{
+      >
+        <MobileOddsLoadingSnake fill="rgba(0,230,118,0.06)" radius={8} />
+        <span
+          style={{
             position: 'relative',
             zIndex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-              gap: 3,
-              width: '100%',
-              height: '100%',
-            }}
-          >
-            <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
-              Live
-            </span>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 22,
-                height: 7,
-                borderRadius: 999,
-                background: 'rgba(148,163,184,0.26)',
-                animation: 'skeleton-pulse 1.2s ease-in-out infinite',
+            gap: 3,
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          <span className="text-[8px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
+            Live
+          </span>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 18,
+              height: 5,
+              borderRadius: 999,
+              background: 'rgba(148,163,184,0.26)',
+              animation: 'skeleton-pulse 1.2s ease-in-out infinite',
             }}
           />
         </span>
@@ -292,7 +293,7 @@ function MobileOddsCell({
 
   if (!odd) {
     return (
-      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
+      <div className="odds-btn odds-btn-grid mobile-odds-btn" style={{ width: '100%' }}>
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -303,7 +304,7 @@ function MobileOddsCell({
 
   if (!bookmaker) {
     return (
-      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
+      <div className="odds-btn odds-btn-grid mobile-odds-btn" style={{ width: '100%' }}>
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
@@ -319,14 +320,14 @@ function MobileOddsCell({
   });
 
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="block" style={{ textDecoration: 'none' }}>
-      <div className="odds-btn odds-btn-grid mobile-odds-btn min-h-[34px]">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="block" style={{ textDecoration: 'none', width: '100%' }}>
+      <div className="odds-btn odds-btn-grid mobile-odds-btn" style={{ width: '100%' }}>
         <span className="text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
           {label}
         </span>
         <span className="odds-value">{odd.toFixed(2)}</span>
         <span className="odds-bk">
-          {truncateBookmaker(bookmaker, 9)}
+          {truncateBookmaker(bookmaker, 8)}
         </span>
       </div>
     </a>
@@ -410,98 +411,115 @@ function MobileFixtureCard({
           router.push(buildFixtureHref(fixture.apiFixtureId));
         }
       }}
-      className="panel-shell w-full rounded-lg p-2.5 text-left"
+      className="panel-shell w-full rounded-lg text-left"
       style={{
         position: 'relative',
+        padding: '7px 8px 7px 10px',
         ...(isLive ? { boxShadow: 'inset 3px 0 0 rgba(239,83,80,0.65), var(--t-shadow-soft)' } : null),
       }}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--t-text-5)' }}>
-            {isLive ? 'Live' : formatKickoffDate(fixture.kickoffAt)}
-          </span>
-          <span className="text-[11px] font-semibold" style={{ color: isLive ? '#fca5a5' : 'var(--t-text-3)' }}>
-            {isLive ? `${fixture.elapsed ?? ''}${fixture.elapsed != null ? "'" : ''}` : formatKickoff(fixture.kickoffAt)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleSave?.(fixture);
-            }}
-            className="flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-black"
-            style={{
-              background: isSaved ? 'rgba(0,230,118,0.12)' : 'var(--t-surface-2)',
-              borderColor: isSaved ? 'rgba(0,230,118,0.28)' : 'var(--t-border-2)',
-              color: isSaved ? 'var(--t-accent)' : 'var(--t-text-5)',
-            }}
-            aria-label={isSaved ? 'Remove fixture from watchlist' : 'Save fixture to watchlist'}
-            title={isSaved ? 'Saved to watchlist' : 'Save to watchlist'}
-          >
-            {isSaved ? '★' : '☆'}
-          </button>
-        </div>
-      </div>
+      {/* Single-row compact layout: time | teams | odds | save */}
+      <div className="flex items-center gap-2">
 
-      <div className="grid grid-cols-[1fr_auto] gap-1.5">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={16} />
-            <span className="min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
+        {/* Time / live status column */}
+        <div className="flex w-[34px] flex-shrink-0 flex-col items-center gap-0.5">
+          {isLive ? (
+            <>
+              <span
+                className="live-dot"
+                style={{ color: '#ef5350', width: 5, height: 5 }}
+                aria-label="Live"
+              />
+              <span className="text-[10px] font-bold tabular-nums" style={{ color: '#fca5a5' }}>
+                {fixture.elapsed != null ? `${fixture.elapsed}'` : 'Live'}
+              </span>
+            </>
+          ) : (
+            <span className="text-[11px] font-semibold tabular-nums leading-none" style={{ color: 'var(--t-text-4)' }}>
+              {formatKickoff(fixture.kickoffAt)}
+            </span>
+          )}
+        </div>
+
+        {/* Teams column — stacked, truncated */}
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <TeamLogo src={fixture.homeTeamLogoUrl} alt={fixture.homeTeamName} size={13} />
+            <span className="min-w-0 truncate text-[11.5px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
               {fixture.homeTeamName}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={16} />
-            <span className="min-w-0 truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <TeamLogo src={fixture.awayTeamLogoUrl} alt={fixture.awayTeamName} size={13} />
+            <span className="min-w-0 truncate text-[11.5px] font-semibold" style={{ color: 'var(--t-text-1)' }}>
               {fixture.awayTeamName}
             </span>
           </div>
         </div>
 
-        <div className="flex min-w-[48px] items-center justify-center">
+        {/* Score badge — only when there's a score */}
+        {scoreReady && (
           <div
-            className="rounded-md px-2 py-0.5 text-center odds-cell"
-            style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)' }}
+            className="flex-shrink-0 rounded px-1.5 py-0.5 text-center odds-cell"
+            style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-2)', minWidth: 36, fontSize: 11, fontWeight: 700 }}
           >
-            {scoreReady ? (
-              <div className="text-[12px] font-bold">
-                {fixture.homeGoals} - {fixture.awayGoals}
-              </div>
-            ) : (
-              <div className="text-[11px] font-semibold" style={{ color: 'var(--t-text-5)' }}>
-                vs
-              </div>
-            )}
+            {fixture.homeGoals}–{fixture.awayGoals}
+          </div>
+        )}
+
+        {/* Odds buttons — fixed 44px columns */}
+        <div
+          className="flex flex-shrink-0 gap-[3px]"
+          style={{ width: 141 }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div style={{ width: 44 }}>
+            <MobileOddsCell
+              fixtureId={fixture.apiFixtureId}
+              label="1"
+              odd={homeOdd}
+              bookmaker={homeBookmaker}
+              isLoading={hideFallbackWhilePending && homeOdd == null}
+            />
+          </div>
+          <div style={{ width: 44 }}>
+            <MobileOddsCell
+              fixtureId={fixture.apiFixtureId}
+              label="X"
+              odd={drawOdd}
+              bookmaker={drawBookmaker}
+              isLoading={hideFallbackWhilePending && drawOdd == null}
+            />
+          </div>
+          <div style={{ width: 44 }}>
+            <MobileOddsCell
+              fixtureId={fixture.apiFixtureId}
+              label="2"
+              odd={awayOdd}
+              bookmaker={awayBookmaker}
+              isLoading={hideFallbackWhilePending && awayOdd == null}
+            />
           </div>
         </div>
-      </div>
 
-      <div className="mt-2 grid grid-cols-3 gap-1.5" onClick={(event) => event.stopPropagation()}>
-        <MobileOddsCell
-          fixtureId={fixture.apiFixtureId}
-          label="1"
-          odd={homeOdd}
-          bookmaker={homeBookmaker}
-          isLoading={hideFallbackWhilePending && homeOdd == null}
-        />
-        <MobileOddsCell
-          fixtureId={fixture.apiFixtureId}
-          label="X"
-          odd={drawOdd}
-          bookmaker={drawBookmaker}
-          isLoading={hideFallbackWhilePending && drawOdd == null}
-        />
-        <MobileOddsCell
-          fixtureId={fixture.apiFixtureId}
-          label="2"
-          odd={awayOdd}
-          bookmaker={awayBookmaker}
-          isLoading={hideFallbackWhilePending && awayOdd == null}
-        />
+        {/* Save button */}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleSave?.(fixture);
+          }}
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border text-[12px]"
+          style={{
+            background: isSaved ? 'rgba(0,230,118,0.12)' : 'transparent',
+            borderColor: isSaved ? 'rgba(0,230,118,0.28)' : 'transparent',
+            color: isSaved ? 'var(--t-accent)' : 'var(--t-text-6)',
+          }}
+          aria-label={isSaved ? 'Remove fixture from watchlist' : 'Save fixture to watchlist'}
+        >
+          {isSaved ? '★' : '☆'}
+        </button>
+
       </div>
     </div>
   );
