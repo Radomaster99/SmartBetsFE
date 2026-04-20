@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import type { WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
-import { DESKTOP_SIDE_AD_WIDTH_PX } from '@/lib/side-ads';
+import { DESKTOP_SIDE_AD_WIDTH_CSS } from '@/lib/side-ads';
 
 type Props = {
   entries: WatchlistFixtureEntry[];
@@ -134,7 +134,7 @@ export function FavoritesDock({ entries, onRemove }: Props) {
   return (
     <div
       className="pointer-events-none fixed bottom-3 right-3 z-[70] flex flex-col items-end gap-2 md:bottom-4 md:right-3"
-      style={{ width: `min(${DESKTOP_SIDE_AD_WIDTH_PX}px, calc(100vw - 18px))` }}
+      style={{ width: `min(${DESKTOP_SIDE_AD_WIDTH_CSS}, calc(100vw - 18px))` }}
     >
       {isOpen ? (
         <div
@@ -255,7 +255,7 @@ export function FavoritesDock({ entries, onRemove }: Props) {
         onClick={() => setIsOpen((current) => !current)}
         className="pointer-events-auto flex items-center gap-2.5 rounded-full px-3 py-2"
         style={{
-          width: `min(${DESKTOP_SIDE_AD_WIDTH_PX}px, calc(100vw - 18px))`,
+          width: `min(${DESKTOP_SIDE_AD_WIDTH_CSS}, calc(100vw - 18px))`,
           background: 'linear-gradient(180deg, rgba(17,24,39,0.96) 0%, rgba(10,15,27,0.98) 100%)',
           border: '1px solid rgba(0,230,118,0.22)',
           boxShadow: '0 14px 30px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',

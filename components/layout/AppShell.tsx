@@ -13,7 +13,8 @@ import { SiteFooter } from '@/components/layout/SiteFooter';
 import { Topbar } from '@/components/layout/Topbar';
 import { useFixtureWatchlist } from '@/lib/hooks/useFixtureWatchlist';
 import {
-  DESKTOP_SIDE_AD_WIDTH_PX,
+  DESKTOP_SIDE_AD_HEIGHT_RATIO,
+  DESKTOP_SIDE_AD_WIDTH_CSS,
   EMPTY_SIDE_ADS_CONFIG,
   type SideAdSlotConfig,
 } from '@/lib/side-ads';
@@ -116,7 +117,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const shellGutter = isMobileViewport ? '5px' : `${DESKTOP_SIDE_AD_WIDTH_PX}px`;
+  const shellGutter = isMobileViewport ? '5px' : DESKTOP_SIDE_AD_WIDTH_CSS;
+  const desktopSideAdHeight = isMobileViewport
+    ? '0px'
+    : `min(calc(100vh - 24px), calc(${DESKTOP_SIDE_AD_WIDTH_CSS} * ${DESKTOP_SIDE_AD_HEIGHT_RATIO}))`;
 
   function renderSideAd(slot: SideAdSlotConfig | null, side: 'left' | 'right') {
     if (isMobileViewport || !slot?.imageSrc) {
@@ -124,16 +128,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
 
     const content = (
-      <div style={{ height: '100%', width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`, overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: '100%', overflow: 'hidden' }}>
         <SideAdArtwork slot={slot} alt={slot.alt || `${side} sidebar banner`} />
       </div>
     );
 
     const wrapperStyle = {
       position: 'fixed' as const,
-      top: 0,
-      bottom: 0,
-      width: `${DESKTOP_SIDE_AD_WIDTH_PX}px`,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      width: DESKTOP_SIDE_AD_WIDTH_CSS,
+      height: desktopSideAdHeight,
+      maxHeight: 'calc(100vh - 24px)',
       zIndex: 1,
       [side]: 0,
     };
