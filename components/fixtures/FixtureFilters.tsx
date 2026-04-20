@@ -127,10 +127,6 @@ export function FixtureFilters({
           >
             {'>'}
           </button>
-
-          <div className="ml-1 flex-shrink-0">
-            <CalendarPicker value={date} onChange={onDateChange} />
-          </div>
         </div>
 
         <div className="mt-2 flex items-center gap-1 overflow-x-auto">
@@ -162,6 +158,10 @@ export function FixtureFilters({
               </button>
             );
           })}
+
+          <div className="ml-1 flex-shrink-0">
+            <CalendarPicker value={date} onChange={onDateChange} />
+          </div>
         </div>
       </div>
 
