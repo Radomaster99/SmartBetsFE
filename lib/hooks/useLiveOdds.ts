@@ -23,7 +23,7 @@ import { LIVE_VIEWERS_CONFIG_QUERY_KEY, useLiveViewersConfig } from '@/lib/hooks
 import { deriveBestOddsFromOdds, mapLiveOddsToMainMatchOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
-const LIVE_VIEWER_HEARTBEAT_INTERVAL_MS = 25_000;
+const LIVE_VIEWER_HEARTBEAT_INTERVAL_MS = 240_000;
 
 export type LiveOddsRealtimeStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 export type LiveOddsMovementDirection = 'up' | 'down';
