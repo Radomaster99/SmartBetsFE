@@ -214,6 +214,7 @@ function FixtureDetailPageInner({ params }: Props) {
     { id: 'match', label: 'Match' },
     { id: 'h2h', label: 'H2H' },
   ];
+  const leagueHref = `/football?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`;
   const standingsHref = buildStandingsPath(
     detail.fixture.leagueApiId,
     detail.fixture.season,
@@ -253,6 +254,19 @@ function FixtureDetailPageInner({ params }: Props) {
             </span>
             <span>Matches</span>
           </button>
+
+          <Link
+            href={leagueHref}
+            className="inline-flex items-center rounded-md px-2.5 py-1.5 text-[11px] font-medium"
+            style={{
+              color: 'var(--t-text-4)',
+              textDecoration: 'none',
+              background: 'var(--t-surface)',
+              border: '1px solid var(--t-border)',
+            }}
+          >
+            {detail.fixture.countryName} / {detail.fixture.leagueName}
+          </Link>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FixtureDetailDto } from '@/lib/types/api';
 import type { FixtureQuickStatsSummary, FixtureStatPairSummary } from '@/lib/fixture-statistics';
-import { StatusBadge, formatFixtureStatusLabel } from '@/components/shared/StatusBadge';
+import { formatFixtureStatusLabel } from '@/components/shared/StatusBadge';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 
 export interface SelectedFixtureTeam {
@@ -244,22 +244,6 @@ export function FixtureDetailHeader({ detail, onTeamSelect, quickStats }: Props)
 
   return (
     <div style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
-      <div
-        className="flex items-center gap-2 px-4 py-2"
-        style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-page-bg)' }}
-      >
-        <span className="text-[11px]" style={{ color: 'var(--t-text-5)' }}>
-          {f.countryName}
-        </span>
-        <span style={{ color: 'var(--t-border-2)' }}>/</span>
-        <span className="text-[11px] font-medium" style={{ color: 'var(--t-text-4)' }}>
-          {f.leagueName}
-        </span>
-        <div className="ml-auto flex items-center gap-3">
-          <StatusBadge state={f.stateBucket} status={f.status} />
-        </div>
-      </div>
-
       <div className="flex items-center gap-4 px-4 py-3">
         <TeamCard
           name={f.homeTeamName}
