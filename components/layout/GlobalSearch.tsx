@@ -34,7 +34,13 @@ const TYPE_STYLES: Record<
   },
 };
 
-export function GlobalSearch({ autoFocus }: { autoFocus?: boolean } = {}) {
+export function GlobalSearch({
+  autoFocus,
+  variant = 'default',
+}: {
+  autoFocus?: boolean;
+  variant?: 'default' | 'mobile-overlay';
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +50,7 @@ export function GlobalSearch({ autoFocus }: { autoFocus?: boolean } = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const isMobileOverlay = variant === 'mobile-overlay';
 
   useEffect(() => {
     setIsOpen(false);
@@ -186,13 +193,19 @@ export function GlobalSearch({ autoFocus }: { autoFocus?: boolean } = {}) {
   }
 
   return (
-    <div ref={rootRef} className="relative w-full max-w-[460px]">
+    <div
+      ref={rootRef}
+      className="relative w-full"
+      style={{ maxWidth: isMobileOverlay ? 'none' : 460 }}
+    >
       <div
         className="flex items-center gap-2 rounded-[12px] px-3 py-2"
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid var(--t-border)',
           boxShadow: 'var(--t-shadow-soft)',
+          padding: isMobileOverlay ? '12px 14px' : undefined,
+          borderRadius: isMobileOverlay ? 14 : undefined,
         }}
       >
         <span style={{ color: 'var(--t-text-5)' }}>
@@ -213,11 +226,20 @@ export function GlobalSearch({ autoFocus }: { autoFocus?: boolean } = {}) {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search matches, teams, leagues..."
-          className="w-full bg-transparent text-[12px] outline-none placeholder:opacity-100"
-          style={{ color: 'var(--t-text-2)' }}
+          inputMode="search"
+          enterKeyHint="search"
+          className="w-full bg-transparent outline-none placeholder:opacity-100"
+          style={{
+            color: 'var(--t-text-2)',
+            fontSize: isMobileOverlay ? 16 : 12,
+            lineHeight: 1.35,
+          }}
         />
         {isLoading ? (
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--t-text-5)' }}>
+          <span
+            className="font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'var(--t-text-5)', fontSize: isMobileOverlay ? 11 : 10 }}
+          >
             Searching
           </span>
         ) : null}

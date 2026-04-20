@@ -37,7 +37,7 @@ export function MobileSearchOverlay({ onClose }: { onClose: () => void }) {
         }}
       >
         <div style={{ flex: 1 }}>
-          <GlobalSearch autoFocus />
+          <GlobalSearch autoFocus variant="mobile-overlay" />
         </div>
         <button
           type="button"
