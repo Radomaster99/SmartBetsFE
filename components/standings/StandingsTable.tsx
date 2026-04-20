@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { useReactTable, getCoreRowModel, flexRender, createColumnHelper } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, flexRender, createColumnHelper, type Table } from '@tanstack/react-table';
 import type { StandingDto } from '@/lib/types/api';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 
@@ -44,8 +44,8 @@ function FormDots({ form }: { form: string }) {
 }
 
 export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: Props) {
-  const columns = useMemo(
-    () => [
+  const rankColumn = useMemo(
+    () =>
       columnHelper.accessor('rank', {
         header: '#',
         cell: (context) => (
@@ -54,6 +54,11 @@ export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: P
           </span>
         ),
       }),
+    [],
+  );
+
+  const teamColumn = useMemo(
+    () =>
       columnHelper.display({
         id: 'team',
         header: 'Team',
@@ -63,7 +68,7 @@ export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: P
           const content = (
             <div className="flex items-center gap-2">
               <TeamLogo src={row.original.teamLogoUrl} alt={row.original.teamName} size={20} />
-              <span className="text-[13px] font-medium" style={{ color: href ? 'var(--t-text-1)' : 'var(--t-text-1)' }}>
+              <span className="text-[13px] font-medium" style={{ color: 'var(--t-text-1)' }}>
                 {row.original.teamName}
               </span>
             </div>
@@ -85,30 +90,65 @@ export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: P
           );
         },
       }),
+    [onTeamNavigate, resolveTeamHref],
+  );
+
+  const playedColumn = useMemo(
+    () =>
       columnHelper.accessor('played', {
         header: 'P',
         cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const winColumn = useMemo(
+    () =>
       columnHelper.accessor('win', {
         header: 'W',
         cell: (context) => <span className="text-[12px] font-semibold" style={{ color: '#00e676' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const drawColumn = useMemo(
+    () =>
       columnHelper.accessor('draw', {
         header: 'D',
         cell: (context) => <span className="text-[12px]" style={{ color: '#f59e0b' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const loseColumn = useMemo(
+    () =>
       columnHelper.accessor('lose', {
         header: 'L',
         cell: (context) => <span className="text-[12px]" style={{ color: '#ef5350' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const goalsForColumn = useMemo(
+    () =>
       columnHelper.accessor('goalsFor', {
         header: 'GF',
         cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const goalsAgainstColumn = useMemo(
+    () =>
       columnHelper.accessor('goalsAgainst', {
         header: 'GA',
         cell: (context) => <span className="text-[12px]" style={{ color: 'var(--t-text-3)' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const goalsDiffColumn = useMemo(
+    () =>
       columnHelper.accessor('goalsDiff', {
         header: 'GD',
         cell: (context) => {
@@ -124,14 +164,29 @@ export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: P
           );
         },
       }),
+    [],
+  );
+
+  const pointsColumn = useMemo(
+    () =>
       columnHelper.accessor('points', {
         header: 'Pts',
         cell: (context) => <span className="text-[13px] font-black" style={{ color: 'var(--t-text-1)' }}>{context.getValue()}</span>,
       }),
+    [],
+  );
+
+  const formColumn = useMemo(
+    () =>
       columnHelper.accessor('form', {
         header: 'Form',
         cell: (context) => <FormDots form={context.getValue()} />,
       }),
+    [],
+  );
+
+  const descriptionColumn = useMemo(
+    () =>
       columnHelper.accessor('description', {
         header: '',
         cell: (context) => {
@@ -162,60 +217,143 @@ export function StandingsTable({ standings, resolveTeamHref, onTeamNavigate }: P
           );
         },
       }),
-    ],
-    [resolveTeamHref],
+    [],
   );
 
-  const table = useReactTable({
+  const desktopColumns = useMemo(
+    () => [
+      rankColumn,
+      teamColumn,
+      playedColumn,
+      winColumn,
+      drawColumn,
+      loseColumn,
+      goalsForColumn,
+      goalsAgainstColumn,
+      goalsDiffColumn,
+      pointsColumn,
+      formColumn,
+      descriptionColumn,
+    ],
+    [
+      descriptionColumn,
+      drawColumn,
+      formColumn,
+      goalsAgainstColumn,
+      goalsDiffColumn,
+      goalsForColumn,
+      loseColumn,
+      playedColumn,
+      pointsColumn,
+      rankColumn,
+      teamColumn,
+      winColumn,
+    ],
+  );
+
+  const mobileColumns = useMemo(
+    () => [
+      rankColumn,
+      teamColumn,
+      playedColumn,
+      winColumn,
+      drawColumn,
+      loseColumn,
+      pointsColumn,
+      goalsDiffColumn,
+      goalsForColumn,
+      goalsAgainstColumn,
+      formColumn,
+      descriptionColumn,
+    ],
+    [
+      descriptionColumn,
+      drawColumn,
+      formColumn,
+      goalsAgainstColumn,
+      goalsDiffColumn,
+      goalsForColumn,
+      loseColumn,
+      playedColumn,
+      pointsColumn,
+      rankColumn,
+      teamColumn,
+      winColumn,
+    ],
+  );
+
+  const desktopTable = useReactTable({
     data: standings,
-    columns,
+    columns: desktopColumns,
     getCoreRowModel: getCoreRowModel(),
   });
 
-  return (
-    <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
-      <table className="w-full">
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className="whitespace-nowrap px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: 'var(--t-text-6)' }}
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
+  const mobileTable = useReactTable({
+    data: standings,
+    columns: mobileColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
-        <tbody>
-          {table.getRowModel().rows.map((row, index) => (
-            <tr
-              key={row.id}
-              className="transition-colors"
-              style={{
-                borderBottom: '1px solid var(--t-border)',
-                background: index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)',
-              }}
-              onMouseEnter={(event) => {
-                event.currentTarget.style.background = 'var(--t-surface-2)';
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget.style.background = index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)';
-              }}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-3 py-2.5">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  const renderTable = (table: Table<StandingDto>) => (
+    <table className="w-full">
+      <thead>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id} style={{ background: 'var(--t-surface)', borderBottom: '1px solid var(--t-border)' }}>
+            {headerGroup.headers.map((header) => (
+              <th
+                key={header.id}
+                className="whitespace-nowrap px-3 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: 'var(--t-text-6)' }}
+              >
+                {flexRender(header.column.columnDef.header, header.getContext())}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+
+      <tbody>
+        {table.getRowModel().rows.map((row, index) => (
+          <tr
+            key={row.id}
+            className="transition-colors"
+            style={{
+              borderBottom: '1px solid var(--t-border)',
+              background: index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)',
+            }}
+            onMouseEnter={(event) => {
+              event.currentTarget.style.background = 'var(--t-surface-2)';
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.background = index % 2 === 0 ? 'transparent' : 'var(--t-page-bg)';
+            }}
+          >
+            {row.getVisibleCells().map((cell) => (
+              <td key={cell.id} className="px-3 py-2.5">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+  return (
+    <>
+      <div
+        className="overflow-x-auto rounded-xl md:hidden"
+        style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+      >
+        {renderTable(mobileTable)}
+      </div>
+
+      <div
+        className="hidden overflow-x-auto rounded-xl md:block"
+        style={{ border: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+      >
+        {renderTable(desktopTable)}
+      </div>
+    </>
   );
 }

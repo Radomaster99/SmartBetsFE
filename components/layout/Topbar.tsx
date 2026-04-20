@@ -57,7 +57,7 @@ export function Topbar() {
 
         <Link
           href="/bonus-codes"
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em]"
+          className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em]"
           style={{
             textDecoration: 'none',
             background: isBonusCodesRoute
@@ -95,7 +95,7 @@ export function Topbar() {
       <div className="ml-auto flex items-center gap-2 md:gap-3">
         <Link
           href="/bonus-codes"
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] md:hidden"
+          className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] md:hidden"
           style={{
             textDecoration: 'none',
             background: isBonusCodesRoute
@@ -109,6 +109,8 @@ export function Topbar() {
             boxShadow: isBonusCodesRoute
               ? '0 0 18px rgba(251,191,36,0.25), 0 2px 12px rgba(251,191,36,0.15)'
               : '0 2px 12px rgba(251,191,36,0.15)',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
           aria-label="Open bonus codes page"
         >
@@ -119,7 +121,7 @@ export function Topbar() {
           <button
             type="button"
             onClick={() => router.push('/football?state=Live')}
-            className="hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold md:inline-flex"
+            className="hidden items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold md:inline-flex"
             style={{
               background: 'rgba(0,230,118,0.12)',
               border: '1px solid rgba(0,230,118,0.3)',
