@@ -119,33 +119,34 @@ export function Topbar() {
           🎁 Codes
         </Link>
 
-        {liveCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => router.push('/football?state=Live')}
-            className="hidden items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold md:inline-flex"
+        <button
+          type="button"
+          onClick={() => router.push('/football?state=Live')}
+          className="hidden items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold md:inline-flex"
+          style={{
+            background: liveCount > 0 ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.04)',
+            border: liveCount > 0 ? '1px solid rgba(0,230,118,0.3)' : '1px solid rgba(255,255,255,0.08)',
+            color: liveCount > 0 ? 'var(--t-accent)' : 'var(--t-text-5)',
+            cursor: 'pointer',
+            transition: 'background 0.3s, border-color 0.3s, color 0.3s, opacity 0.3s',
+            opacity: liveCount > 0 ? 1 : 0.6,
+          }}
+          aria-label={liveCount > 0 ? `${liveCount} live fixtures — click to view` : 'No live fixtures'}
+        >
+          <span
             style={{
-              background: 'rgba(0,230,118,0.12)',
-              border: '1px solid rgba(0,230,118,0.3)',
-              color: 'var(--t-accent)',
-              cursor: 'pointer',
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: liveCount > 0 ? 'var(--t-accent)' : 'var(--t-text-5)',
+              animation: liveCount > 0 ? 'live-pulse 1.4s ease-in-out infinite' : 'none',
+              flexShrink: 0,
             }}
-            aria-label={`${liveCount} live fixtures — click to view`}
-          >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: 'var(--t-accent)',
-                animation: 'live-pulse 1.4s ease-in-out infinite',
-              }}
-              aria-hidden="true"
-            />
-            {liveCount} Live
-          </button>
-        ) : null}
+            aria-hidden="true"
+          />
+          {liveCount} Live
+        </button>
 
         {hasConfirmedAdminSession ? (
           <>

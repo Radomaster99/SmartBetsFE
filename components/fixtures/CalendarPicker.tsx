@@ -36,7 +36,8 @@ export function CalendarPicker({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(0);
   const [viewMonth, setViewMonth] = useState(0);
-  const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0 });
+  const [popoverPos, setPopoverPos] = useState({ top: 0, right: 0, left: 0 });
+  const [isMobilePopover, setIsMobilePopover] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -47,8 +48,13 @@ export function CalendarPicker({ value, onChange }: Props) {
     const btn = triggerRef.current;
     if (btn) {
       const rect = btn.getBoundingClientRect();
+      const mobile = window.innerWidth < 768;
+      setIsMobilePopover(mobile);
+      const desiredWidth = Math.min(272, window.innerWidth - 24);
+      const centeredLeft = Math.max(12, Math.round((window.innerWidth - desiredWidth) / 2));
       setPopoverPos({
-        top: rect.bottom + window.scrollY + 8,
+        top: mobile ? rect.bottom + 10 : rect.bottom + window.scrollY + 8,
+        left: mobile ? centeredLeft : 0,
         right: window.innerWidth - rect.right,
       });
     }
@@ -124,15 +130,19 @@ export function CalendarPicker({ value, onChange }: Props) {
       role="dialog"
       aria-label="Date picker"
       style={{
-        position: 'absolute',
+        position: isMobilePopover ? 'fixed' : 'absolute',
         top: popoverPos.top,
-        right: popoverPos.right,
+        left: isMobilePopover ? popoverPos.left : undefined,
+        right: isMobilePopover ? undefined : popoverPos.right,
         zIndex: 9999,
-        width: 272,
+        width: isMobilePopover ? 'min(272px, calc(100vw - 24px))' : 272,
+        maxWidth: 'calc(100vw - 24px)',
         borderRadius: 14,
         border: '1px solid var(--t-border-2)',
-        background: 'var(--t-surface)',
-        boxShadow: '0 24px 48px rgba(5,8,18,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset',
+        background: isMobilePopover ? 'rgba(11, 18, 31, 0.98)' : 'var(--t-surface)',
+        boxShadow: isMobilePopover
+          ? '0 28px 56px rgba(5,8,18,0.72), 0 0 0 1px rgba(255,255,255,0.05) inset'
+          : '0 24px 48px rgba(5,8,18,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset',
         overflow: 'hidden',
         animation: 'calendarFadeIn 0.14s ease',
       }}
@@ -237,6 +247,27 @@ export function CalendarPicker({ value, onChange }: Props) {
 
   return (
     <>
+      {open && isMobilePopover
+        ? createPortal(
+            <button
+              type="button"
+              aria-label="Close date picker"
+              onClick={() => setOpen(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9998,
+                background: 'rgba(5,8,18,0.7)',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                cursor: 'default',
+              }}
+            />,
+            document.body,
+          )
+        : null}
+
       {/* Trigger */}
       <button
         ref={triggerRef}

@@ -390,13 +390,13 @@ function FootballPageClient() {
   };
 
   const handleStateChange = (nextState: StateBucket | 'All') => {
-    if (isFutureDate) {
-      replaceIfNeeded(buildFootballHref(date, 'Upcoming', leagueId, season, 'today'));
+    if (!isToday && nextState === 'Live') {
+      replaceIfNeeded(buildFootballHref(todayISO(), 'Live', leagueId, season, 'today'));
       return;
     }
 
-    if (!isToday && nextState === 'Live') {
-      replaceIfNeeded(buildFootballHref(date, 'All', leagueId, season, 'today'));
+    if (isFutureDate) {
+      replaceIfNeeded(buildFootballHref(date, 'Upcoming', leagueId, season, 'today'));
       return;
     }
 
@@ -698,6 +698,11 @@ function FootballPageClient() {
     [rawFixtures, state, stickyLiveSummaries, visibleLiveSummaries, visibleRecoveredLiveSummaries],
   );
   const fixtures = fixturesReadyForDisplay ? hydratedFixtures : [];
+  const shouldBroadcastLiveLeagueIds =
+    view === 'matches' &&
+    isToday &&
+    leagueId == null &&
+    (state === 'All' || state === 'Live');
   const liveFixtureIds = useMemo(
     () => state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [],
     [fixtures, state],
@@ -932,6 +937,7 @@ function FootballPageClient() {
                 <FixtureTable
                   fixtures={fixtures}
                   viewState={state}
+                  broadcastLiveLeagueIds={shouldBroadcastLiveLeagueIds}
                   isLoading={(isLoading && rawFixtures.length === 0) || isPrimingAllPages}
                   isFetching={isFetching || isLoading || isPrimingAllPages}
                   oddsMovements={liveOddsListRealtime.movements}

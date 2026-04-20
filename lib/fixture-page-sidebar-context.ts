@@ -49,3 +49,24 @@ export function writeFixturePageSidebarContext(context: FixturePageSidebarContex
   window.sessionStorage.setItem(FIXTURE_PAGE_SIDEBAR_CONTEXT_STORAGE_KEY, JSON.stringify(context));
   window.dispatchEvent(new CustomEvent(FIXTURE_PAGE_SIDEBAR_CONTEXT_EVENT, { detail: context }));
 }
+
+export const LIVE_LEAGUE_IDS_EVENT = 'oddsdetector:live-league-ids-updated';
+export const LIVE_LEAGUE_IDS_STORAGE_KEY = 'oddsdetector:live-league-ids';
+
+export function writeLiveLeagueIds(leagueIds: number[]) {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.setItem(LIVE_LEAGUE_IDS_STORAGE_KEY, JSON.stringify(leagueIds));
+  window.dispatchEvent(new CustomEvent(LIVE_LEAGUE_IDS_EVENT, { detail: leagueIds }));
+}
+
+export function readLiveLeagueIds(): number[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(LIVE_LEAGUE_IDS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as number[]) : [];
+  } catch {
+    return [];
+  }
+}

@@ -21,6 +21,7 @@ import {
   readPopularLeagueKeys,
   type PopularLeaguePreset,
 } from '@/lib/popular-leagues';
+import { writeLiveLeagueIds } from '@/lib/fixture-page-sidebar-context';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
 const EMPTY_POPULAR_PRESETS: PopularLeaguePreset[] = [];
@@ -98,6 +99,7 @@ function usePopularLeagueOrder(): Map<number, number> {
 interface Props {
   fixtures: FixtureDto[];
   viewState?: StateBucket | 'All';
+  broadcastLiveLeagueIds?: boolean;
   isLoading?: boolean;
   isFetching?: boolean;
   oddsMovements?: LiveOddsMovementByFixture;
@@ -200,7 +202,15 @@ function getLeagueOddsMetrics(
   return { liveCount, prematchCount, noOddsCount };
 }
 
-function MobileOddsLoadingSnake({ fill, radius }: { fill: string; radius: number }) {
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width={14} height={14} fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </svg>
+  );
+}
+
+function MobileOddsLoadingSnake({ radius }: { fill: string; radius: number }) {
   return (
     <span
       aria-hidden="true"
@@ -210,27 +220,10 @@ function MobileOddsLoadingSnake({ fill, radius }: { fill: string; radius: number
         borderRadius: radius,
         overflow: 'hidden',
         pointerEvents: 'none',
+        background: 'rgba(148,163,184,0.13)',
+        animation: 'skeleton-pulse 1.4s ease-in-out infinite',
       }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          inset: -1,
-          borderRadius: radius + 1,
-          background:
-            'conic-gradient(from 0deg, rgba(0,230,118,0) 0deg, rgba(0,230,118,0) 250deg, rgba(0,230,118,0.14) 288deg, rgba(0,230,118,0.98) 324deg, rgba(0,230,118,0) 360deg)',
-          animation: 'odds-loading-spin 1.05s linear infinite',
-        }}
-      />
-      <span
-        style={{
-          position: 'absolute',
-          inset: 1,
-          borderRadius: Math.max(radius - 1, 0),
-          background: fill,
-        }}
-      />
-    </span>
+    />
   );
 }
 
@@ -273,19 +266,28 @@ function MobileOddsCell({
             height: '100%',
           }}
         >
-          <span className="text-[8px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'rgba(0,230,118,0.72)' }}>
-            Live
-          </span>
           <span
             aria-hidden="true"
             style={{
-              width: 18,
-              height: 5,
+              width: 26,
+              height: 8,
               borderRadius: 999,
               background: 'rgba(148,163,184,0.26)',
               animation: 'skeleton-pulse 1.2s ease-in-out infinite',
             }}
           />
+          <span
+            style={{
+              fontSize: 7,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: 'rgba(0,230,118,0.7)',
+              lineHeight: 1,
+            }}
+          >
+            Live
+          </span>
         </span>
       </div>
     );
@@ -470,10 +472,10 @@ function MobileFixtureCard({
         {/* Odds buttons — fixed 44px columns */}
         <div
           className="flex flex-shrink-0 gap-[3px]"
-          style={{ width: 141 }}
+          style={{ width: 'clamp(132px, 42vw, 147px)' }}
           onClick={(event) => event.stopPropagation()}
         >
-          <div style={{ width: 44 }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <MobileOddsCell
               fixtureId={fixture.apiFixtureId}
               label="1"
@@ -482,7 +484,7 @@ function MobileFixtureCard({
               isLoading={hideFallbackWhilePending && homeOdd == null}
             />
           </div>
-          <div style={{ width: 44 }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <MobileOddsCell
               fixtureId={fixture.apiFixtureId}
               label="X"
@@ -491,7 +493,7 @@ function MobileFixtureCard({
               isLoading={hideFallbackWhilePending && drawOdd == null}
             />
           </div>
-          <div style={{ width: 44 }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
             <MobileOddsCell
               fixtureId={fixture.apiFixtureId}
               label="2"
@@ -517,7 +519,7 @@ function MobileFixtureCard({
           }}
           aria-label={isSaved ? 'Remove fixture from watchlist' : 'Save fixture to watchlist'}
         >
-          {isSaved ? '★' : '☆'}
+          <BookmarkIcon filled={isSaved} />
         </button>
 
       </div>
@@ -544,6 +546,7 @@ function FetchingBar() {
 export function FixtureTable({
   fixtures,
   viewState = 'All',
+  broadcastLiveLeagueIds = false,
   isLoading,
   isFetching,
   oddsMovements,
@@ -672,6 +675,17 @@ export function FixtureTable({
   }, [onVisibleLiveFixtureIdsChange]);
 
   useEffect(() => {
+    if (!broadcastLiveLeagueIds) {
+      return;
+    }
+
+    const liveLeagueIds = Array.from(
+      new Set(fixtures.filter((f) => f.stateBucket === 'Live').map((f) => f.leagueApiId)),
+    );
+    writeLiveLeagueIds(liveLeagueIds);
+  }, [broadcastLiveLeagueIds, fixtures]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container || !callbackRef.current) {
       return;
@@ -754,7 +768,11 @@ export function FixtureTable({
     return (
       <div className="flex-1 overflow-auto">
         {isFetching ? <FetchingBar /> : null}
-        <EmptyState title="No fixtures" description="No matches found for the selected date or filters." />
+        <EmptyState
+          title="No fixtures found"
+          description="Try a different date or remove your league filter to see more matches."
+          icon="📅"
+        />
       </div>
     );
   }
@@ -763,6 +781,7 @@ export function FixtureTable({
     <div ref={containerRef} className="flex-1 overflow-auto">
       {isFetching ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
       {sortedLeagueEntries.map(([key, { name, country, items }]) => {
+        const liveFixtureCount = items.filter((f) => f.stateBucket === 'Live').length;
         const oddsCount = items.filter((fixture) => {
           const liveSummary = fixture.liveOddsSummary ?? null;
           if (liveSummary?.bestHomeOdd || liveSummary?.bestDrawOdd || liveSummary?.bestAwayOdd) {
@@ -800,12 +819,33 @@ export function FixtureTable({
                   {oddsCount}/{items.length} with odds
                 </span>
               )}
-              <span
-                className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
-                style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-5)', border: '1px solid var(--t-border)' }}
-              >
-                {items.length}
-              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                {liveFixtureCount > 0 && (
+                  <span
+                    className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
+                    style={{ background: 'rgba(239,83,80,0.12)', color: '#fca5a5', border: '1px solid rgba(239,83,80,0.25)' }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        animation: 'live-pulse 1.4s ease-in-out infinite',
+                        flexShrink: 0,
+                      }}
+                    />
+                    {liveFixtureCount} live
+                  </span>
+                )}
+                <span
+                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                  style={{ background: 'var(--t-surface-2)', color: 'var(--t-text-5)', border: '1px solid var(--t-border)' }}
+                >
+                  {items.length}
+                </span>
+              </div>
             </div>
 
             <div className="md:hidden space-y-2 px-2 py-2">

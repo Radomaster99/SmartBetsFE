@@ -3,7 +3,8 @@
 import { useMemo, type CSSProperties } from 'react';
 import type { BestOddsDto, OddDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection, LiveOddsRealtimeStatus } from '@/lib/hooks/useLiveOdds';
-import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
+import { buildBookmakerHref } from '@/lib/bookmakers';
+import { BookmakerAvatar } from '@/components/shared/BookmakerAvatar';
 import {
   dedupeOddsByBookmaker,
   dedupeOddsByBookmakerName,
@@ -97,7 +98,7 @@ function OddPill({
             color: movement === 'up' ? 'var(--t-accent)' : '#f87171',
           }}
         >
-          {movement === 'up' ? '^' : 'v'}
+          {movement === 'up' ? '↑' : '↓'}
         </span>
       ) : null}
       {displayValue != null ? displayValue.toFixed(2) : '-'}
@@ -208,7 +209,7 @@ export function OddsComparison({
                       color: movement === 'up' ? 'var(--t-accent)' : '#f87171',
                     }}
                   >
-                    {movement === 'up' ? '^' : 'v'}
+                    {movement === 'up' ? '↑' : '↓'}
                   </span>
                 ) : null}
                 <span
@@ -270,7 +271,6 @@ export function OddsComparison({
           </div>
 
           {orderedOdds.map((odd, index) => {
-            const meta = getBookmakerMeta(odd.bookmaker);
             const oddIdentityKey = getOddIdentityKey(odd);
             const generalHref = buildBookmakerHref(odd.bookmaker, {
               fixture: fixtureId ?? odd.apiFixtureId,
@@ -294,23 +294,9 @@ export function OddsComparison({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    flexShrink: 0,
-                    fontSize: 9,
-                    fontWeight: 900,
-                    textDecoration: 'none',
-                    background: `${meta.accent}18`,
-                    color: meta.accent,
-                    border: `1px solid ${meta.accent}33`,
-                  }}
+                  style={{ textDecoration: 'none', flexShrink: 0 }}
                 >
-                  {meta.logoText}
+                  <BookmakerAvatar bookmakerName={odd.bookmaker} size={22} />
                 </a>
 
                 <span

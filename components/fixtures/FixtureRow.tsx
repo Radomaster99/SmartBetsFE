@@ -48,6 +48,14 @@ function formatLiveMinute(status: string, elapsed?: number | null, statusExtra?:
   return s;
 }
 
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </svg>
+  );
+}
+
 function resolveBookmaker(name: string | null | undefined): string | null {
   return name?.trim() || null;
 }
@@ -171,7 +179,7 @@ function OddsButton({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    height: 32,
+    height: 40,
     borderRadius: 6,
     border: '1px solid var(--t-border)',
     background: 'var(--t-surface-2)',
@@ -257,7 +265,7 @@ function OddsButton({
 
       <span
         style={{
-          fontSize: 7,
+          fontSize: 9,
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
@@ -606,7 +614,7 @@ export const FixtureRow = memo(function FixtureRow({
           aria-label={isSaved ? 'Remove from watchlist' : 'Save to watchlist'}
           title={isSaved ? 'Remove from watchlist' : 'Save to watchlist'}
         >
-          {isSaved ? '★' : '☆'}
+          <BookmarkIcon filled={isSaved} />
         </button>
       </td>
     </tr>

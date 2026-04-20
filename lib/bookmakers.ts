@@ -72,51 +72,53 @@ type BookmakerMetaSeed = {
   order: number;
   short: string;
   accent: string;
+  faviconUrl?: string;
 };
 
-export type BookmakerMeta = BookmakerMetaSeed & {
+export type BookmakerMeta = Omit<BookmakerMetaSeed, 'faviconUrl'> & {
   slug: string;
   name: string;
   logoText: string;
+  faviconUrl: string | null;
 };
 
 const BOOKMAKER_META_REGISTRY: Record<string, BookmakerMetaSeed> = {
-  'bet365': { order: 1, short: 'B365', accent: '#1db954' },
-  'pinnacle': { order: 2, short: 'PIN', accent: '#ef4444' },
-  'pinnacle-sports': { order: 2, short: 'PIN', accent: '#ef4444' },
-  'betfair': { order: 3, short: 'BF', accent: '#f59e0b' },
-  'betfair-exchange': { order: 3, short: 'BFX', accent: '#f59e0b' },
-  'betfair-sportsbook': { order: 4, short: 'BF', accent: '#f59e0b' },
-  'william-hill': { order: 5, short: 'WH', accent: '#1d4ed8' },
-  'williamhill': { order: 5, short: 'WH', accent: '#1d4ed8' },
-  'unibet': { order: 6, short: 'UNI', accent: '#16a34a' },
-  'betano': { order: 7, short: 'BTN', accent: '#f97316' },
-  'bwin': { order: 8, short: 'BWN', accent: '#facc15' },
-  'betway': { order: 9, short: 'BTW', accent: '#22c55e' },
-  '1xbet': { order: 10, short: '1X', accent: '#2563eb' },
-  '1x-bet': { order: 10, short: '1X', accent: '#2563eb' },
-  'marathonbet': { order: 11, short: 'MAR', accent: '#0ea5e9' },
-  'marathon-bet': { order: 11, short: 'MAR', accent: '#0ea5e9' },
-  'betclic': { order: 12, short: 'BC', accent: '#ef4444' },
-  'interwetten': { order: 13, short: 'IW', accent: '#e11d48' },
-  '888sport': { order: 14, short: '888', accent: '#0ea5e9' },
-  '888-sport': { order: 14, short: '888', accent: '#0ea5e9' },
-  'ladbrokes': { order: 15, short: 'LAD', accent: '#ef4444' },
-  'coral': { order: 16, short: 'COR', accent: '#06b6d4' },
-  'paddy-power': { order: 17, short: 'PP', accent: '#16a34a' },
-  'paddypower': { order: 17, short: 'PP', accent: '#16a34a' },
-  'skybet': { order: 18, short: 'SKY', accent: '#2563eb' },
-  'sky-bet': { order: 18, short: 'SKY', accent: '#2563eb' },
-  'sportingbet': { order: 19, short: 'SPB', accent: '#22c55e' },
-  'sporting-bet': { order: 19, short: 'SPB', accent: '#22c55e' },
-  'betsson': { order: 20, short: 'BTS', accent: '#2563eb' },
-  'nordicbet': { order: 21, short: 'NB', accent: '#06b6d4' },
-  'nordic-bet': { order: 21, short: 'NB', accent: '#06b6d4' },
-  'betsafe': { order: 22, short: 'SAFE', accent: '#2563eb' },
-  'coolbet': { order: 23, short: 'COOL', accent: '#7c3aed' },
-  'fortuna': { order: 24, short: 'FOR', accent: '#eab308' },
-  'superbet': { order: 25, short: 'SB', accent: '#ef4444' },
-  'super-bet': { order: 25, short: 'SB', accent: '#ef4444' },
+  'bet365':             { order: 1,  short: 'B365', accent: '#1db954', faviconUrl: 'https://www.bet365.com/favicon.ico' },
+  'pinnacle':           { order: 2,  short: 'PIN',  accent: '#ef4444', faviconUrl: 'https://www.pinnacle.com/favicon.ico' },
+  'pinnacle-sports':    { order: 2,  short: 'PIN',  accent: '#ef4444', faviconUrl: 'https://www.pinnacle.com/favicon.ico' },
+  'betfair':            { order: 3,  short: 'BF',   accent: '#f59e0b', faviconUrl: 'https://www.betfair.com/favicon.ico' },
+  'betfair-exchange':   { order: 3,  short: 'BFX',  accent: '#f59e0b', faviconUrl: 'https://www.betfair.com/favicon.ico' },
+  'betfair-sportsbook': { order: 4,  short: 'BF',   accent: '#f59e0b', faviconUrl: 'https://www.betfair.com/favicon.ico' },
+  'william-hill':       { order: 5,  short: 'WH',   accent: '#1d4ed8', faviconUrl: 'https://www.williamhill.com/favicon.ico' },
+  'williamhill':        { order: 5,  short: 'WH',   accent: '#1d4ed8', faviconUrl: 'https://www.williamhill.com/favicon.ico' },
+  'unibet':             { order: 6,  short: 'UNI',  accent: '#16a34a', faviconUrl: 'https://www.unibet.com/favicon.ico' },
+  'betano':             { order: 7,  short: 'BTN',  accent: '#f97316', faviconUrl: 'https://www.betano.com/favicon.ico' },
+  'bwin':               { order: 8,  short: 'BWN',  accent: '#facc15', faviconUrl: 'https://www.bwin.com/favicon.ico' },
+  'betway':             { order: 9,  short: 'BTW',  accent: '#22c55e', faviconUrl: 'https://www.betway.com/favicon.ico' },
+  '1xbet':              { order: 10, short: '1X',   accent: '#2563eb', faviconUrl: 'https://www.1xbet.com/favicon.ico' },
+  '1x-bet':             { order: 10, short: '1X',   accent: '#2563eb', faviconUrl: 'https://www.1xbet.com/favicon.ico' },
+  'marathonbet':        { order: 11, short: 'MAR',  accent: '#0ea5e9', faviconUrl: 'https://www.marathonbet.com/favicon.ico' },
+  'marathon-bet':       { order: 11, short: 'MAR',  accent: '#0ea5e9', faviconUrl: 'https://www.marathonbet.com/favicon.ico' },
+  'betclic':            { order: 12, short: 'BC',   accent: '#ef4444', faviconUrl: 'https://www.betclic.com/favicon.ico' },
+  'interwetten':        { order: 13, short: 'IW',   accent: '#e11d48' },
+  '888sport':           { order: 14, short: '888',  accent: '#0ea5e9', faviconUrl: 'https://www.888sport.com/favicon.ico' },
+  '888-sport':          { order: 14, short: '888',  accent: '#0ea5e9', faviconUrl: 'https://www.888sport.com/favicon.ico' },
+  'ladbrokes':          { order: 15, short: 'LAD',  accent: '#ef4444', faviconUrl: 'https://www.ladbrokes.com/favicon.ico' },
+  'coral':              { order: 16, short: 'COR',  accent: '#06b6d4', faviconUrl: 'https://www.coral.co.uk/favicon.ico' },
+  'paddy-power':        { order: 17, short: 'PP',   accent: '#16a34a', faviconUrl: 'https://www.paddypower.com/favicon.ico' },
+  'paddypower':         { order: 17, short: 'PP',   accent: '#16a34a', faviconUrl: 'https://www.paddypower.com/favicon.ico' },
+  'skybet':             { order: 18, short: 'SKY',  accent: '#2563eb', faviconUrl: 'https://www.skybet.com/favicon.ico' },
+  'sky-bet':            { order: 18, short: 'SKY',  accent: '#2563eb', faviconUrl: 'https://www.skybet.com/favicon.ico' },
+  'sportingbet':        { order: 19, short: 'SPB',  accent: '#22c55e' },
+  'sporting-bet':       { order: 19, short: 'SPB',  accent: '#22c55e' },
+  'betsson':            { order: 20, short: 'BTS',  accent: '#2563eb', faviconUrl: 'https://www.betsson.com/favicon.ico' },
+  'nordicbet':          { order: 21, short: 'NB',   accent: '#06b6d4' },
+  'nordic-bet':         { order: 21, short: 'NB',   accent: '#06b6d4' },
+  'betsafe':            { order: 22, short: 'SAFE', accent: '#2563eb' },
+  'coolbet':            { order: 23, short: 'COOL', accent: '#7c3aed' },
+  'fortuna':            { order: 24, short: 'FOR',  accent: '#eab308' },
+  'superbet':           { order: 25, short: 'SB',   accent: '#ef4444' },
+  'super-bet':          { order: 25, short: 'SB',   accent: '#ef4444' },
 };
 
 /**
@@ -156,6 +158,7 @@ export function getBookmakerMeta(name: string): BookmakerMeta {
     short: seed?.short ?? fallbackShort(name),
     order: seed?.order ?? 999,
     accent: seed?.accent ?? '#64748b',
+    faviconUrl: seed?.faviconUrl ?? null,
   };
 }
 

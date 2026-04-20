@@ -23,6 +23,8 @@ import {
   FIXTURE_PAGE_SIDEBAR_CONTEXT_EVENT,
   readFixturePageSidebarContext,
   type FixturePageSidebarContext,
+  LIVE_LEAGUE_IDS_EVENT,
+  readLiveLeagueIds,
 } from '@/lib/fixture-page-sidebar-context';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -84,6 +86,15 @@ function buildUpcomingLeagueHref(leagueId: number, season: number) {
   return `/football?${next.toString()}`;
 }
 
+function buildLiveLeagueHref(leagueId: number, season: number) {
+  const next = new URLSearchParams();
+  next.set('state', 'Live');
+  next.set('leagueId', String(leagueId));
+  next.set('season', String(season));
+
+  return `/football?${next.toString()}`;
+}
+
 function buildCountryGroups(leagues: LeagueDto[] | undefined, countries: CountryDto[] | undefined): CountryGroup[] {
   if (!leagues?.length) return [];
 
@@ -128,6 +139,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const [userPopularLeaguePresets, setUserPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [hiddenPopularLeagueKeys, setHiddenPopularLeagueKeys] = useState<string[]>([]);
   const [fixtureSidebarContext, setFixtureSidebarContext] = useState<FixturePageSidebarContext | null>(null);
+  const [liveLeagueIds, setLiveLeagueIds] = useState<Set<number>>(() => new Set(readLiveLeagueIds()));
   const popularLeaguesQuery = usePopularLeaguesContent();
   const adminPopularLeaguePresets = popularLeaguesQuery.data ?? [];
 
@@ -263,6 +275,15 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
     };
   }, [isFixturePage, pathname]);
 
+  useEffect(() => {
+    const onLiveLeagueIds = (e: Event) => {
+      const ids = (e as CustomEvent<number[]>).detail;
+      setLiveLeagueIds(new Set(ids));
+    };
+    window.addEventListener(LIVE_LEAGUE_IDS_EVENT, onLiveLeagueIds);
+    return () => window.removeEventListener(LIVE_LEAGUE_IDS_EVENT, onLiveLeagueIds);
+  }, []);
+
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const activeLeagueName = leagues?.find((league) => league.apiLeagueId === activeLeagueId)?.name ?? null;
   const fixtureStandingsHref =
@@ -326,7 +347,9 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const getLeagueHref = (league: LeagueDto) =>
     isStandingsPage
       ? buildStandingsPath(league.apiLeagueId, league.season, league.name)
-      : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
+      : liveLeagueIds.has(league.apiLeagueId)
+        ? buildLiveLeagueHref(league.apiLeagueId, league.season)
+        : buildUpcomingLeagueHref(league.apiLeagueId, league.season);
 
   const pinnedSection = (
     <div style={{ flexShrink: 0, padding: '8px 4px 4px', borderBottom: '1px solid var(--t-border)' }}>
@@ -361,7 +384,9 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
         popularLeagues.map((item) => {
           const href = isStandingsPage
             ? buildStandingsPath(item.leagueId, item.targetSeason, item.displayName)
-            : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
+            : liveLeagueIds.has(item.leagueId)
+              ? buildLiveLeagueHref(item.leagueId, item.targetSeason)
+              : buildUpcomingLeagueHref(item.leagueId, item.targetSeason);
           const isActive = item.leagueId === activeLeagueId && item.targetSeason === season;
 
           return (
@@ -385,7 +410,22 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                   ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
                 }}
               >
-                <span className="block truncate">{item.displayName}</span>
+                <span className="flex items-center gap-1.5 truncate">
+                  {liveLeagueIds.has(item.leagueId) && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        animation: 'live-pulse 1.4s ease-in-out infinite',
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <span className="truncate">{item.displayName}</span>
+                </span>
               </Link>
               {item.league ? (
                 <button
@@ -674,7 +714,22 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
                             ['--sidebar-active-hover-bg' as string]: 'rgba(255,255,255,0.1)',
                           }}
                         >
-                          <span className="block truncate">{league.name}</span>
+                          <span className="flex items-center gap-1.5 truncate">
+                            {liveLeagueIds.has(league.apiLeagueId) && (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  width: 5,
+                                  height: 5,
+                                  borderRadius: '50%',
+                                  background: '#ef4444',
+                                  animation: 'live-pulse 1.4s ease-in-out infinite',
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <span className="truncate">{league.name}</span>
+                          </span>
                         </Link>
                         <button
                           type="button"

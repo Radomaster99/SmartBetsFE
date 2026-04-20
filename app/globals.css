@@ -142,6 +142,8 @@ html {
     radial-gradient(ellipse 50% 38% at 48% 110%, rgba(6,  182, 212, 0.05) 0%, transparent 60%);
   background-attachment: fixed;
   min-height: 100%;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 /* Light theme: flat, no gradient */
@@ -158,6 +160,8 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -178,6 +182,16 @@ body {
 .layout-topbar {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+@media (max-width: 767px) {
+  .layout-topbar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
 }
 
 .layout-sidebar {

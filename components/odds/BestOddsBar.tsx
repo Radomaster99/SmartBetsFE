@@ -1,6 +1,7 @@
 import type { BestOddsDto } from '@/lib/types/api';
 import type { LiveOddsMovementDirection } from '@/lib/hooks/useLiveOdds';
-import { buildBookmakerHref, getBookmakerMeta } from '@/lib/bookmakers';
+import { buildBookmakerHref } from '@/lib/bookmakers';
+import { BookmakerAvatar } from '@/components/shared/BookmakerAvatar';
 
 interface Props {
   bestOdds: BestOddsDto;
@@ -38,8 +39,6 @@ function OddsRow({
     outcome: outcomeKey,
     source: 'best-odds',
   });
-  const meta = getBookmakerMeta(bookmaker);
-
   return (
     <div
       className="flex items-center gap-3 px-4 py-3.5 transition-colors"
@@ -66,12 +65,7 @@ function OddsRow({
       </span>
 
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span
-          className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-black tracking-[0.08em]"
-          style={{ background: `${meta.accent}18`, color: meta.accent, border: `1px solid ${meta.accent}33` }}
-        >
-          {meta.logoText}
-        </span>
+        <BookmakerAvatar bookmakerName={bookmaker} size={32} />
         <div className="min-w-0">
           <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={bookmaker}>
             {bookmaker}
@@ -86,11 +80,18 @@ function OddsRow({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="cta-btn flex-shrink-0 px-4 py-2 text-[12px] font-bold tracking-wide"
-        style={{ textDecoration: 'none', whiteSpace: 'nowrap', borderRadius: '8px' }}
+        className="flex-shrink-0 px-4 py-2 text-[12px] font-black tracking-wide"
+        style={{
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+          borderRadius: '8px',
+          background: 'var(--t-accent)',
+          color: '#000',
+          fontWeight: 900,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        BET
+        BET ↗
       </a>
     </div>
   );
@@ -127,7 +128,6 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
               outcome: row.outcomeKey,
               source: 'best-odds-panel',
             });
-            const meta = getBookmakerMeta(bookmaker);
             const movement = movements?.[row.outcomeKey];
 
             return (
@@ -164,21 +164,20 @@ export function BestOddsBar({ bestOdds, fixtureId, movements, variant = 'default
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="chrome-btn flex-shrink-0 rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
-                    style={{ textDecoration: 'none' }}
+                    className="flex-shrink-0 rounded-md px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.08em]"
+                    style={{
+                      textDecoration: 'none',
+                      background: 'var(--t-accent)',
+                      color: '#000',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    Open
+                    BET ↗
                   </a>
                 </div>
 
                 <div className="mt-2.5 flex min-w-0 items-center gap-2">
-                  <span
-                    className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-black tracking-[0.08em]"
-                    style={{ background: `${meta.accent}18`, color: meta.accent, border: `1px solid ${meta.accent}33` }}
-                  >
-                    {meta.logoText}
-                  </span>
+                  <BookmakerAvatar bookmakerName={bookmaker} size={28} />
                   <div className="min-w-0">
                     <div className="truncate text-[12px] font-semibold" style={{ color: 'var(--t-text-2)' }} title={bookmaker}>
                       {bookmaker}

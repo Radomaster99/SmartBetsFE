@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SmartBets UI Review</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #07101a; color: #e2e8f0; line-height: 1.5; }
+  .hero { background: linear-gradient(135deg, #0a1628 0%, #0d1f38 100%); border-bottom: 1px solid rgba(0,230,118,0.2); padding: 48px 40px 36px; }
+  .hero h1 { font-size: 32px; font-weight: 900; color: #fff; letter-spacing: -0.03em; }
+  .hero h1 span { color: #00e676; }
+  .hero p { margin-top: 8px; font-size: 15px; color: #94a3b8; max-width: 640px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; background: rgba(0,230,118,0.12); border: 1px solid rgba(0,230,118,0.3); color: #00e676; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px; }
+  .section { margin-bottom: 56px; }
+  .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; color: #00e676; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,230,118,0.15); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .card { background: rgba(13,20,34,0.74); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; }
+  .card:hover { border-color: rgba(0,230,118,0.25); transition: border-color 0.2s; }
+  .card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .card-title { font-size: 14px; font-weight: 700; color: #f1f5f9; line-height: 1.3; }
+  .card-subtitle { font-size: 11px; color: #64748b; margin-top: 2px; font-weight: 500; }
+  .card-body { font-size: 13px; color: #94a3b8; line-height: 1.6; }
+  .card-body strong { color: #cbd5e1; }
+  .card-body code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: monospace; color: #a5b4fc; }
+  .priority { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 999px; margin-top: 10px; }
+  .p-high { background: rgba(239,83,80,0.12); border: 1px solid rgba(239,83,80,0.3); color: #fca5a5; }
+  .p-med { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+  .p-low { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2); color: #6ee7b7; }
+  .before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .ba-col { border-radius: 10px; padding: 14px 16px; }
+  .ba-before { background: rgba(239,83,80,0.06); border: 1px solid rgba(239,83,80,0.15); }
+  .ba-after { background: rgba(0,230,118,0.06); border: 1px solid rgba(0,230,118,0.15); }
+  .ba-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+  .ba-before .ba-label { color: #fca5a5; }
+  .ba-after .ba-label { color: #6ee7b7; }
+  .ba-text { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+  .full-width { grid-column: 1 / -1; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+  .toc-item { padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #94a3b8; cursor: pointer; text-decoration: none; }
+  .toc-item:hover { border-color: rgba(0,230,118,0.3); color: #00e676; }
+  .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 40px; }
+  .metric { background: rgba(13,20,34,0.74); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; text-align: center; }
+  .metric-val { font-size: 32px; font-weight: 900; color: #00e676; font-family: 'Courier New', monospace; }
+  .metric-label { font-size: 11px; color: #64748b; margin-top: 4px; font-weight: 500; }
+  .mockup { background: #0a1628; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-top: 16px; }
+  .mockup-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; margin-bottom: 4px; font-size: 11px; font-family: 'Courier New', monospace; }
+  .mockup-row.live { background: rgba(239,83,80,0.04); border-left: 2px solid rgba(239,83,80,0.4); }
+  .mockup-row.upcoming { border-left: 2px solid transparent; padding-left: 12px; }
+  .mockup-row.header { background: rgba(255,255,255,0.03); font-weight: 700; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 6px; }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+  .chip-live { background: rgba(239,83,80,0.15); color: #fca5a5; border: 1px solid rgba(239,83,80,0.3); }
+  .chip-up { background: rgba(0,230,118,0.1); color: #6ee7b7; border: 1px solid rgba(0,230,118,0.2); }
+  .team-name { flex: 1; color: #e2e8f0; font-weight: 600; font-size: 12px; }
+  .score { width: 36px; text-align: center; color: #fca5a5; font-weight: 900; font-size: 14px; }
+  .vs-text { width: 28px; text-align: center; color: #475569; font-size: 10px; }
+  .odds-pill { display: inline-flex; flex-direction: column; align-items: center; padding: 3px 8px; border-radius: 6px; background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.25); }
+  .odds-val { font-size: 13px; font-weight: 900; color: #00e676; }
+  .odds-bk { font-size: 8px; color: #64748b; font-weight: 600; }
+  .odds-pill.n { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); }
+  .odds-pill.n .odds-val { color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="badge">● SmartBets / OddsDetector — Full UI/UX Audit</div>
+  <h1>Site Review &amp; <span>Improvement Map</span></h1>
+  <p>Comprehensive audit covering every page: design, UX, mobile responsiveness, conversion paths, and accessibility. Findings from reading every major component and page in the codebase.</p>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <a href="#summary" class="toc-item">📊 Summary</a>
+    <a href="#topbar" class="toc-item">🔝 Topbar</a>
+    <a href="#sidebar" class="toc-item">🗂 Sidebar</a>
+    <a href="#fixtures" class="toc-item">📋 Fixture List</a>
+    <a href="#odds" class="toc-item">💰 Odds Panel</a>
+    <a href="#mobile" class="toc-item">📱 Mobile</a>
+    <a href="#conversion" class="toc-item">🎯 Conversion</a>
+    <a href="#design" class="toc-item">🎨 Visual Polish</a>
+  </div>
+
+  <div id="summary">
+    <div class="metric-row">
+      <div class="metric">
+        <div class="metric-val">17</div>
+        <div class="metric-label">Total improvements found</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" style="color:#fca5a5">6</div>
+        <div class="metric-label">High priority</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" style="color:#fcd34d">7</div>
+        <div class="metric-label">Medium priority</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" style="color:#6ee7b7">4</div>
+        <div class="metric-label">Quick wins / polish</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOPBAR ── -->
+  <div class="section" id="topbar">
+    <div class="section-title">🔝 Topbar</div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">🎁</div>
+          <div>
+            <div class="card-title">Bonus Codes button is visually dominant</div>
+            <div class="card-subtitle">Topbar.tsx — both mobile &amp; desktop</div>
+          </div>
+        </div>
+        <div class="card-body">The gold pulsing "🎁 Bonus Codes" button competes with the primary navigation — it's styled <strong>more prominently than search and the live counter</strong>, and it pulses constantly. It feels like a banner ad placed in the nav, not a navigation item. Bettors find this irritating.<br><br><strong>Fix:</strong> Move to a subtle text link or a secondary chip. Let search and the live counter be the visual anchors.</div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">🔍</div>
+          <div>
+            <div class="card-title">Search has no placeholder context</div>
+            <div class="card-subtitle">GlobalSearch — desktop only</div>
+          </div>
+        </div>
+        <div class="card-body">The search bar is visible on desktop but the placeholder doesn't tell users what they can search. Heavy users won't explore — they need confirmation the feature does what they expect.<br><br><strong>Fix:</strong> Placeholder text: <strong>"Search teams, leagues, fixtures…"</strong>. Also consider keyboard shortcut hint like <code>⌘K</code> on the right edge.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(100,116,139,0.12)">🌗</div>
+          <div>
+            <div class="card-title">No theme toggle in the topbar</div>
+            <div class="card-subtitle">Topbar.tsx — desktop</div>
+          </div>
+        </div>
+        <div class="card-body">Light/dark toggle exists via ThemeContext and is stored in localStorage, but the control is nowhere in the main nav on desktop. Users can't find it without hunting.<br><br><strong>Fix:</strong> Add a small sun/moon icon button in the topbar right side. 1 minute of code, high discoverability impact.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,230,118,0.12)">🔴</div>
+          <div>
+            <div class="card-title">Live counter disappears when count is zero</div>
+            <div class="card-subtitle">Topbar.tsx — desktop</div>
+          </div>
+        </div>
+        <div class="card-body">The live badge only renders when <code>liveCount &gt; 0</code>. This causes layout shift when fixtures go live during a session, and the topbar feels inconsistent.<br><br><strong>Fix:</strong> Show a dimmed "0 Live" badge permanently. When count increases, animate the number in.</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SIDEBAR ── -->
+  <div class="section" id="sidebar">
+    <div class="section-title">🗂 Sidebar — League Navigation</div>
+    <div class="cards">
+
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">📌</div>
+          <div>
+            <div class="card-title">No visual hierarchy — pinned, popular, and all-leagues look the same</div>
+            <div class="card-subtitle">FootballSidebarContent.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">All league navigation items are rendered at the same visual weight. Pinned leagues are labeled with a tiny "PINNED" header but items themselves are indistinguishable from regular leagues. Country group sections blend with everything else.</div>
+        <div class="before-after">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Current</div>
+            <div class="ba-text">All items same size, weight, and color. "PINNED" label in small uppercase but no visual distinction per item. Country groups presented identically to section headers. No live fixture count per league.</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Improved</div>
+            <div class="ba-text">Pinned items show a ★ pin icon. Popular leagues have subtle green-tinted background. Country groups collapse by default with an expand arrow. League rows show a live dot + count when that league has live fixtures. Active league gets accent border-left.</div>
+          </div>
+        </div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">🔴</div>
+          <div>
+            <div class="card-title">No live indicator per league in the sidebar</div>
+            <div class="card-subtitle">FootballSidebarContent.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">When a league has live matches right now, there's zero indication in the sidebar. A bettor following La Liga has to navigate there to discover there's a live game happening — they won't know unless they're already on that view.<br><br><strong>Fix:</strong> Attach a red dot + count badge to league items when live fixtures exist for that league. This data is available client-side.</div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(100,116,139,0.12)">📐</div>
+          <div>
+            <div class="card-title">Sidebar fixed at 224px — tight for long league names</div>
+            <div class="card-subtitle">Sidebar.tsx — md:w-56</div>
+          </div>
+        </div>
+        <div class="card-body">224px is quite narrow for leagues with long names (e.g. "Primera Division RFEF Group 2"). Names get truncated with ellipsis. On xl+ screens this leaves unused space in the main content area while the sidebar feels cramped.<br><br><strong>Fix:</strong> Bump to 240–256px on xl screens with <code>xl:w-64</code>. Or make it resizable/collapsible.</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── FIXTURE LIST ── -->
+  <div class="section" id="fixtures">
+    <div class="section-title">📋 Fixture List</div>
+    <div class="cards">
+
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">⚡</div>
+          <div>
+            <div class="card-title">No league grouping — fixtures from multiple leagues are a flat list</div>
+            <div class="card-subtitle">FixtureTable.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">When no league filter is active, fixtures from every competition are shown as a flat, ungrouped table. A bettor scanning for Premier League games has no visual landmark — they have to read every row. This is the biggest usability gap on the main product page.</div>
+        <div class="mockup">
+          <div class="mockup-row header">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England · Premier League &nbsp;<span class="chip chip-live">3 LIVE</span></div>
+          <div class="mockup-row live">
+            <span class="chip chip-live">87'</span>
+            <span class="team-name">Arsenal</span>
+            <span class="score">2–1</span>
+            <span class="team-name" style="text-align:right">Chelsea</span>
+            <div class="odds-pill"><div class="odds-val">1.62</div><div class="odds-bk">B365</div></div>
+            <div class="odds-pill n"><div class="odds-val">4.20</div><div class="odds-bk">BB</div></div>
+            <div class="odds-pill n"><div class="odds-val">5.00</div><div class="odds-bk">B365</div></div>
+          </div>
+          <div class="mockup-row upcoming">
+            <span style="color:#475569;width:36px;font-size:10px">20:00</span>
+            <span class="team-name">Liverpool</span>
+            <span class="vs-text">vs</span>
+            <span class="team-name" style="text-align:right">Man City</span>
+            <div class="odds-pill n"><div class="odds-val">2.15</div><div class="odds-bk">B365</div></div>
+            <div class="odds-pill n"><div class="odds-val">3.40</div><div class="odds-bk">BB</div></div>
+            <div class="odds-pill n"><div class="odds-val">3.10</div><div class="odds-bk">B365</div></div>
+          </div>
+          <div class="mockup-row header">🇪🇸 Spain · La Liga &nbsp;<span class="chip chip-up">2 UPCOMING</span></div>
+          <div class="mockup-row upcoming">
+            <span style="color:#475569;width:36px;font-size:10px">21:00</span>
+            <span class="team-name">Real Madrid</span>
+            <span class="vs-text">vs</span>
+            <span class="team-name" style="text-align:right">Barcelona</span>
+            <div class="odds-pill n"><div class="odds-val">2.40</div><div class="odds-bk">B365</div></div>
+            <div class="odds-pill n"><div class="odds-val">3.30</div><div class="odds-bk">BB</div></div>
+            <div class="odds-pill n"><div class="odds-val">2.90</div><div class="odds-bk">B365</div></div>
+          </div>
+        </div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">👆</div>
+          <div>
+            <div class="card-title">Odds buttons are 32px tall — too small on touch</div>
+            <div class="card-subtitle">OddsButton in FixtureRow.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">The three odds buttons (HOME/DRAW/AWAY) are <code>height: 32</code>px. Apple HIG recommends 44px minimum for touch targets. On a 390px-wide phone, tapping the correct bookmaker odds is error-prone. The bookmaker label at <strong>7px font is also unreadably small</strong> — should be 9–10px minimum.<br><br><strong>Fix:</strong> Increase button height to 40–44px. Bookmaker name to 9px.</div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">‹›</div>
+          <div>
+            <div class="card-title">Date nav arrows are plain ASCII &lt; &gt; text</div>
+            <div class="card-subtitle">FixtureFilters.tsx — all breakpoints</div>
+          </div>
+        </div>
+        <div class="card-body">The previous/next day buttons render as literal <code>&lt;</code> and <code>&gt;</code> characters. They look unfinished and are very small click/tap targets with no visual affordance.<br><br><strong>Fix:</strong> Replace with SVG chevron icons (16×16px) with adequate padding to hit 36×36px minimum touch area.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(100,116,139,0.12)">⭐</div>
+          <div>
+            <div class="card-title">Watchlist button uses raw Unicode ☆/★ glyphs</div>
+            <div class="card-subtitle">FixtureRow.tsx — save button</div>
+          </div>
+        </div>
+        <div class="card-body">The watchlist toggle uses <code>'★'</code> and <code>'☆'</code> Unicode characters. These render inconsistently across browsers and OS (different sizes, different weights, sometimes emoji vs text style).<br><br><strong>Fix:</strong> Replace with a proper SVG bookmark or heart icon for consistent cross-platform rendering.</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">📊</div>
+          <div>
+            <div class="card-title">Odds movement arrows are 9px and invisible at a glance</div>
+            <div class="card-subtitle">OddsButton — movement indicator</div>
+          </div>
+        </div>
+        <div class="card-body">Odds movement direction uses <code>↑</code>/<code>↓</code> at 9px font, positioned in the top-right corner of each odds button. These are extremely hard to see during fast scanning, especially while the flash animation is also running.<br><br><strong>Fix:</strong> Use 12px colored triangle/chevron SVG. Add a brief colored background pulse on the button itself (not just a corner indicator).</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── ODDS PANEL ── -->
+  <div class="section" id="odds">
+    <div class="section-title">💰 Odds Panel &amp; Fixture Detail</div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">🏢</div>
+          <div>
+            <div class="card-title">Bookmaker rows have no logos — only 2-letter initials</div>
+            <div class="card-subtitle">OddsComparison.tsx / BestOddsBar.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">Bookmaker identity relies on a colored circle with a 2-letter abbreviation (e.g. "B3" for Bet365). Heavy bettors recognize bookmakers by logo instantly — the current system requires reading the name text on every scan.<br><br><strong>Fix:</strong> Add 20×20px brand favicon or SVG logo for top bookmakers. Even just better icon design (distinct shapes, not just colors) would help.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,230,118,0.12)">📈</div>
+          <div>
+            <div class="card-title">No odds history sparkline</div>
+            <div class="card-subtitle">Fixture detail — Odds tab</div>
+          </div>
+        </div>
+        <div class="card-body">The odds table shows current prices but no historical movement. Line movement is critical signal for sharp bettors — is this price opening or closing? A tiny 40px sparkline next to each row showing the last 6–8 data points would be a major differentiator vs competitors.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">‸</div>
+          <div>
+            <div class="card-title">Best-odds cards use ^ and v as movement arrows</div>
+            <div class="card-subtitle">OddsComparison.tsx — bestOutcomes grid</div>
+          </div>
+        </div>
+        <div class="card-body">The best-odds header cards show <code>^</code> and <code>v</code> (keyboard caret/letter) as up/down movement indicators. These are especially confusing — <code>v</code> looks like a letter, not a down arrow.<br><br><strong>Fix:</strong> Use proper ↑/↓ Unicode arrows or SVG chevrons, with color: green for up, red for down.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">🎯</div>
+          <div>
+            <div class="card-title">BET button needs stronger visual prominence</div>
+            <div class="card-subtitle">BestOddsBar.tsx — OddsRow</div>
+          </div>
+        </div>
+        <div class="card-body">The "BET" CTA is a primary conversion action but uses a generic <code>cta-btn</code> class and doesn't visually stand out from the row. It should be the <strong>most visually dominant element per row</strong>: bold green fill, high contrast white text, consistent 36–40px height, slight hover lift effect.<br><br>The "Open" button in compact variant is even weaker — undersized and misnamed (should say "BET" consistently).</div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── MOBILE ── -->
+  <div class="section" id="mobile">
+    <div class="section-title">📱 Mobile Experience</div>
+    <div class="cards">
+
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(239,83,80,0.12)">📱</div>
+          <div>
+            <div class="card-title">Fixture row layout is too cramped at 375–390px</div>
+            <div class="card-subtitle">FixtureRow.tsx — mobile widths</div>
+          </div>
+        </div>
+        <div class="card-body">The current single-row layout packs status + home team + score + away team + 3 odds buttons into one horizontal band. On a 390px iPhone, team names truncate to 4–5 characters and odds buttons are 32px × ~60px each — barely tappable.</div>
+        <div class="before-after">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Current (single row)</div>
+            <div class="ba-text">[20:00] [Manch...] vs [Liverp...] [2.15↑ B365][3.40 BB][3.10 B365][☆]<br><br>Everything in one cramped horizontal band. Team names get aggressive truncation.</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Improved (two rows)</div>
+            <div class="ba-text">Row 1: [20:00] Manchester City vs Liverpool (full names)<br>Row 2: [HOME 2.15 B365↑] [DRAW 3.40 BB] [AWAY 3.10 B365] full width, taller buttons<br><br>Cleaner, more tappable, teams fully visible.</div>
+          </div>
+        </div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">⬇️</div>
+          <div>
+            <div class="card-title">Bottom nav inactive tabs at 28% opacity look broken</div>
+            <div class="card-subtitle">MobileBottomNav.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">Inactive tabs use <code>opacity: 0.28</code> with a <code>grayscale(1)</code> filter. This makes the nav look visually impaired or disabled — like a design placeholder. Standard mobile nav uses 55–65% opacity for inactive items.<br><br><strong>Fix:</strong> Change to <code>opacity: 0.5</code>, remove grayscale filter. Labels at 10px are borderline — try 11px.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,230,118,0.12)">👆</div>
+          <div>
+            <div class="card-title">Date strip has no swipe gesture support</div>
+            <div class="card-subtitle">FixtureFilters.tsx — mobile</div>
+          </div>
+        </div>
+        <div class="card-body">The date strip on mobile navigates via prev/next buttons. Users expect to swipe left/right on the date row to change days — this is a standard gesture on every sports app (Flashscore, OneFootball, Google Calendar).<br><br><strong>Fix:</strong> Add a touch event handler on the strip container that detects horizontal swipe and calls <code>onDateChange</code>.</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CONVERSION ── -->
+  <div class="section" id="conversion">
+    <div class="section-title">🎯 Conversion &amp; Referral</div>
+    <div class="cards">
+
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,230,118,0.12)">💵</div>
+          <div>
+            <div class="card-title">No hover feedback or CTA tooltip on bookmaker odds buttons</div>
+            <div class="card-subtitle">OddsButton in FixtureRow.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">Clicking a bookmaker odds button opens the bookmaker in a new tab — that's good. But there's no hover state, no tooltip, and no click confirmation. A bettor doesn't know where they're going until they land there.</div>
+        <div class="before-after">
+          <div class="ba-col ba-before">
+            <div class="ba-label">Current</div>
+            <div class="ba-text">Odds button shows number + 7px bookmaker name. No hover state. No tooltip. Click opens new tab silently. No visual confirmation that something happened.</div>
+          </div>
+          <div class="ba-col ba-after">
+            <div class="ba-label">Improved</div>
+            <div class="ba-text">On hover: brighter border + tooltip "Bet 2.15 at Bet365 ↗". On click: brief scale-down + checkmark flash. Bookmaker name 9–10px. External link icon (↗) on the button signals it opens a new tab. Builds trust before the click.</div>
+          </div>
+        </div>
+        <div class="priority p-high">● High</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.12)">🏷️</div>
+          <div>
+            <div class="card-title">Bonus codes page is not surfaced on mobile bottom nav</div>
+            <div class="card-subtitle">MobileBottomNav.tsx</div>
+          </div>
+        </div>
+        <div class="card-body">The bonus codes page (a conversion-critical page) is only reachable from the topbar on mobile — a gold pulsing button that many users may dismiss as an ad. The mobile bottom nav has 4 tabs (Matches, Search, Leagues, Saved) with no path to bonus codes.<br><br><strong>Fix:</strong> Consider adding a "Offers" or "Bonuses" 5th tab on mobile, or surfacing it more prominently in the Leagues sheet.</div>
+        <div class="priority p-med">● Medium</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── VISUAL POLISH ── -->
+  <div class="section" id="design">
+    <div class="section-title">🎨 Visual Polish</div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(100,116,139,0.12)">🖼️</div>
+          <div>
+            <div class="card-title">Empty states are plain text — no illustration</div>
+            <div class="card-subtitle">EmptyState component</div>
+          </div>
+        </div>
+        <div class="card-body">When no fixtures match the active filter (e.g. no live games, no games for selected date), the empty state shows only text. This feels like an error rather than a designed state.<br><br><strong>Fix:</strong> Add a small inline SVG illustration (football, binoculars, calendar) and a contextual sub-message like "No live fixtures right now — check upcoming games."</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(100,116,139,0.12)">—</div>
+          <div>
+            <div class="card-title">Score dash encoding issues (noted in CLAUDE.md)</div>
+            <div class="card-subtitle">FixtureRow.tsx — score display</div>
+          </div>
+        </div>
+        <div class="card-body">CLAUDE.md explicitly notes "malformed dash symbols" in some UI strings. The score renders as <code>&#123;homeGoals&#125; – &#123;awayGoals&#125;</code> using an en-dash. Run an audit of all separator strings across the app to ensure consistent Unicode usage and prevent encoding artifacts in different environments.</div>
+        <div class="priority p-low">● Low</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center; padding: 40px; color: #334155; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.04); margin-top: 20px;">
+  SmartBets / OddsDetector — UI Audit · 17 improvements across 7 areas · Bettor-first UX
+</div>
+
+</body>
+</html>

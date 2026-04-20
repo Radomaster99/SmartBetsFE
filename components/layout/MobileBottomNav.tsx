@@ -179,8 +179,7 @@ export function MobileBottomNav({ activeOverlay, onOverlayChange }: Props) {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              opacity: tab.isActive ? 1 : 0.28,
-              filter: tab.isActive ? 'none' : 'grayscale(1)',
+              opacity: tab.isActive ? 1 : 0.55,
               color: tab.isActive ? 'var(--t-accent)' : 'var(--t-text-3)',
               paddingBottom: 2,
             }}

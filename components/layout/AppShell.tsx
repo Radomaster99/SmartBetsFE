@@ -184,7 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!isMobileViewport ? <FavoritesDock entries={favoriteEntries} onRemove={removeFixture} /> : null}
       <div style={{ display: 'flex', flexDirection: 'column', paddingInline: shellGutter, boxSizing: 'border-box' }}>
         <Topbar />
-        <div style={{ display: 'flex', position: 'relative' }}>
+        <div style={{ display: 'flex', position: 'relative', paddingTop: isMobileViewport ? 'var(--topbar-h)' : 0 }}>
           <SportSwitcherPanel />
           <Sidebar />
           <main className="pb-[62px] md:pb-0" style={{ flex: 1, minWidth: 0 }}>
