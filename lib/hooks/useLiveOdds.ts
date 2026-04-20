@@ -152,7 +152,13 @@ function mapSummaryPayload(payload: LiveOddsSummaryUpdatedDto): LiveOddsSummaryD
 
 export function mapMarketsToSummary(
   markets: LiveOddsMarketDto[],
-  options?: { homeTeamName?: string | null; awayTeamName?: string | null },
+  options?: {
+    homeTeamName?: string | null;
+    awayTeamName?: string | null;
+    homeGoals?: number | null;
+    awayGoals?: number | null;
+    elapsed?: number | null;
+  },
 ): LiveOddsSummaryDto | null {
   const odds = mapLiveOddsToMainMatchOdds(markets, options);
   const bestOdds = deriveBestOddsFromOdds(odds);
@@ -298,7 +304,10 @@ export function useVisibleLiveSummaries(fixtureIds: number[], enabled = true, op
   });
 }
 
-type VisibleLiveFixtureSeed = Pick<FixtureDto, 'apiFixtureId' | 'homeTeamName' | 'awayTeamName'>;
+type VisibleLiveFixtureSeed = Pick<
+  FixtureDto,
+  'apiFixtureId' | 'homeTeamName' | 'awayTeamName' | 'homeGoals' | 'awayGoals' | 'elapsed'
+>;
 
 export function useVisibleLiveOddsByFixture(
   fixtures: VisibleLiveFixtureSeed[],
@@ -324,7 +333,10 @@ export function useVisibleLiveOddsByFixture(
   );
 
   const fixtureIdsKey = useMemo(
-    () => stableFixtures.map((f) => `${f.apiFixtureId}:${f.homeTeamName}:${f.awayTeamName}`).join('|'),
+    () =>
+      stableFixtures
+        .map((f) => `${f.apiFixtureId}:${f.homeTeamName}:${f.awayTeamName}:${f.homeGoals ?? ''}:${f.awayGoals ?? ''}:${f.elapsed ?? ''}`)
+        .join('|'),
     [stableFixtures],
   );
 
@@ -348,6 +360,9 @@ export function useVisibleLiveOddsByFixture(
               const odds = mapLiveOddsToMainMatchOdds(markets, {
                 homeTeamName: fixture.homeTeamName,
                 awayTeamName: fixture.awayTeamName,
+                homeGoals: fixture.homeGoals ?? null,
+                awayGoals: fixture.awayGoals ?? null,
+                elapsed: fixture.elapsed ?? null,
               });
               return [fixture.apiFixtureId, odds] as const;
             } catch (error) {
@@ -780,6 +795,9 @@ export function useLiveOddsListSignalR(fixtureIds: number[], enabled = true) {
           const nextSummary = mapMarketsToSummary(payload.markets ?? [], {
             homeTeamName: fixture?.homeTeamName,
             awayTeamName: fixture?.awayTeamName,
+            homeGoals: fixture?.homeGoals ?? null,
+            awayGoals: fixture?.awayGoals ?? null,
+            elapsed: fixture?.elapsed ?? null,
           });
           if (!nextSummary) {
             return;

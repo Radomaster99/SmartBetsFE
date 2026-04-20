@@ -485,6 +485,9 @@ function FootballPageClient() {
               apiFixtureId: fixture.apiFixtureId,
               homeTeamName: fixture.homeTeamName,
               awayTeamName: fixture.awayTeamName,
+              homeGoals: fixture.homeGoals ?? null,
+              awayGoals: fixture.awayGoals ?? null,
+              elapsed: fixture.elapsed ?? null,
             }))
         : [],
     [rawFixtures, state, visibleLiveFixtureIdSet],

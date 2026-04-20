@@ -220,6 +220,9 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
           const mappedOdds = mapLiveOddsToMainMatchOdds(markets, {
             homeTeamName: detail?.fixture.homeTeamName,
             awayTeamName: detail?.fixture.awayTeamName,
+            homeGoals: detail?.fixture.homeGoals ?? null,
+            awayGoals: detail?.fixture.awayGoals ?? null,
+            elapsed: detail?.fixture.elapsed ?? null,
           }).filter((odd) => odd.sourceProvider === 'api-football' && /bet365/i.test(odd.bookmaker));
 
           if (mappedOdds.length > 0) {
@@ -243,6 +246,9 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
         ? mapLiveOddsToMainMatchOdds(liveOddsQuery.data ?? [], {
             homeTeamName: detail?.fixture.homeTeamName,
             awayTeamName: detail?.fixture.awayTeamName,
+            homeGoals: detail?.fixture.homeGoals ?? null,
+            awayGoals: detail?.fixture.awayGoals ?? null,
+            elapsed: detail?.fixture.elapsed ?? null,
           })
         : [],
     [detail?.fixture.awayTeamName, detail?.fixture.homeTeamName, isLive, liveOddsQuery.data],
@@ -253,6 +259,9 @@ export function useFixtureOddsData(fixtureId: string, isOddsTabActive = true): F
         ? mapLiveOddsToMainMatchOdds(apiFootballFallbackQuery.data ?? [], {
             homeTeamName: detail?.fixture.homeTeamName,
             awayTeamName: detail?.fixture.awayTeamName,
+            homeGoals: detail?.fixture.homeGoals ?? null,
+            awayGoals: detail?.fixture.awayGoals ?? null,
+            elapsed: detail?.fixture.elapsed ?? null,
           }).filter((odd) => odd.sourceProvider === 'api-football' && /bet365/i.test(odd.bookmaker))
         : [],
     [

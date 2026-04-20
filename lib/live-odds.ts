@@ -47,6 +47,9 @@ export interface LiveOddsMappingOptions {
   fulltimeOnly?: boolean;
   homeTeamName?: string | null;
   awayTeamName?: string | null;
+  homeGoals?: number | null;
+  awayGoals?: number | null;
+  elapsed?: number | null;
 }
 
 function normalizeText(value: string): string {
@@ -425,6 +428,40 @@ function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: LiveOd
     return [];
   }
 
+  function shouldSwapHomeAwayByLiveScore(homeOdd: number, awayOdd: number): boolean {
+    const homeGoals = options?.homeGoals ?? null;
+    const awayGoals = options?.awayGoals ?? null;
+    const elapsed = options?.elapsed ?? null;
+
+    if (homeGoals == null || awayGoals == null || elapsed == null) {
+      return false;
+    }
+
+    const goalDiff = homeGoals - awayGoals;
+    const absGoalDiff = Math.abs(goalDiff);
+    if (absGoalDiff === 0) {
+      return false;
+    }
+
+    const leaderIsHome = goalDiff > 0;
+    const leaderOdd = leaderIsHome ? homeOdd : awayOdd;
+    const trailerOdd = leaderIsHome ? awayOdd : homeOdd;
+
+    if (leaderOdd <= trailerOdd) {
+      return false;
+    }
+
+    const requiredElapsed = absGoalDiff >= 2 ? 20 : 75;
+    const requiredRatio = absGoalDiff >= 2 ? 2 : 3;
+    const trailerFloor = Math.max(trailerOdd, 1.01);
+
+    if (elapsed < requiredElapsed) {
+      return false;
+    }
+
+    return leaderOdd / trailerFloor >= requiredRatio;
+  }
+
   const rawOdds = selectedMarkets.flatMap((market): OddDto[] => {
     const home = findOutcomeValue(market.values, 'home', options);
     const draw = findOutcomeValue(market.values, 'draw', options);
@@ -433,6 +470,8 @@ function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: LiveOd
     if (!home?.odd || !draw?.odd || !away?.odd) {
       return [];
     }
+
+    const shouldSwapHomeAway = shouldSwapHomeAwayByLiveScore(home.odd, away.odd);
 
     return [
       {
@@ -448,9 +487,9 @@ function mapThreeWayMarketsToOdds(markets: LiveOddsMarketDto[], options?: LiveOd
         externalMarketKey: market.externalMarketKey ?? null,
         bookmakerStableKey: getMarketBookmakerIdentityKey(market),
         marketName: market.betName,
-        homeOdd: home.odd,
+        homeOdd: shouldSwapHomeAway ? away.odd : home.odd,
         drawOdd: draw.odd,
-        awayOdd: away.odd,
+        awayOdd: shouldSwapHomeAway ? home.odd : away.odd,
         collectedAtUtc: market.collectedAtUtc ?? new Date().toISOString(),
       } satisfies OddDto,
     ];
