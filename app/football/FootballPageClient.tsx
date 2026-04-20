@@ -7,7 +7,6 @@ import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures, flattenFixturePages } from '@/lib/hooks/useFixtures';
 import {
   useLiveOddsListSignalR,
-  useLiveViewersHeartbeat,
   useVisibleLiveOddsByFixture,
   useVisibleLiveSummaries,
 } from '@/lib/hooks/useLiveOdds';
@@ -491,7 +490,6 @@ function FootballPageClient() {
     state === 'Live' && visibleLiveFixturesNeedingRecovery.length > 0,
     { staleTime: 60_000, refetchInterval: false },
   );
-  useLiveViewersHeartbeat(effectiveVisibleLiveFixtureIds, state === 'Live');
 
   const visibleRecoveredLiveSummaries = useMemo(() => {
     return Object.entries(visibleRecoveredLiveOdds).reduce<Record<number, LiveOddsSummaryDto>>((acc, [fixtureId, odds]) => {
