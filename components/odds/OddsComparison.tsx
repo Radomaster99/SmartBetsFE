@@ -33,84 +33,6 @@ function minutesAgo(iso: string): string {
   return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
 }
 
-function LiveStatusPill({
-  status,
-  hasLiveOdds,
-  usingPreMatchFallback,
-  hidePreMatchFallbackPill = false,
-}: {
-  status: LiveOddsRealtimeStatus;
-  hasLiveOdds: boolean;
-  usingPreMatchFallback: boolean;
-  hidePreMatchFallbackPill?: boolean;
-}) {
-  let copy = 'Live odds idle';
-  let styles = {
-    background: 'rgba(148,163,184,0.12)',
-    border: '1px solid rgba(148,163,184,0.22)',
-    color: 'var(--t-text-3)',
-  };
-
-  if (usingPreMatchFallback && !hidePreMatchFallbackPill) {
-    copy = 'Pre-match fallback';
-    styles = {
-      background: 'rgba(245,158,11,0.12)',
-      border: '1px solid rgba(245,158,11,0.26)',
-      color: '#fbbf24',
-    };
-  } else if (hasLiveOdds && status === 'connected') {
-    copy = 'Live odds';
-    styles = {
-      background: 'rgba(0,230,118,0.12)',
-      border: '1px solid rgba(0,230,118,0.28)',
-      color: 'var(--t-accent)',
-    };
-  } else if (hasLiveOdds && (status === 'connecting' || status === 'reconnecting')) {
-    copy = 'Syncing...';
-    styles = {
-      background: 'rgba(245,158,11,0.12)',
-      border: '1px solid rgba(245,158,11,0.26)',
-      color: '#fbbf24',
-    };
-  } else if (status === 'error') {
-    copy = 'Realtime unavailable';
-    styles = {
-      background: 'rgba(239,83,80,0.12)',
-      border: '1px solid rgba(239,83,80,0.24)',
-      color: '#fca5a5',
-    };
-  }
-
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        borderRadius: 20,
-        padding: '3px 10px',
-        fontSize: 10,
-        fontWeight: 600,
-        ...styles,
-      }}
-    >
-      {hasLiveOdds && status === 'connected' && !usingPreMatchFallback && (
-        <span
-          style={{
-            display: 'inline-block',
-            width: 5,
-            height: 5,
-            borderRadius: '50%',
-            background: 'var(--t-accent)',
-            animation: 'live-pulse 1.4s ease-in-out infinite',
-          }}
-        />
-      )}
-      {copy}
-    </div>
-  );
-}
-
 function OddPill({
   value,
   isBest,
@@ -204,14 +126,8 @@ export function OddsComparison({
   odds,
   fixtureId,
   isLive,
-  liveOddsRealtimeStatus,
-  hasLiveOdds,
-  usingPreMatchFallback,
-  shouldUseLiveBookmakerView,
   bestOddsMovements,
   oddsMovements,
-  hidePreMatchFallbackPill = false,
-  hideLiveStatusPill = false,
 }: OddsComparisonProps) {
   const orderedOdds = useMemo(
     () => sortOddsByStrength(dedupeOddsByBookmakerName(dedupeOddsByBookmaker(odds))),
@@ -249,47 +165,6 @@ export function OddsComparison({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {isLive ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {!hideLiveStatusPill ? (
-            <LiveStatusPill
-              status={liveOddsRealtimeStatus}
-              hasLiveOdds={hasLiveOdds}
-              usingPreMatchFallback={usingPreMatchFallback}
-              hidePreMatchFallbackPill={hidePreMatchFallbackPill}
-            />
-          ) : null}
-          {usingPreMatchFallback ? (
-            <div
-              style={{
-                borderRadius: 6,
-                padding: '6px 10px',
-                fontSize: 10,
-                background: 'rgba(245,158,11,0.1)',
-                border: '1px solid rgba(245,158,11,0.24)',
-                color: '#fbbf24',
-              }}
-            >
-              Live odds not yet available. Showing latest pre-match prices.
-            </div>
-          ) : null}
-          {liveOddsRealtimeStatus === 'connected' && shouldUseLiveBookmakerView ? (
-            <div
-              style={{
-                borderRadius: 6,
-                padding: '6px 10px',
-                fontSize: 10,
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--t-border)',
-                color: 'var(--t-text-4)',
-              }}
-            >
-              Live prices flash as the provider updates the market.
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {bestOutcomes.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {bestOutcomes.map((row) => {
