@@ -733,8 +733,10 @@ function FootballPageClient() {
       />
 
       {activeLeague ? (
-        <div style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}>
-          <div className="hidden items-center gap-3 px-4 py-2 text-[12px] md:flex">
+        <div
+          className="flex items-center gap-3 px-4 py-2 text-[12px]"
+          style={{ borderBottom: '1px solid var(--t-border)', background: 'var(--t-surface)' }}
+        >
           {/* Left: league name + season */}
           <div className="min-w-0 flex-1">
             <span className="font-semibold" style={{ color: 'var(--t-text-2)' }}>
@@ -812,96 +814,6 @@ function FootballPageClient() {
           >
             × clear
           </button>
-          </div>
-          <div className="px-4 py-3 md:hidden">
-            <div className="flex flex-col gap-2.5">
-              <div
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                style={{
-                  background: 'var(--t-surface-2)',
-                  border: '1px solid var(--t-border-2)',
-                }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold" style={{ color: 'var(--t-text-2)' }}>
-                    {activeLeague.name}
-                  </div>
-                  <div className="text-[11px]" style={{ color: 'var(--t-text-4)' }}>
-                    Season {season}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  aria-label="Clear selected league"
-                  onClick={() => replaceIfNeeded(buildFootballHref(date, state, null, DEFAULT_SEASON, 'today'))}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-semibold"
-                  style={{
-                    color: 'var(--t-accent)',
-                    cursor: 'pointer',
-                    background: 'rgba(0,230,118,0.1)',
-                    border: '1px solid rgba(0,230,118,0.24)',
-                    flexShrink: 0,
-                  }}
-                >
-                  X
-                </button>
-              </div>
-
-              <div
-                className="grid grid-cols-2 gap-1 rounded-xl p-1"
-                style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)' }}
-              >
-                {([
-                  { label: 'Matches', href: matchesViewHref, active: view === 'matches' },
-                  { label: 'Standings', href: standingsViewHref, active: view === 'standings' },
-                ] as const).map((item) => (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    className="rounded-lg px-3 py-2 text-center text-[12px] transition-all"
-                    style={{
-                      fontWeight: item.active ? 700 : 600,
-                      color: item.active ? 'var(--t-text-1)' : 'var(--t-text-4)',
-                      background: item.active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-
-              {state === 'Upcoming' && !isFutureDate ? (
-                <div
-                  className="grid grid-cols-2 gap-1 rounded-xl p-1"
-                  style={{ background: 'var(--t-surface-2)', border: '1px solid var(--t-border-2)' }}
-                >
-                  {([
-                    { value: 'today' as const, label: 'Today' },
-                    { value: 'all' as const, label: 'All upcoming' },
-                  ] as const).map((option) => {
-                    const active = upcomingScope === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleUpcomingScopeChange(option.value)}
-                        className="rounded-lg px-3 py-2 text-[12px] font-semibold transition-all"
-                        style={{
-                          color: active ? 'var(--t-text-1)' : 'var(--t-text-4)',
-                          background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
       ) : null}
 
