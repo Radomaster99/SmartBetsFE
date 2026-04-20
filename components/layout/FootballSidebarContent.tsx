@@ -19,6 +19,11 @@ import {
 import type { CountryDto, LeagueDto } from '@/lib/types/api';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 import { buildStandingsPath } from '@/lib/league-links';
+import {
+  FIXTURE_PAGE_SIDEBAR_CONTEXT_EVENT,
+  readFixturePageSidebarContext,
+  type FixturePageSidebarContext,
+} from '@/lib/fixture-page-sidebar-context';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
@@ -40,6 +45,15 @@ function parsePositiveInt(value: string | null): number | null {
 
 function normalizeCountryName(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function parseFixtureIdFromPathname(pathname: string): number | null {
+  const match = pathname.match(/^\/football\/fixtures\/(\d+)(?:\/|$)/);
+  if (!match) {
+    return null;
+  }
+
+  return parsePositiveInt(match[1]);
 }
 
 function buildMatchesHref(currentParams: SearchParamsLike, leagueId: number | null, season: number, preserveCurrentFilters: boolean) {
@@ -113,11 +127,14 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const [popularStorageHydrated, setPopularStorageHydrated] = useState(false);
   const [userPopularLeaguePresets, setUserPopularLeaguePresets] = useState<PopularLeaguePreset[]>([]);
   const [hiddenPopularLeagueKeys, setHiddenPopularLeagueKeys] = useState<string[]>([]);
+  const [fixtureSidebarContext, setFixtureSidebarContext] = useState<FixturePageSidebarContext | null>(null);
   const popularLeaguesQuery = usePopularLeaguesContent();
   const adminPopularLeaguePresets = popularLeaguesQuery.data ?? [];
 
   const isMatchesPage = pathname === '/football';
   const isStandingsPage = pathname.startsWith('/football/standings');
+  const isFixturePage = pathname.startsWith('/football/fixtures/');
+  const fixtureIdFromPath = parseFixtureIdFromPathname(pathname);
   const activeLeagueId = parsePositiveInt(searchParams.get('leagueId'));
   const requestedSeason = parsePositiveInt(searchParams.get('season')) ?? DEFAULT_SEASON;
   const season = activeLeagueId ? requestedSeason : DEFAULT_SEASON;
@@ -228,9 +245,37 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
     });
   }, [activeLeagueId, allCountryGroups]);
 
+  useEffect(() => {
+    if (!isFixturePage) {
+      setFixtureSidebarContext(null);
+      return;
+    }
+
+    const syncFixtureSidebarContext = () => {
+      setFixtureSidebarContext(readFixturePageSidebarContext());
+    };
+
+    syncFixtureSidebarContext();
+    window.addEventListener(FIXTURE_PAGE_SIDEBAR_CONTEXT_EVENT, syncFixtureSidebarContext as EventListener);
+
+    return () => {
+      window.removeEventListener(FIXTURE_PAGE_SIDEBAR_CONTEXT_EVENT, syncFixtureSidebarContext as EventListener);
+    };
+  }, [isFixturePage, pathname]);
+
   const matchesHref = buildMatchesHref(searchParams, activeLeagueId, season, isMatchesPage);
   const activeLeagueName = leagues?.find((league) => league.apiLeagueId === activeLeagueId)?.name ?? null;
-  const standingsHref = buildStandingsPath(activeLeagueId, season, activeLeagueName);
+  const fixtureStandingsHref =
+    isFixturePage &&
+    fixtureIdFromPath &&
+    fixtureSidebarContext?.fixtureId === fixtureIdFromPath
+      ? buildStandingsPath(
+          fixtureSidebarContext.leagueId,
+          fixtureSidebarContext.season,
+          fixtureSidebarContext.leagueName,
+        )
+      : null;
+  const standingsHref = fixtureStandingsHref ?? buildStandingsPath(activeLeagueId, season, activeLeagueName);
   const clearLeagueHref = buildMatchesHref(searchParams, null, DEFAULT_SEASON, isMatchesPage);
   const isAllLeaguesActive = isMatchesPage && !activeLeagueId;
 
