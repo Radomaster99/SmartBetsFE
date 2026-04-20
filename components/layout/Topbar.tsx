@@ -33,7 +33,7 @@ export function Topbar() {
 
   return (
     <header
-      className="layout-topbar flex flex-shrink-0 items-center gap-3 px-3 md:px-4"
+      className="layout-topbar flex flex-shrink-0 items-center gap-3 px-3 pr-5 md:px-4"
       style={{
         position: 'sticky',
         top: 0,
