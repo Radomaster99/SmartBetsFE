@@ -431,8 +431,19 @@ function FootballPageClient() {
     fetchAllPages: leagueId == null,
   };
 
-  const { data, isLoading, isFetching, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useFixtures(filters);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPrimingAllPages,
+  } = useFixtures(filters);
   const rawFixtures = flattenFixturePages(data);
+  const fixturesReadyForDisplay = !isPrimingAllPages;
   const effectiveVisibleLiveFixtureIds = useMemo(
     () =>
       state === 'Live'
@@ -677,7 +688,7 @@ function FootballPageClient() {
       }),
     [rawFixtures, state, stickyLiveSummaries, visibleLiveSummaries, visibleRecoveredLiveSummaries],
   );
-  const fixtures = hydratedFixtures;
+  const fixtures = fixturesReadyForDisplay ? hydratedFixtures : [];
   const liveFixtureIds = useMemo(
     () => state === 'Live' ? fixtures.map((fixture) => fixture.apiFixtureId) : [],
     [fixtures, state],
@@ -852,8 +863,8 @@ function FootballPageClient() {
                 <FixtureTable
                   fixtures={fixtures}
                   viewState={state}
-                  isLoading={isLoading && rawFixtures.length === 0}
-                  isFetching={isFetching || isLoading}
+                  isLoading={(isLoading && rawFixtures.length === 0) || isPrimingAllPages}
+                  isFetching={isFetching || isLoading || isPrimingAllPages}
                   oddsMovements={liveOddsListRealtime.movements}
                   pendingLiveOddsFixtureIds={pendingRecoveredLiveFixtureIdSet}
                   savedFixtureIds={fixtureIdSet}

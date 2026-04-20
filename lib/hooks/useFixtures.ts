@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { PagedResultDto, FixtureDto } from '../types/api';
 import type { FixtureFilters } from '../types/filters';
@@ -38,6 +38,36 @@ async function fetchFixturesPage(
 
 export function useFixtures(filters: FixtureFilters) {
   const isLive = filters.state === 'Live';
+  const readinessKey = useMemo(
+    () =>
+      JSON.stringify({
+        date: filters.date ?? null,
+        from: filters.from ?? null,
+        to: filters.to ?? null,
+        leagueId: filters.leagueId ?? null,
+        teamId: filters.teamId ?? null,
+        season: filters.season ?? null,
+        state: filters.state ?? null,
+        includeLiveOddsSummary: filters.includeLiveOddsSummary ?? false,
+        pageSize: filters.pageSize ?? null,
+        direction: filters.direction ?? null,
+        fetchAllPages: filters.fetchAllPages ?? false,
+      }),
+    [
+      filters.date,
+      filters.direction,
+      filters.fetchAllPages,
+      filters.from,
+      filters.includeLiveOddsSummary,
+      filters.leagueId,
+      filters.pageSize,
+      filters.season,
+      filters.state,
+      filters.teamId,
+      filters.to,
+    ],
+  );
+  const [completedReadinessKeys, setCompletedReadinessKeys] = useState<Record<string, true>>({});
   const query = useInfiniteQuery({
     queryKey: ['fixtures', filters],
     queryFn: ({ pageParam }) => fetchFixturesPage(filters, pageParam as number | undefined),
@@ -49,12 +79,14 @@ export function useFixtures(filters: FixtureFilters) {
     refetchOnWindowFocus: false,
   });
 
+  const isPrimingAllPages = Boolean(filters.fetchAllPages && !completedReadinessKeys[readinessKey]);
+
   useEffect(() => {
     if (!filters.fetchAllPages) {
       return;
     }
 
-    if (!query.hasNextPage || query.isFetchingNextPage || query.isFetching) {
+    if (query.status !== 'success' || !query.hasNextPage || query.isFetchingNextPage) {
       return;
     }
 
@@ -63,11 +95,39 @@ export function useFixtures(filters: FixtureFilters) {
     filters.fetchAllPages,
     query.fetchNextPage,
     query.hasNextPage,
-    query.isFetching,
+    query.status,
     query.isFetchingNextPage,
   ]);
 
-  return query;
+  useEffect(() => {
+    if (!filters.fetchAllPages) {
+      return;
+    }
+
+    if (query.status !== 'success' || query.hasNextPage || query.isFetchingNextPage) {
+      return;
+    }
+
+    setCompletedReadinessKeys((current) =>
+      current[readinessKey]
+        ? current
+        : {
+            ...current,
+            [readinessKey]: true,
+          },
+    );
+  }, [
+    filters.fetchAllPages,
+    query.hasNextPage,
+    query.isFetchingNextPage,
+    query.status,
+    readinessKey,
+  ]);
+
+  return {
+    ...query,
+    isPrimingAllPages,
+  };
 }
 
 /** Flatten all loaded pages into a single array. */
