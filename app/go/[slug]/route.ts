@@ -26,7 +26,7 @@ export async function GET(
   if (!url) {
     // Unknown slug — send user back to the fixture if we have an ID, otherwise to matches.
     // We never show raw JSON errors in user-facing new tabs.
-    const fallbackPath = fixture ? `/football/fixtures/${fixture}?tab=odds` : '/football';
+    const fallbackPath = fixture ? `/football/fixtures/${fixture}?tab=odds` : '/';
     const fallbackUrl = new URL(fallbackPath, request.url);
     return NextResponse.redirect(fallbackUrl, { status: 302 });
   }

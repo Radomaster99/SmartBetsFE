@@ -165,7 +165,7 @@ function buildLeagueSuggestions(leagues: LeagueDto[], query: string): ScoredSugg
       type: 'league',
       title: league.name,
       subtitle: joinParts([league.countryName, `Season ${league.season}`]),
-      href: `/football?leagueId=${league.apiLeagueId}&season=${league.season}`,
+      href: `/?leagueId=${league.apiLeagueId}&season=${league.season}`,
       badge: 'League',
       score,
     });

@@ -25,7 +25,7 @@ export function SportSwitcherPanel() {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
   const isAdmin = pathname.startsWith('/admin');
-  const isFootball = pathname.startsWith('/football');
+  const isFootball = pathname === '/' || pathname.startsWith('/football');
 
   if (isAdmin) return null;
 
@@ -48,7 +48,7 @@ export function SportSwitcherPanel() {
       }}
     >
       <Link
-        href="/football"
+        href="/"
         title="Football"
         style={{
           width: 40,

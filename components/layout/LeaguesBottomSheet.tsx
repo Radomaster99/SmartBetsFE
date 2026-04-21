@@ -100,7 +100,7 @@ function LeaguesBottomSheetInner({ onClose }: { onClose: () => void }) {
         null;
       return buildStandingsPath(leagueId, leagueSeason, leagueName);
     }
-    return `/football?state=Upcoming&leagueId=${leagueId}&upcomingScope=all&season=${leagueSeason}`;
+    return `/?state=Upcoming&leagueId=${leagueId}&upcomingScope=all&season=${leagueSeason}`;
   }
 
   function handleSheetTouchStart(event: React.TouchEvent<HTMLDivElement>) {

@@ -99,7 +99,7 @@ function buildFootballHref(
   }
 
   const query = params.toString();
-  return query ? `/football?${query}` : '/football';
+  return query ? `/?${query}` : '/';
 }
 
 function formatUpcomingScopeLabel(scope: UpcomingScope): string {
@@ -341,12 +341,12 @@ function FootballPageClient() {
     const p = new URLSearchParams(searchParams.toString());
     p.delete('view');
     const q = p.toString();
-    return q ? `/football?${q}` : '/football';
+    return q ? `/?${q}` : '/';
   })();
   const standingsViewHref = (() => {
     const p = new URLSearchParams(searchParams.toString());
     p.set('view', 'standings');
-    return `/football?${p.toString()}`;
+    return `/?${p.toString()}`;
   })();
 
   const { data: standings, isLoading: standingsLoading, isError: standingsError } = useStandings(leagueId, season);

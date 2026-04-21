@@ -73,7 +73,7 @@ function buildMatchesHref(currentParams: SearchParamsLike, leagueId: number | nu
   if (leagueId || season !== DEFAULT_SEASON) next.set('season', String(season));
 
   const query = next.toString();
-  return query ? `/football?${query}` : '/football';
+  return query ? `/?${query}` : '/';
 }
 
 function buildUpcomingLeagueHref(leagueId: number, season: number) {
@@ -83,7 +83,7 @@ function buildUpcomingLeagueHref(leagueId: number, season: number) {
   next.set('upcomingScope', 'all');
   next.set('season', String(season));
 
-  return `/football?${next.toString()}`;
+  return `/?${next.toString()}`;
 }
 
 function buildLiveLeagueHref(leagueId: number, season: number) {
@@ -92,7 +92,7 @@ function buildLiveLeagueHref(leagueId: number, season: number) {
   next.set('leagueId', String(leagueId));
   next.set('season', String(season));
 
-  return `/football?${next.toString()}`;
+  return `/?${next.toString()}`;
 }
 
 function buildCountryGroups(leagues: LeagueDto[] | undefined, countries: CountryDto[] | undefined): CountryGroup[] {
@@ -143,7 +143,7 @@ export function FootballSidebarContent({ onNavigate }: { onNavigate?: () => void
   const popularLeaguesQuery = usePopularLeaguesContent();
   const adminPopularLeaguePresets = popularLeaguesQuery.data ?? [];
 
-  const isMatchesPage = pathname === '/football';
+  const isMatchesPage = pathname === '/' || pathname === '/football';
   const isStandingsPage = pathname.startsWith('/football/standings');
   const isFixturePage = pathname.startsWith('/football/fixtures/');
   const fixtureIdFromPath = parseFixtureIdFromPathname(pathname);

@@ -82,7 +82,7 @@ function SavedIcon({ filled }: { filled?: boolean }) {
 
 export function MobileBottomNav({ activeOverlay, onOverlayChange }: Props) {
   const pathname = usePathname();
-  const isMatchesActive = pathname === '/football' && activeOverlay === 'none';
+  const isMatchesActive = (pathname === '/' || pathname === '/football') && activeOverlay === 'none';
 
   const tabs = [
     {
@@ -140,7 +140,7 @@ export function MobileBottomNav({ activeOverlay, onOverlayChange }: Props) {
           return (
             <Link
               key={tab.id}
-              href="/football"
+              href="/"
               onClick={() => onOverlayChange('none')}
               style={{
                 flex: 1,

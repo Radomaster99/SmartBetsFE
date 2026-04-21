@@ -60,7 +60,7 @@ function SidebarSkeleton() {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isFootball = pathname.startsWith('/football');
+  const isFootball = pathname === '/' || pathname.startsWith('/football');
   const isAdmin = pathname.startsWith('/admin');
 
   if (!isFootball && !isAdmin) return null;

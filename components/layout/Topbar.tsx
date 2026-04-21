@@ -46,7 +46,7 @@ export function Topbar() {
       }}
     >
       <div className="flex min-w-0 flex-shrink-0 items-center" style={{ width: 280, minWidth: 280 }}>
-        <Link href="/football" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5" style={{ textDecoration: 'none' }}>
           <OddsDetectorLogo size={34} className="min-w-0" wordmarkClassName="text-[17px]" />
         </Link>
       </div>
@@ -121,7 +121,7 @@ export function Topbar() {
 
         <button
           type="button"
-          onClick={() => router.push('/football?state=Live')}
+          onClick={() => router.push('/?state=Live')}
           className="hidden items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold md:inline-flex"
           style={{
             background: liveCount > 0 ? 'rgba(0,230,118,0.12)' : 'rgba(255,255,255,0.04)',

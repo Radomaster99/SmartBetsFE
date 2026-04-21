@@ -159,7 +159,7 @@ function AdminLoginPageContent() {
 
         <div className="mt-5 text-[12px]" style={{ color: 'var(--t-text-5)' }}>
           Need to return to the public site?{' '}
-          <Link href="/football" style={{ color: 'var(--t-accent)', textDecoration: 'none' }}>
+          <Link href="/" style={{ color: 'var(--t-accent)', textDecoration: 'none' }}>
             Open OddsDetector
           </Link>
         </div>

@@ -45,15 +45,15 @@ export function SiteFooter() {
           }}
         >
           <FooterNavCol heading="Sports">
-            <FooterNavLink href="/football">Football</FooterNavLink>
+            <FooterNavLink href="/">Football</FooterNavLink>
             <FooterNavLink href="/tennis">Tennis</FooterNavLink>
             <FooterNavLink href="/cs2">CS2</FooterNavLink>
           </FooterNavCol>
 
           <FooterNavCol heading="Football">
-            <FooterNavLink href="/football">Fixtures</FooterNavLink>
+            <FooterNavLink href="/">Fixtures</FooterNavLink>
             <FooterNavLink href="/football/standings">Standings</FooterNavLink>
-            <FooterNavLink href="/football">Live Odds</FooterNavLink>
+            <FooterNavLink href="/">Live Odds</FooterNavLink>
           </FooterNavCol>
 
           <FooterNavCol heading="Offers">

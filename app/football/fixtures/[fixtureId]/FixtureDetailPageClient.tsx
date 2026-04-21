@@ -109,7 +109,7 @@ function FixtureDetailPageInner({ params }: Props) {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY)) {
-      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, '/football');
+      window.sessionStorage.setItem(LAST_MATCHES_HREF_KEY, '/');
     }
   }, []);
 
@@ -128,17 +128,17 @@ function FixtureDetailPageInner({ params }: Props) {
 
   const handleBackToMatches = () => {
     if (typeof window === 'undefined') {
-      router.push('/football');
+      router.push('/');
       return;
     }
 
     const savedHref = window.sessionStorage.getItem(LAST_MATCHES_HREF_KEY);
-    if (savedHref?.startsWith('/football')) {
+    if (savedHref === '/' || savedHref?.startsWith('/?') || savedHref?.startsWith('/football')) {
       router.push(savedHref);
       return;
     }
 
-    router.push('/football');
+    router.push('/');
   };
 
   const handleTeamSelect = (team: SelectedFixtureTeam) => {
@@ -214,7 +214,7 @@ function FixtureDetailPageInner({ params }: Props) {
     { id: 'match', label: 'Match' },
     { id: 'h2h', label: 'H2H' },
   ];
-  const leagueHref = `/football?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`;
+  const leagueHref = `/?leagueId=${detail.fixture.leagueApiId}&season=${detail.fixture.season}`;
   const standingsHref = buildStandingsPath(
     detail.fixture.leagueApiId,
     detail.fixture.season,
@@ -229,7 +229,7 @@ function FixtureDetailPageInner({ params }: Props) {
           className="mb-2 flex flex-wrap items-center gap-1 text-[11px]"
           style={{ color: 'var(--t-text-5)' }}
         >
-          <Link href="/football" style={{ color: 'inherit', textDecoration: 'none' }}>
+          <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}>
             Football
           </Link>
           <span style={{ color: 'var(--t-border-2)' }}>{'>'}</span>

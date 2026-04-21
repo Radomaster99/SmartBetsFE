@@ -13,7 +13,6 @@ const STATIC_ROUTES: Array<{
   priority: number;
 }> = [
   { path: '/', changeFrequency: 'daily', priority: 1 },
-  { path: '/football', changeFrequency: 'hourly', priority: 0.95 },
   { path: '/football/leagues', changeFrequency: 'daily', priority: 0.8 },
   { path: '/football/standings', changeFrequency: 'daily', priority: 0.85 },
   { path: '/football/fixtures', changeFrequency: 'daily', priority: 0.75 },
