@@ -943,6 +943,7 @@ function FootballPageClient() {
                   isLoading={(isLoading && rawFixtures.length === 0) || isPrimingAllPages}
                   isFetching={isFetching || isLoading || isPrimingAllPages}
                   oddsMovements={liveOddsListRealtime.movements}
+                  liveOddsByFixture={visibleRecoveredLiveOdds}
                   pendingLiveOddsFixtureIds={pendingRecoveredLiveFixtureIdSet}
                   savedFixtureIds={fixtureIdSet}
                   onToggleSave={toggleFixture}
