@@ -114,11 +114,13 @@ export default async function StandingsLeaguePage({ params }: StandingsLeaguePag
   const collectionStructuredData = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: `${resolved.league.name} standings`,
+    name: `${resolved.league.name} Standings ${resolved.season}/${resolved.season + 1}`,
     url: buildAbsoluteUrl(canonicalPath),
+    inLanguage: 'en',
     about: {
       '@type': 'SportsOrganization',
       name: resolved.league.name,
+      sport: 'Soccer',
     },
   };
 

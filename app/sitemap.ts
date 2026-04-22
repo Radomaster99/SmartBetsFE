@@ -13,10 +13,9 @@ const STATIC_ROUTES: Array<{
   priority: number;
 }> = [
   { path: '/', changeFrequency: 'daily', priority: 1 },
-  { path: '/football/leagues', changeFrequency: 'daily', priority: 0.8 },
   { path: '/football/standings', changeFrequency: 'daily', priority: 0.85 },
-  { path: '/football/fixtures', changeFrequency: 'daily', priority: 0.75 },
-  { path: '/bonus-codes', changeFrequency: 'daily', priority: 0.7 },
+  { path: '/football/fixtures', changeFrequency: 'hourly', priority: 0.9 },
+  { path: '/bonus-codes', changeFrequency: 'daily', priority: 0.75 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

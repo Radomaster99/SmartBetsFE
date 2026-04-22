@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     default: 'OddsDetector - Football Odds Monitor',
     template: '%s | OddsDetector',
   },
-  description: 'Football odds comparison, live market tracking, and admin-controlled betting content.',
+  description: 'Compare football odds across bookmakers, track live markets, and find the best prices on OddsDetector.',
   icons: {
     icon: '/icon',
     shortcut: '/icon',
@@ -40,6 +40,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              '@id': `${getSiteUrl()}/#website`,
+              name: 'OddsDetector',
+              url: getSiteUrl(),
+              description: 'Football odds comparison and live market tracking',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: `${getSiteUrl()}/?q={search_term_string}`,
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              '@id': `${getSiteUrl()}/#organization`,
+              name: 'OddsDetector',
+              url: getSiteUrl(),
+              logo: {
+                '@type': 'ImageObject',
+                url: `${getSiteUrl()}/icon`,
+              },
+              sameAs: [],
+            }),
+          }}
+        />
         <Script id="sb-theme-init" strategy="beforeInteractive">
           {`try{var t=localStorage.getItem('sb-theme');document.documentElement.setAttribute('data-theme',t||'dark')}catch(e){}`}
         </Script>

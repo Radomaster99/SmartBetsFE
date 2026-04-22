@@ -76,6 +76,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+function toEventStatusType(stateBucket: string | undefined): string | undefined {
+  switch (stateBucket) {
+    case 'Live':
+    case 'Upcoming':
+      return 'https://schema.org/EventScheduled';
+    case 'Finished':
+      return 'https://schema.org/EventCompleted';
+    case 'Postponed':
+      return 'https://schema.org/EventPostponed';
+    case 'Cancelled':
+      return 'https://schema.org/EventCancelled';
+    default:
+      return undefined;
+  }
+}
+
 export default async function FixtureDetailPage({ params }: Props) {
   const { fixtureId } = await params;
   const detail = await resolveFixtureDetail(fixtureId);
@@ -85,15 +101,27 @@ export default async function FixtureDetailPage({ params }: Props) {
         '@context': 'https://schema.org',
         '@type': 'SportsEvent',
         name: `${detail.fixture.homeTeamName} vs ${detail.fixture.awayTeamName}`,
+        description: buildFixtureMetadataDescription(detail),
         sport: 'Soccer',
         startDate: detail.fixture.kickoffAt,
         url: buildAbsoluteUrl(`/football/fixtures/${detail.fixture.apiFixtureId}`),
-        eventStatus: detail.fixture.stateBucket,
+        eventStatus: toEventStatusType(detail.fixture.stateBucket),
         location: detail.fixture.venueName
           ? {
               '@type': 'Place',
               name: detail.fixture.venueName,
-              address: detail.fixture.venueCity || undefined,
+              address: detail.fixture.venueCity
+                ? {
+                    '@type': 'PostalAddress',
+                    addressLocality: detail.fixture.venueCity,
+                  }
+                : undefined,
+            }
+          : undefined,
+        organizer: detail.fixture.leagueName
+          ? {
+              '@type': 'SportsOrganization',
+              name: detail.fixture.leagueName,
             }
           : undefined,
         homeTeam: {

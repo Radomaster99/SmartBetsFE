@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Tennis Odds — Coming Soon',
+  description: 'Tennis odds monitoring is coming soon to OddsDetector.',
+  robots: { index: false, follow: false },
+};
+
 export default function TennisPage() {
   return (
     <div className="flex flex-col items-center justify-center h-full py-32 text-center">

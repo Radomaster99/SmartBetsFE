@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'CS2 Esports Odds — Coming Soon',
+  description: 'CS2 esports odds monitoring is coming soon to OddsDetector.',
+  robots: { index: false, follow: false },
+};
+
 export default function CS2Page() {
   return (
     <div className="flex flex-col items-center justify-center h-full py-32 text-center">
