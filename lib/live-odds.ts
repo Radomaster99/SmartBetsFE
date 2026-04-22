@@ -6,11 +6,12 @@ const FULLTIME_THREE_WAY_MARKET_NAMES = new Set([
   'full time result',
   '1x2',
   'h2h',
+  'moneyline',
 ]);
 
 const GENERIC_OUTCOME_MATCHERS: Record<'home' | 'draw' | 'away', string[]> = {
   home: ['1', 'home', 'home team', 'team 1'],
-  draw: ['x', 'draw'],
+  draw: ['x', 'draw', 'tie', 'the draw'],
   away: ['2', 'away', 'away team', 'team 2'],
 };
 
@@ -194,6 +195,24 @@ function findOutcomeValue(
     if (matched) {
       return matched;
     }
+
+    if (usableValues.length === 3) {
+      const homeCandidate = usableValues
+        .map((value) => ({ value, score: getTeamNameMatchScore(value, options?.homeTeamName) }))
+        .sort((left, right) => right.score - left.score)[0];
+      const awayCandidate = usableValues
+        .filter((value) => value !== homeCandidate?.value)
+        .map((value) => ({ value, score: getTeamNameMatchScore(value, options?.awayTeamName) }))
+        .sort((left, right) => right.score - left.score)[0];
+
+      if (homeCandidate?.score > 0 && awayCandidate?.score > 0) {
+        return (
+          usableValues.find(
+            (value) => value !== homeCandidate.value && value !== awayCandidate.value,
+          ) ?? null
+        );
+      }
+    }
   }
 
   const nonDrawValues = usableValues.filter((value) => !isDrawValue(value));
@@ -216,19 +235,35 @@ function getNormalizedMarketName(market: LiveOddsMarketDto): string {
   return market.betName.trim().toLowerCase();
 }
 
+function getNormalizedMarketIdentifiers(market: LiveOddsMarketDto): string[] {
+  const identifiers = [
+    market.betName,
+    market.externalMarketKey ?? '',
+  ]
+    .map((value) => normalizeText(value))
+    .filter(Boolean);
+
+  return Array.from(new Set(identifiers));
+}
+
 function isPrimaryLiveThreeWayMarketName(name: string): boolean {
   return FULLTIME_THREE_WAY_MARKET_NAMES.has(name) || name === 'winner';
 }
 
 function getMarketNamePriority(market: LiveOddsMarketDto): number {
-  const name = getNormalizedMarketName(market);
-  if (name === 'match winner') return 0;
-  if (name === 'fulltime result') return 1;
-  if (name === 'h2h') return 2;
-  if (name === '1x2') return 3;
-  if (name.startsWith('1x2')) return 4;
-  if (name === 'winner') return 5;
-  return 6;
+  const identifiers = getNormalizedMarketIdentifiers(market);
+  let bestPriority = 6;
+
+  for (const name of identifiers) {
+    if (name === 'match winner') bestPriority = Math.min(bestPriority, 0);
+    else if (name === 'fulltime result') bestPriority = Math.min(bestPriority, 1);
+    else if (name === 'h2h' || name === 'moneyline') bestPriority = Math.min(bestPriority, 2);
+    else if (name === '1x2') bestPriority = Math.min(bestPriority, 3);
+    else if (name.startsWith('1x2')) bestPriority = Math.min(bestPriority, 4);
+    else if (name === 'winner') bestPriority = Math.min(bestPriority, 5);
+  }
+
+  return bestPriority;
 }
 
 function hasMainSelection(market: LiveOddsMarketDto): boolean {
@@ -312,14 +347,14 @@ function pickThreeWayMarkets(markets: LiveOddsMarketDto[], options?: LiveOddsMap
 
   if (options?.fulltimeOnly) {
     const primaryCandidates = candidates.filter((market) =>
-      isPrimaryLiveThreeWayMarketName(getNormalizedMarketName(market)),
+      getNormalizedMarketIdentifiers(market).some(isPrimaryLiveThreeWayMarketName),
     );
 
     if (primaryCandidates.length > 0) {
       scopedCandidates = primaryCandidates;
     } else {
       const minuteMarketCandidates = candidates.filter((market) =>
-        getNormalizedMarketName(market).startsWith('1x2'),
+        getNormalizedMarketIdentifiers(market).some((name) => name.startsWith('1x2')),
       );
 
       const freshestMinuteMarketByBookmaker = new Map<string, LiveOddsMarketDto>();
