@@ -7,6 +7,7 @@ import { FixtureDetailPanel } from '@/components/fixtures/FixtureDetailPanel';
 import { useFixtures, flattenFixturePages } from '@/lib/hooks/useFixtures';
 import {
   useLiveOddsListSignalR,
+  useLiveViewersHeartbeat,
   useVisibleLiveOddsByFixture,
   useVisibleLiveSummaries,
 } from '@/lib/hooks/useLiveOdds';
@@ -468,6 +469,7 @@ function FootballPageClient() {
     () => new Set(effectiveVisibleLiveFixtureIds),
     [effectiveVisibleLiveFixtureIds],
   );
+  useLiveViewersHeartbeat(effectiveVisibleLiveFixtureIds, view === 'matches' && state === 'Live');
   const visibleLiveFixtureIdsForSummary = useMemo(
     () =>
       state === 'Live'
