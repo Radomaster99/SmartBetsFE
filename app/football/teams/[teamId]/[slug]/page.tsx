@@ -1,15 +1,31 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { getLeagues } from '@/lib/api/leagues';
+import { getFixtures } from '@/lib/api/fixtures';
 import { buildStandingsPath } from '@/lib/league-links';
-import { getTeam } from '@/lib/api/teams';
+import { getTeam, getTeams } from '@/lib/api/teams';
 import { buildAbsoluteUrl } from '@/lib/site';
 import { appendSearchParams, buildTeamPath, teamNameToSlug } from '@/lib/team-links';
+import { buildFixturePath, buildLeagueHubPath } from '@/lib/seo/slug';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { buildSportsEventSchema } from '@/lib/seo/structured-data';
 import TeamPageClient from '../TeamPageClient';
 
 interface TeamPageProps {
   params: Promise<{ teamId: string; slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export const revalidate = 3600;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const teams = await getTeams().catch(() => []);
+  return teams.slice(0, 300).map((t) => ({
+    teamId: String(t.apiTeamId),
+    slug: teamNameToSlug(t.name),
+  }));
 }
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -128,6 +144,7 @@ export async function generateMetadata({ params, searchParams }: TeamPageProps):
     description,
     alternates: {
       canonical: canonicalPath,
+      languages: { 'x-default': canonicalPath, 'en': canonicalPath },
     },
     openGraph: {
       title: `${title} | OddsDetector`,
@@ -205,6 +222,42 @@ export default async function TeamPage({ params, searchParams }: TeamPageProps) 
     })),
   };
 
+  const recentFixtures = await getFixtures({
+    teamId: team.apiTeamId,
+    season: seasonContext,
+    state: 'Finished',
+    page: 1,
+    pageSize: 8,
+    direction: 'desc',
+  }).catch(() => null);
+
+  const upcomingFixtures = await getFixtures({
+    teamId: team.apiTeamId,
+    season: seasonContext,
+    state: 'Upcoming',
+    page: 1,
+    pageSize: 5,
+    direction: 'asc',
+  }).catch(() => null);
+
+  const recentItems = recentFixtures?.items ?? [];
+  const upcomingItems = upcomingFixtures?.items ?? [];
+
+  const upcomingEventSchemas = upcomingItems.slice(0, 5).map((f) =>
+    buildSportsEventSchema({
+      url: buildAbsoluteUrl(buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)),
+      name: `${f.homeTeamName} vs ${f.awayTeamName}`,
+      description: `${f.homeTeamName} vs ${f.awayTeamName} — ${f.leagueName} odds on OddsDetector.`,
+      startDateIso: f.kickoffAt,
+      stateBucket: f.stateBucket,
+      homeTeamName: f.homeTeamName,
+      awayTeamName: f.awayTeamName,
+      leagueName: f.leagueName,
+      venueName: f.venueName,
+      venueCity: f.venueCity,
+    }),
+  );
+
   return (
     <>
       <script
@@ -215,6 +268,51 @@ export default async function TeamPage({ params, searchParams }: TeamPageProps) 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
       />
+      {upcomingEventSchemas.length > 0 && (
+        <JsonLd data={upcomingEventSchemas} />
+      )}
+      {(recentItems.length > 0 || upcomingItems.length > 0) && (
+        <div
+          aria-hidden="true"
+          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+        >
+          <h1>{team.name} Odds, Fixtures &amp; Stats</h1>
+          {selectedLeague && (
+            <p>
+              <Link href={buildLeagueHubPath(selectedLeague.name)}>{selectedLeague.name}</Link>
+              {' '}&mdash; {team.countryName}
+            </p>
+          )}
+          {upcomingItems.length > 0 && (
+            <>
+              <h2>Upcoming {team.name} fixtures</h2>
+              <ul>
+                {upcomingItems.map((f) => (
+                  <li key={f.apiFixtureId}>
+                    <Link href={buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)}>
+                      {f.homeTeamName} vs {f.awayTeamName} — {f.leagueName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {recentItems.length > 0 && (
+            <>
+              <h2>Recent {team.name} results</h2>
+              <ul>
+                {recentItems.map((f) => (
+                  <li key={f.apiFixtureId}>
+                    <Link href={buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)}>
+                      {f.homeTeamName} {f.homeGoals ?? '?'}-{f.awayGoals ?? '?'} {f.awayTeamName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
       <TeamPageClient
         teamId={team.apiTeamId}
         initialTeam={team}

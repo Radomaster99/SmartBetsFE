@@ -11,6 +11,8 @@ import {
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { buildLeagueHubPath } from '@/lib/seo/slug';
 
+export const revalidate = 3600;
+
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 
 export async function generateMetadata(): Promise<Metadata> {

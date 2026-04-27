@@ -7,7 +7,7 @@ import { useLiveStatsRefresh } from '@/lib/hooks/useLiveStatsRefresh';
 import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
 import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
-import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
+import { ApiSportsWidgetDynamic as ApiSportsWidget } from '@/components/widgets/ApiSportsWidgetDynamic';
 import { OddsComparison } from '@/components/odds/OddsComparison';
 import { buildFixturePath } from '@/lib/seo/slug';
 

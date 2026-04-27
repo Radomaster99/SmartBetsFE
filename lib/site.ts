@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = 'https://www.oddsdetector.com';
+const DEFAULT_SITE_URL = 'https://oddsdetector.com';
 
 function normalizeSiteUrl(value: string): string {
   const trimmed = value.trim();

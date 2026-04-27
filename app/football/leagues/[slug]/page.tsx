@@ -10,14 +10,40 @@ import {
   buildBreadcrumbSchema,
   buildFaqPageSchema,
   buildItemListSchema,
+  buildSportsEventSchema,
   buildSportsOrganizationSchema,
   type FaqEntry,
 } from '@/lib/seo/structured-data';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { buildFixturePath, buildLeagueHubPath } from '@/lib/seo/slug';
+import { buildTeamPath } from '@/lib/team-links';
 import type { LeagueDto } from '@/lib/types/api';
 
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
+
+const TOP_LEAGUE_SLUGS = [
+  'premier-league',
+  'la-liga',
+  'bundesliga',
+  'serie-a',
+  'ligue-1',
+  'uefa-champions-league',
+  'uefa-europa-league',
+  'uefa-conference-league',
+  'world-cup',
+  'euro-championship',
+];
+
+export async function generateStaticParams() {
+  const leagues = await getLeagues(DEFAULT_SEASON).catch(() => []);
+  const fromApi = leagues.map((l) => ({ slug: leagueNameToSlug(l.name) })).filter((s) => s.slug);
+  const seen = new Set(fromApi.map((s) => s.slug));
+  const extra = TOP_LEAGUE_SLUGS.filter((s) => !seen.has(s)).map((s) => ({ slug: s }));
+  return [...fromApi, ...extra];
+}
+
+export const dynamicParams = true;
+export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -106,17 +132,28 @@ export default async function LeagueHubPage({ params }: PageProps) {
   const upcoming = upcomingPaged?.items ?? [];
   const recent = recentPaged?.items ?? [];
 
+  // Unique teams appearing in this league's fixtures — for internal linking
+  const teamMap = new Map<number, { name: string; apiTeamId: number }>();
+  for (const f of [...upcoming, ...recent]) {
+    if (!teamMap.has(f.homeTeamApiId)) teamMap.set(f.homeTeamApiId, { name: f.homeTeamName, apiTeamId: f.homeTeamApiId });
+    if (!teamMap.has(f.awayTeamApiId)) teamMap.set(f.awayTeamApiId, { name: f.awayTeamName, apiTeamId: f.awayTeamApiId });
+  }
+  const leagueTeams = Array.from(teamMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
   const breadcrumbs = buildBreadcrumbSchema([
     { name: 'Football', path: '/football' },
     { name: 'Leagues', path: '/football/leagues' },
     { name: league.name, path: canonicalPath },
   ]);
 
-  const orgSchema = buildSportsOrganizationSchema({
-    name: league.name,
-    url: buildAbsoluteUrl(canonicalPath),
-    countryName: league.countryName,
-  });
+  const orgSchema = {
+    ...buildSportsOrganizationSchema({
+      name: league.name,
+      url: buildAbsoluteUrl(canonicalPath),
+      countryName: league.countryName,
+    }),
+    dateModified: upcoming[0]?.kickoffAt ?? recent[0]?.kickoffAt ?? new Date().toISOString(),
+  };
 
   const itemList = buildItemListSchema(
     `${league.name} upcoming fixtures`,
@@ -128,9 +165,34 @@ export default async function LeagueHubPage({ params }: PageProps) {
 
   const faq = buildFaqPageSchema(buildLeagueFaq(league.name));
 
+  const teamItemList = leagueTeams.length > 0
+    ? buildItemListSchema(
+        `${league.name} teams`,
+        leagueTeams.map((t) => ({
+          name: t.name,
+          path: buildTeamPath(t.apiTeamId, t.name),
+        })),
+      )
+    : null;
+
+  const upcomingEventSchemas = upcoming.slice(0, 6).map((f) =>
+    buildSportsEventSchema({
+      url: buildAbsoluteUrl(buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)),
+      name: `${f.homeTeamName} vs ${f.awayTeamName}`,
+      description: `${f.homeTeamName} vs ${f.awayTeamName} — ${league.name} odds on OddsDetector.`,
+      startDateIso: f.kickoffAt,
+      stateBucket: f.stateBucket,
+      homeTeamName: f.homeTeamName,
+      awayTeamName: f.awayTeamName,
+      leagueName: league.name,
+      venueName: f.venueName,
+      venueCity: f.venueCity,
+    }),
+  );
+
   return (
     <>
-      <JsonLd data={[breadcrumbs, orgSchema, itemList, faq]} />
+      <JsonLd data={[breadcrumbs, orgSchema, itemList, faq, ...(teamItemList ? [teamItemList] : []), ...upcomingEventSchemas]} />
       <main style={{ padding: '20px 18px 48px', maxWidth: 1200, margin: '0 auto' }}>
         <nav
           aria-label="Breadcrumb"
@@ -309,6 +371,53 @@ export default async function LeagueHubPage({ params }: PageProps) {
             </ul>
           </section>
         ) : null}
+
+        {leagueTeams.length > 0 && (
+          <section style={{ marginTop: 28 }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--t-text-1)',
+                borderBottom: '1px solid var(--t-border)',
+                paddingBottom: 8,
+              }}
+            >
+              {league.name} teams
+            </h2>
+            <ul
+              style={{
+                margin: '12px 0 0',
+                padding: 0,
+                listStyle: 'none',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px 10px',
+              }}
+            >
+              {leagueTeams.map((team) => (
+                <li key={team.apiTeamId}>
+                  <Link
+                    href={buildTeamPath(team.apiTeamId, team.name)}
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--t-text-3)',
+                      textDecoration: 'none',
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      background: 'var(--t-surface)',
+                      border: '1px solid var(--t-border)',
+                      display: 'inline-block',
+                    }}
+                  >
+                    {team.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section style={{ marginTop: 28 }}>
           <h2

@@ -12,6 +12,8 @@ import { buildFixturePath } from '@/lib/seo/slug';
 import { buildAbsoluteUrl } from '@/lib/site';
 import { FootballLandingPage } from '@/app/football/FootballLandingPage';
 
+export const revalidate = 300;
+
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata({
     title: 'Football Fixtures & Odds — Today, Live & Upcoming',
@@ -58,63 +60,24 @@ export default async function FootballFixturesPage() {
       />
       <section
         aria-label="Football fixtures overview"
-        style={{
-          padding: '14px 18px 12px',
-          borderBottom: '1px solid var(--t-border)',
-          background: 'var(--t-surface)',
-        }}
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 18,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            color: 'var(--t-text-1)',
-          }}
-        >
-          Football Fixtures & Odds
-        </h1>
-        <p
-          style={{
-            margin: '6px 0 0',
-            maxWidth: '78ch',
-            fontSize: 12.5,
-            lineHeight: 1.6,
-            color: 'var(--t-text-4)',
-          }}
-        >
-          Browse today’s football fixtures with live and pre-match odds across leading bookmakers. Compare 1X2,
-          both-teams-to-score, and over/under prices on every upcoming match — and route each bet to the bookmaker
-          offering the best value on OddsDetector.
+        <h1>Football Fixtures &amp; Odds</h1>
+        <p>
+          Browse today&apos;s football fixtures with live and pre-match odds across leading bookmakers. Compare 1X2,
+          both-teams-to-score, and over/under prices on every upcoming match.
         </p>
-        {upcomingItems.length > 0 ? (
-          <ul
-            style={{
-              margin: '10px 0 0',
-              padding: 0,
-              listStyle: 'none',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '6px 12px',
-              fontSize: 11,
-            }}
-          >
-            <li style={{ color: 'var(--t-text-5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Today:
-            </li>
+        {upcomingItems.length > 0 && (
+          <ul>
             {upcomingItems.slice(0, 8).map((f) => (
               <li key={f.apiFixtureId}>
-                <Link
-                  href={buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)}
-                  style={{ color: 'var(--t-accent)', textDecoration: 'none', fontWeight: 600 }}
-                >
+                <Link href={buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)}>
                   {f.homeTeamName} vs {f.awayTeamName}
                 </Link>
               </li>
             ))}
           </ul>
-        ) : null}
+        )}
       </section>
       <FootballLandingPage />
     </>

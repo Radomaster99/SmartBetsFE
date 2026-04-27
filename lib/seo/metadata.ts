@@ -30,7 +30,15 @@ export function buildPageMetadata(input: PageMetadataInput): Metadata {
   return {
     title,
     description,
-    alternates: { canonical: input.canonicalPath },
+    alternates: {
+      canonical: input.canonicalPath,
+      ...(!input.noindex && {
+        languages: {
+          'x-default': input.canonicalPath,
+          'en': input.canonicalPath,
+        },
+      }),
+    },
     robots: input.noindex ? { index: false, follow: false } : undefined,
     openGraph: {
       title: `${title} | OddsDetector`,

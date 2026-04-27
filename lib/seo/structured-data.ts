@@ -251,6 +251,58 @@ export function buildItemListSchema(name: string, entries: ItemListEntry[]): Jso
   };
 }
 
+export interface ArticleInput {
+  headline: string;
+  description: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string;
+  imageSrc?: string;
+}
+
+export function buildArticleSchema(input: ArticleInput): JsonLdObject {
+  const siteUrl = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: input.headline,
+    description: input.description,
+    url: input.url,
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    author: {
+      '@type': 'Organization',
+      name: 'OddsDetector',
+      url: siteUrl,
+    },
+    publisher: { '@id': `${siteUrl}/#organization` },
+    isPartOf: { '@id': `${siteUrl}/#website` },
+    ...(input.imageSrc ? { image: { '@type': 'ImageObject', url: input.imageSrc } } : {}),
+  };
+}
+
+export interface WebPageInput {
+  name: string;
+  description: string;
+  url: string;
+  dateModified?: string;
+}
+
+export function buildWebPageSchema(input: WebPageInput): JsonLdObject {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: input.name,
+    description: input.description,
+    url: input.url,
+    inLanguage: 'en',
+    isPartOf: { '@id': `${getSiteUrl()}/#website` },
+    publisher: { '@id': `${getSiteUrl()}/#organization` },
+    ...(input.dateModified ? { dateModified: input.dateModified } : {}),
+  };
+}
+
 export interface CollectionPageInput {
   name: string;
   description: string;

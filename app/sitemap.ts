@@ -34,31 +34,51 @@ async function buildFixtureEntries(): Promise<MetadataRoute.Sitemap> {
   const fromDate = past.toISOString().slice(0, 10);
   const toDate = future.toISOString().slice(0, 10);
 
-  const fixtures = await getFixtures({
-    from: fromDate,
-    to: toDate,
-    page: 1,
-    pageSize: 500,
-    direction: 'asc',
-  }).catch(() => null);
+  const allItems: Awaited<ReturnType<typeof getFixtures>>['items'] = [];
+  let page = 1;
+  while (true) {
+    const batch = await getFixtures({
+      from: fromDate,
+      to: toDate,
+      page,
+      pageSize: 500,
+      direction: 'asc',
+    }).catch(() => null);
+    if (!batch) break;
+    allItems.push(...batch.items);
+    if (!batch.hasNextPage) break;
+    page++;
+  }
 
-  if (!fixtures) {
+  if (allItems.length === 0) {
     return [];
   }
 
-  return fixtures.items.map((fixture) => {
+  return allItems.map((fixture) => {
     const isUpcomingOrLive =
       fixture.stateBucket === 'Upcoming' || fixture.stateBucket === 'Live';
+    const isFinished = fixture.stateBucket === 'Finished';
     const fixtureDate = fixture.kickoffAt.slice(0, 10);
     const isFuture = fixtureDate >= today;
+    // Finished matches: odds and scores are final — use kickoff + 2h as last-modified
+    // Live/upcoming: treat as recently modified so Googlebot recrawls promptly
+    const kickoffMs = new Date(fixture.kickoffAt).getTime();
+    // Finished: content is final — kickoff + 2h
+    // Live: odds change every few seconds — use now so Googlebot recrawls promptly
+    // Upcoming: pre-match odds update until kickoff — use kickoffAt as a stable anchor
+    const lastModified = isFinished
+      ? new Date(kickoffMs + 2 * 60 * 60 * 1000)
+      : fixture.stateBucket === 'Live'
+        ? now
+        : new Date(fixture.kickoffAt);
 
     return {
       url: buildAbsoluteUrl(
         buildFixturePath(fixture.homeTeamName, fixture.awayTeamName, fixture.apiFixtureId),
       ),
-      lastModified: new Date(fixture.kickoffAt),
+      lastModified,
       changeFrequency: (isUpcomingOrLive ? 'hourly' : 'weekly') as MetadataRoute.Sitemap[number]['changeFrequency'],
-      priority: isFuture ? 0.85 : 0.5,
+      priority: isFuture ? 0.85 : isFinished ? 0.6 : 0.5,
     };
   });
 }
@@ -81,14 +101,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const teamEntries: MetadataRoute.Sitemap = teams.map((team) => ({
     url: buildAbsoluteUrl(buildTeamPath(team.apiTeamId, team.name)),
     lastModified: now,
-    changeFrequency: 'weekly',
+    changeFrequency: 'weekly' as const,
     priority: 0.7,
   }));
 
+  // Use a recent cutoff so standings entries reflect the last time they could have changed
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+
   const standingsEntries: MetadataRoute.Sitemap = leagues.map((league) => ({
     url: buildAbsoluteUrl(buildStandingsPath(league.apiLeagueId, league.season, league.name)),
-    lastModified: now,
-    changeFrequency: 'daily',
+    lastModified: yesterday,
+    changeFrequency: 'daily' as const,
     priority: 0.78,
   }));
 
@@ -100,8 +124,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     seenLeagueSlugs.add(slug);
     leagueHubEntries.push({
       url: buildAbsoluteUrl(buildLeagueHubPath(league.name)),
-      lastModified: now,
-      changeFrequency: 'daily',
+      lastModified: yesterday,
+      changeFrequency: 'daily' as const,
       priority: 0.82,
     });
   }

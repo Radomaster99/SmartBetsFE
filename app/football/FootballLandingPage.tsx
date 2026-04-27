@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getLeagues } from '@/lib/api/leagues';
+import { getFixtures } from '@/lib/api/fixtures';
 import { buildStandingsPath } from '@/lib/league-links';
+import { buildFixturePath } from '@/lib/seo/slug';
 import FootballPageClient from './FootballPageClient';
 
 export interface FootballLandingPageProps {
@@ -169,14 +172,32 @@ export async function generateFootballLandingMetadata(
     view === 'standings'
       ? buildStandingsPath(leagueId, season, leagueName)
       : buildFootballCanonicalPath(resolvedSearchParams, basePath);
+
+  // Filtered/parameterised variants are not distinct indexable pages — noindex them
+  // and let the canonical (clean base URL) accumulate all the ranking signal.
+  const hasFilterParams =
+    resolvedSearchParams.has('state') ||
+    resolvedSearchParams.has('leagueId') ||
+    resolvedSearchParams.has('date') ||
+    resolvedSearchParams.has('season') ||
+    resolvedSearchParams.has('view') ||
+    resolvedSearchParams.has('upcomingScope');
+
   const title = buildFootballMetadataTitle({ view, state, leagueName });
   const description = buildFootballMetadataDescription({ view, state, leagueName, season });
 
   return {
     title,
     description,
+    ...(hasFilterParams ? { robots: { index: false, follow: true } } : {}),
     alternates: {
       canonical: canonicalPath,
+      ...(!hasFilterParams && {
+        languages: {
+          'x-default': canonicalPath,
+          'en': canonicalPath,
+        },
+      }),
     },
     openGraph: {
       title: `${title} | OddsDetector`,
@@ -192,6 +213,39 @@ export async function generateFootballLandingMetadata(
   };
 }
 
-export function FootballLandingPage() {
-  return <FootballPageClient />;
+export async function FootballLandingPage() {
+  const today = new Date().toISOString().split('T')[0];
+  const seeded = await getFixtures({
+    page: 1,
+    pageSize: 40,
+    direction: 'asc',
+    date: today,
+  }).catch(() => null);
+
+  const fixtures = seeded?.items ?? [];
+
+  return (
+    <>
+      {fixtures.length > 0 && (
+        <div
+          aria-hidden="true"
+          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+        >
+          <ul>
+            {fixtures.map((f) => (
+              <li key={f.apiFixtureId}>
+                <Link href={buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId)}>
+                  {f.homeTeamName} vs {f.awayTeamName} — {f.leagueName}
+                  {f.liveOddsSummary?.bestHomeOdd != null && (
+                    <> — Home {f.liveOddsSummary.bestHomeOdd} / Draw {f.liveOddsSummary.bestDrawOdd} / Away {f.liveOddsSummary.bestAwayOdd}</>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <FootballPageClient />
+    </>
+  );
 }

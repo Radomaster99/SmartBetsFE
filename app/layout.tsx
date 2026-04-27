@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
+
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/lib/contexts/ThemeContext';
@@ -38,10 +38,15 @@ export const metadata: Metadata = {
     shortcut: '/icon',
     apple: '/apple-icon',
   },
+  alternates: {
+    canonical: '/',
+    languages: { 'x-default': '/', 'en': '/' },
+  },
   openGraph: {
     type: 'website',
     siteName: 'OddsDetector',
     locale: 'en_US',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'OddsDetector — Compare Football Odds' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -67,12 +72,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#07101a" />
         <link rel="preconnect" href="https://widgets.api-sports.io" crossOrigin="" />
         <link rel="dns-prefetch" href="https://widgets.api-sports.io" />
+        {process.env.NEXT_PUBLIC_API_BASE_URL && (
+          <>
+            <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_BASE_URL} />
+            <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_BASE_URL} />
+          </>
+        )}
         <JsonLd data={[buildWebSiteSchema(), buildOrganizationSchema()]} />
-        <Script id="sb-theme-init" strategy="beforeInteractive">
-          {`try{var t=localStorage.getItem('sb-theme');document.documentElement.setAttribute('data-theme',t||'dark')}catch(e){}`}
-        </Script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('sb-theme');document.documentElement.setAttribute('data-theme',t||'dark')}catch(e){}`,
+          }}
+        />
       </head>
       <body style={{ background: 'var(--t-page-bg)', color: 'var(--t-text-2)', margin: 0, padding: 0 }} suppressHydrationWarning>
         <QueryProvider>

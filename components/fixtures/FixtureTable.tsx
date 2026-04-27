@@ -22,7 +22,7 @@ import {
   type PopularLeaguePreset,
 } from '@/lib/popular-leagues';
 import { writeLiveLeagueIds } from '@/lib/fixture-page-sidebar-context';
-import { buildFixtureSlug } from '@/lib/seo/slug';
+import { buildFixtureSlug, buildLeagueHubPath } from '@/lib/seo/slug';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
 const EMPTY_POPULAR_PRESETS: PopularLeaguePreset[] = [];
@@ -820,9 +820,13 @@ export function FixtureTable({
                 {country}
               </span>
               <span style={{ color: 'var(--t-border-2)', fontSize: 10 }}>/</span>
-              <span className="text-[12px] font-semibold" style={{ color: 'var(--t-text-3)' }}>
+              <a
+                href={buildLeagueHubPath(name)}
+                className="text-[12px] font-semibold"
+                style={{ color: 'var(--t-text-3)', textDecoration: 'none' }}
+              >
                 {name}
-              </span>
+              </a>
               {oddsCount > 0 && (
                 <span className="text-[10px]" style={{ color: 'var(--t-text-6)' }}>
                   {oddsCount}/{items.length} with odds

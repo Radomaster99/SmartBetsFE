@@ -66,7 +66,7 @@ export function FixtureSeoIntro(props: Props) {
     <section
       aria-label="Match overview"
       style={{
-        padding: '16px 18px 4px',
+        padding: '12px 18px 10px',
         borderBottom: '1px solid var(--t-border)',
         background: 'var(--t-surface)',
       }}
@@ -85,12 +85,7 @@ export function FixtureSeoIntro(props: Props) {
       </h1>
 
       <p
-        style={{
-          margin: '8px 0 0',
-          fontSize: '12.5px',
-          lineHeight: 1.6,
-          color: 'var(--t-text-4)',
-        }}
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
       >
         {intro}
       </p>
@@ -131,26 +126,33 @@ export function FixtureSeoIntro(props: Props) {
       ) : null}
 
       <nav
-        aria-label="Related"
+        aria-label="Breadcrumb"
         style={{
-          margin: '10px 0 0',
+          margin: '8px 0 0',
           fontSize: '11px',
           color: 'var(--t-text-5)',
           display: 'flex',
-          gap: '12px',
+          alignItems: 'center',
+          gap: '4px',
           flexWrap: 'wrap',
         }}
       >
-        <Link href={props.homeTeamPath} style={{ color: 'var(--t-accent)' }}>
+        <Link href="/football" style={{ color: 'var(--t-text-5)', textDecoration: 'none' }}>
+          Football
+        </Link>
+        <span aria-hidden="true">›</span>
+        <Link href={props.leaguePath} style={{ color: 'var(--t-text-5)', textDecoration: 'none' }}>
+          {props.leagueName}
+        </Link>
+        <span aria-hidden="true">›</span>
+        <Link href={props.homeTeamPath} style={{ color: 'var(--t-text-4)', textDecoration: 'none' }}>
           {props.homeName}
         </Link>
-        <Link href={props.awayTeamPath} style={{ color: 'var(--t-accent)' }}>
+        <span aria-hidden="true" style={{ color: 'var(--t-text-6)' }}>vs</span>
+        <Link href={props.awayTeamPath} style={{ color: 'var(--t-text-4)', textDecoration: 'none' }}>
           {props.awayName}
         </Link>
-        <Link href={props.leaguePath} style={{ color: 'var(--t-accent)' }}>
-          {props.leagueName} standings
-        </Link>
-        {props.round ? <span>{props.round}</span> : null}
+        {props.round ? <span style={{ marginLeft: 4, color: 'var(--t-text-6)' }}>· {props.round}</span> : null}
       </nav>
     </section>
   );

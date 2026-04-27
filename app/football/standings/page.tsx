@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getLeagues } from '@/lib/api/leagues';
 import { buildStandingsPath } from '@/lib/league-links';
 import { buildAbsoluteUrl } from '@/lib/site';
+import { buildLeagueHubPath } from '@/lib/seo/slug';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { buildItemListSchema } from '@/lib/seo/structured-data';
 import StandingsPageClient from './StandingsPageClient';
 
 interface StandingsPageProps {
@@ -73,6 +77,7 @@ export async function generateMetadata({ searchParams }: StandingsPageProps): Pr
     description,
     alternates: {
       canonical: canonicalPath,
+      languages: { 'x-default': canonicalPath, 'en': canonicalPath },
     },
     openGraph: {
       title: `${title} | OddsDetector`,
@@ -129,6 +134,16 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
     },
   };
 
+  const leagues = await getLeagues(DEFAULT_SEASON).catch(() => []);
+
+  const leagueItemList = buildItemListSchema(
+    'Football leagues with standings',
+    leagues.slice(0, 100).map((l) => ({
+      name: `${l.name} standings`,
+      path: buildStandingsPath(l.apiLeagueId, l.season, l.name),
+    })),
+  );
+
   return (
     <>
       <script
@@ -139,6 +154,27 @@ export default async function StandingsPage({ searchParams }: StandingsPageProps
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionStructuredData) }}
       />
+      {leagues.length > 0 && <JsonLd data={[leagueItemList]} />}
+      {leagues.length > 0 && (
+        <div
+          aria-hidden="true"
+          style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+        >
+          <h1>Football Standings</h1>
+          <p>Browse football league tables, standings, and club positions across all major competitions on OddsDetector.</p>
+          <ul>
+            {leagues.map((league) => (
+              <li key={league.apiLeagueId}>
+                <Link href={buildLeagueHubPath(league.name)}>{league.name}</Link>
+                {' — '}
+                <Link href={buildStandingsPath(league.apiLeagueId, league.season, league.name)}>
+                  {league.name} standings
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <StandingsPageClient />
     </>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
+import { ApiSportsWidgetDynamic as ApiSportsWidget } from '@/components/widgets/ApiSportsWidgetDynamic';
 import { TeamFixturesList } from '@/components/teams/TeamFixturesList';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';

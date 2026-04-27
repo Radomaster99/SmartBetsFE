@@ -9,8 +9,11 @@ import { JsonLd } from '@/components/seo/JsonLd';
 import {
   buildBreadcrumbSchema,
   buildFaqPageSchema,
+  buildItemListSchema,
   type FaqEntry,
 } from '@/lib/seo/structured-data';
+import { getFixtures } from '@/lib/api/fixtures';
+import { buildFixturePath } from '@/lib/seo/slug';
 
 const HOME_FAQ: FaqEntry[] = [
   {
@@ -44,13 +47,34 @@ export async function generateMetadata({ searchParams }: FootballLandingPageProp
   return generateFootballLandingMetadata(searchParams, '/');
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayFixtures = await getFixtures({
+    page: 1,
+    pageSize: 50,
+    direction: 'asc',
+    date: today,
+  }).catch(() => null);
+
+  const upcomingItems = (todayFixtures?.items ?? []).filter(
+    (f) => f.stateBucket === 'Upcoming' || f.stateBucket === 'Live',
+  );
+
+  const itemList = buildItemListSchema(
+    "Today's football fixtures & odds",
+    upcomingItems.slice(0, 50).map((f) => ({
+      name: `${f.homeTeamName} vs ${f.awayTeamName} — ${f.leagueName}`,
+      path: buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId),
+    })),
+  );
+
   return (
     <>
       <JsonLd
         data={[
           buildBreadcrumbSchema([{ name: 'OddsDetector', path: '/' }]),
           buildFaqPageSchema(HOME_FAQ),
+          ...(upcomingItems.length > 0 ? [itemList] : []),
         ]}
       />
       <BrandIntro variant="home" />

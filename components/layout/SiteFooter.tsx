@@ -51,20 +51,25 @@ export function SiteFooter() {
           </FooterNavCol>
 
           <FooterNavCol heading="Football">
-            <FooterNavLink href="/">Fixtures</FooterNavLink>
+            <FooterNavLink href="/football">Fixtures</FooterNavLink>
+            <FooterNavLink href="/football/fixtures">Today's Matches</FooterNavLink>
             <FooterNavLink href="/football/standings">Standings</FooterNavLink>
-            <FooterNavLink href="/">Live Odds</FooterNavLink>
+            <FooterNavLink href="/football/leagues">All Leagues</FooterNavLink>
+          </FooterNavCol>
+
+          <FooterNavCol heading="Top Leagues">
+            <FooterNavLink href="/football/leagues/premier-league">Premier League</FooterNavLink>
+            <FooterNavLink href="/football/leagues/la-liga">La Liga</FooterNavLink>
+            <FooterNavLink href="/football/leagues/bundesliga">Bundesliga</FooterNavLink>
+            <FooterNavLink href="/football/leagues/serie-a">Serie A</FooterNavLink>
+            <FooterNavLink href="/football/leagues/ligue-1">Ligue 1</FooterNavLink>
+            <FooterNavLink href="/football/leagues/uefa-champions-league">Champions League</FooterNavLink>
           </FooterNavCol>
 
           <FooterNavCol heading="Offers">
             <FooterNavLink href="/bonus-codes">Bonus Codes</FooterNavLink>
-            <FooterNavLink href="/bonus-codes">Featured Deals</FooterNavLink>
-          </FooterNavCol>
-
-          <FooterNavCol heading="About">
-            <FooterNavLink href="#">How it works</FooterNavLink>
-            <FooterNavLink href="#">Responsible Gambling</FooterNavLink>
-            <FooterNavLink href="#">Contact</FooterNavLink>
+            <FooterNavLink href="/bonus-codes">Free Bet Offers</FooterNavLink>
+            <FooterNavLink href="/bonus-codes">Welcome Bonuses</FooterNavLink>
           </FooterNavCol>
         </nav>
 
@@ -85,13 +90,13 @@ export function SiteFooter() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <LegalLink href="#">Terms</LegalLink>
+            <LegalLink href="/terms">Terms</LegalLink>
             <Dot />
-            <LegalLink href="#">Privacy</LegalLink>
+            <LegalLink href="/privacy">Privacy</LegalLink>
             <Dot />
-            <LegalLink href="#">Cookies</LegalLink>
+            <LegalLink href="/cookies">Cookies</LegalLink>
             <Dot />
-            <LegalLink href="#">Affiliate disclosure</LegalLink>
+            <LegalLink href="/affiliate-disclosure">Affiliate disclosure</LegalLink>
           </div>
 
           <p

@@ -29,57 +29,13 @@ export function BrandIntro({ variant }: Props) {
   return (
     <section
       aria-label="OddsDetector overview"
-      style={{
-        padding: '14px 18px 12px',
-        borderBottom: '1px solid var(--t-border)',
-        background: 'var(--t-surface)',
-      }}
+      style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
     >
-      <h1
-        style={{
-          margin: 0,
-          fontSize: 18,
-          fontWeight: 800,
-          letterSpacing: '-0.02em',
-          color: 'var(--t-text-1)',
-        }}
-      >
-        {heading}
-      </h1>
-      <p
-        style={{
-          margin: '6px 0 0',
-          maxWidth: '78ch',
-          fontSize: 12.5,
-          lineHeight: 1.6,
-          color: 'var(--t-text-4)',
-        }}
-      >
-        {intro}
-      </p>
-      <nav
-        aria-label="Popular leagues"
-        style={{
-          marginTop: 8,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          fontSize: 11,
-        }}
-      >
-        <span style={{ color: 'var(--t-text-5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Popular:
-        </span>
+      <h1>{heading}</h1>
+      <p>{intro}</p>
+      <nav aria-label="Popular leagues">
         {POPULAR_LEAGUES.map((league) => (
-          <Link
-            key={league.name}
-            href={league.href}
-            style={{
-              color: 'var(--t-accent)',
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
+          <Link key={league.name} href={league.href}>
             {league.name}
           </Link>
         ))}

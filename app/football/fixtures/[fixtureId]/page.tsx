@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { buildStandingsPath } from '@/lib/league-links';
 import { buildAbsoluteUrl } from '@/lib/site';
-import { getFixtureDetail, getFixtureBestOdds } from '@/lib/api/fixtures';
+import { getFixtures, getFixtureDetail, getFixtureBestOdds } from '@/lib/api/fixtures';
 import type { BestOddsDto, FixtureDetailDto } from '@/lib/types/api';
 import FixtureDetailPageClient from './FixtureDetailPageClient';
 import { JsonLd } from '@/components/seo/JsonLd';
@@ -19,6 +19,23 @@ import {
 } from '@/lib/seo/slug';
 import { buildTeamPath } from '@/lib/team-links';
 import { FixtureSeoIntro } from '@/components/seo/FixtureSeoIntro';
+
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const today = new Date().toISOString().slice(0, 10);
+  const result = await getFixtures({
+    date: today,
+    page: 1,
+    pageSize: 100,
+    direction: 'asc',
+  }).catch(() => null);
+
+  return (result?.items ?? []).map((f) => ({
+    fixtureId: buildFixtureSlug(f.homeTeamName, f.awayTeamName, f.apiFixtureId),
+  }));
+}
 
 interface Props {
   params: Promise<{ fixtureId: string }>;

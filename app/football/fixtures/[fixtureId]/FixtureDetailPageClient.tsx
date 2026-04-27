@@ -10,7 +10,7 @@ import { useFixtureStatistics } from '@/lib/hooks/useFixtureStatistics';
 import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader, type SelectedFixtureTeam } from '@/components/fixtures/FixtureDetailHeader';
 import { OddsComparison } from '@/components/odds/OddsComparison';
-import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
+import { ApiSportsWidgetDynamic as ApiSportsWidget } from '@/components/widgets/ApiSportsWidgetDynamic';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { buildStandingsPath } from '@/lib/league-links';
