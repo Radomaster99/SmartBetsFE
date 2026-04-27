@@ -6,18 +6,45 @@ import { ThemeProvider } from '@/lib/contexts/ThemeContext';
 import { WidgetsProvider } from '@/components/widgets/WidgetsProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { getSiteUrl } from '@/lib/site';
+import { JsonLd } from '@/components/seo/JsonLd';
+import {
+  buildOrganizationSchema,
+  buildWebSiteSchema,
+} from '@/lib/seo/structured-data';
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: 'OddsDetector - Football Odds Monitor',
+    default: 'OddsDetector — Compare Football Odds & Live Betting Markets',
     template: '%s | OddsDetector',
   },
-  description: 'Compare football odds across bookmakers, track live markets, and find the best prices on OddsDetector.',
+  description:
+    'Compare football odds across the top bookmakers. Live and pre-match prices, fixtures, standings, and bookmaker bonus codes — all on OddsDetector.',
+  applicationName: 'OddsDetector',
+  keywords: [
+    'football odds',
+    'odds comparison',
+    'live football odds',
+    'betting odds',
+    'compare bookmaker odds',
+    'best football odds',
+    'live betting',
+    'odds detector',
+  ],
+  authors: [{ name: 'OddsDetector' }],
+  category: 'sports',
   icons: {
     icon: '/icon',
     shortcut: '/icon',
     apple: '/apple-icon',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'OddsDetector',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
 };
 
@@ -40,44 +67,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'WebSite',
-              '@id': `${getSiteUrl()}/#website`,
-              name: 'OddsDetector',
-              url: getSiteUrl(),
-              description: 'Football odds comparison and live market tracking',
-              potentialAction: {
-                '@type': 'SearchAction',
-                target: {
-                  '@type': 'EntryPoint',
-                  urlTemplate: `${getSiteUrl()}/?q={search_term_string}`,
-                },
-                'query-input': 'required name=search_term_string',
-              },
-            }),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Organization',
-              '@id': `${getSiteUrl()}/#organization`,
-              name: 'OddsDetector',
-              url: getSiteUrl(),
-              logo: {
-                '@type': 'ImageObject',
-                url: `${getSiteUrl()}/icon`,
-              },
-              sameAs: [],
-            }),
-          }}
-        />
+        <link rel="preconnect" href="https://widgets.api-sports.io" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://widgets.api-sports.io" />
+        <JsonLd data={[buildWebSiteSchema(), buildOrganizationSchema()]} />
         <Script id="sb-theme-init" strategy="beforeInteractive">
           {`try{var t=localStorage.getItem('sb-theme');document.documentElement.setAttribute('data-theme',t||'dark')}catch(e){}`}
         </Script>

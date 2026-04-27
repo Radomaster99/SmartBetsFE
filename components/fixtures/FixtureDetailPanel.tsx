@@ -9,6 +9,7 @@ import { extractFixtureQuickStatsSummary } from '@/lib/fixture-statistics';
 import { FixtureDetailHeader } from '@/components/fixtures/FixtureDetailHeader';
 import { ApiSportsWidget } from '@/components/widgets/ApiSportsWidget';
 import { OddsComparison } from '@/components/odds/OddsComparison';
+import { buildFixturePath } from '@/lib/seo/slug';
 
 type PanelTab = 'odds' | 'match' | 'h2h';
 
@@ -97,7 +98,7 @@ export function FixtureDetailPanel({ fixtureId, onClose }: Props) {
       >
         {detail ? (
           <a
-            href={`/football/fixtures/${detail.fixture.apiFixtureId}`}
+            href={buildFixturePath(detail.fixture.homeTeamName, detail.fixture.awayTeamName, detail.fixture.apiFixtureId)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

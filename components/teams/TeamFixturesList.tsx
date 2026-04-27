@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { buildFixturePath } from '@/lib/seo/slug';
 
 interface Props {
   title: string;
@@ -98,7 +99,7 @@ export function TeamFixturesList({
             return (
               <Link
                 key={fixture.apiFixtureId}
-                href={`/football/fixtures/${fixture.apiFixtureId}?tab=match`}
+                href={`${buildFixturePath(fixture.homeTeamName, fixture.awayTeamName, fixture.apiFixtureId)}?tab=match`}
                 className="rounded-lg px-3 py-3 transition-colors"
                 style={{
                   background: 'var(--t-page-bg)',

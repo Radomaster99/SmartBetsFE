@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TeamLogo } from '@/components/shared/TeamLogo';
 import type { WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
+import { buildFixturePath } from '@/lib/seo/slug';
 import { DESKTOP_SIDE_AD_WIDTH_CSS } from '@/lib/side-ads';
 
 type Props = {
@@ -184,7 +185,9 @@ export function FavoritesDock({ entries, onRemove }: Props) {
               return (
                 <a
                   key={entry.apiFixtureId}
-                  href={`/football/fixtures/${entry.apiFixtureId}`}
+                  href={entry.homeTeamName && entry.awayTeamName
+                    ? buildFixturePath(entry.homeTeamName, entry.awayTeamName, entry.apiFixtureId)
+                    : `/football/fixtures/${entry.apiFixtureId}`}
                   className="mb-2 block rounded-xl px-3 py-2.5 last:mb-0"
                   style={{
                     textDecoration: 'none',

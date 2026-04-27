@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import type { WatchlistFixtureEntry } from '@/lib/hooks/useFixtureWatchlist';
+import { buildFixturePath } from '@/lib/seo/slug';
 
 const SAVED_DELETE_ACTION_WIDTH = 78;
 const MOBILE_SAVED_OPAQUE_BG = '#07101a';
@@ -225,7 +226,9 @@ function SavedCard({
       </button>
 
       <Link
-        href={`/football/fixtures/${entry.apiFixtureId}`}
+        href={entry.homeTeamName && entry.awayTeamName
+          ? buildFixturePath(entry.homeTeamName, entry.awayTeamName, entry.apiFixtureId)
+          : `/football/fixtures/${entry.apiFixtureId}`}
         onClick={(event) => {
           if (isOpen || dragOffset !== 0) {
             event.preventDefault();

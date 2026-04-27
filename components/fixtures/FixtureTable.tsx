@@ -22,6 +22,7 @@ import {
   type PopularLeaguePreset,
 } from '@/lib/popular-leagues';
 import { writeLiveLeagueIds } from '@/lib/fixture-page-sidebar-context';
+import { buildFixtureSlug } from '@/lib/seo/slug';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
 
 const EMPTY_POPULAR_PRESETS: PopularLeaguePreset[] = [];
@@ -136,11 +137,19 @@ function needsBestOddsFallback(fixture: FixtureDto): boolean {
   return fixture.stateBucket === 'Upcoming' || fixture.stateBucket === 'Unknown';
 }
 
-function buildFixtureHref(apiFixtureId: number, tab?: 'odds') {
+function buildFixtureHref(
+  apiFixtureId: number,
+  tab?: 'odds',
+  homeName?: string,
+  awayName?: string,
+) {
   const params = new URLSearchParams();
   if (tab) params.set('tab', tab);
   const query = params.toString();
-  return `/football/fixtures/${apiFixtureId}${query ? `?${query}` : ''}`;
+  const slug = homeName && awayName
+    ? buildFixtureSlug(homeName, awayName, apiFixtureId)
+    : String(apiFixtureId);
+  return `/football/fixtures/${slug}${query ? `?${query}` : ''}`;
 }
 
 function formatKickoff(iso: string): string {
@@ -406,11 +415,11 @@ function MobileFixtureCard({
     <div
       role="button"
       tabIndex={0}
-      onClick={() => router.push(buildFixtureHref(fixture.apiFixtureId))}
+      onClick={() => router.push(buildFixtureHref(fixture.apiFixtureId, undefined, fixture.homeTeamName, fixture.awayTeamName))}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          router.push(buildFixtureHref(fixture.apiFixtureId));
+          router.push(buildFixtureHref(fixture.apiFixtureId, undefined, fixture.homeTeamName, fixture.awayTeamName));
         }
       }}
       className="panel-shell w-full rounded-lg text-left"

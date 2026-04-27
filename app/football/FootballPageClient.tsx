@@ -23,6 +23,7 @@ import { StandingsTable } from '@/components/standings/StandingsTable';
 import type { FixtureDto, LiveOddsSummaryDto, StateBucket, StandingDto } from '@/lib/types/api';
 import { deriveBestOddsFromOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odds';
 import { buildTeamHref } from '@/lib/team-links';
+import { buildFixturePath } from '@/lib/seo/slug';
 import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
@@ -419,7 +420,7 @@ function FootballPageClient() {
     if (window.innerWidth < 768) {
       const params = new URLSearchParams();
       params.set('tab', 'odds');
-      router.push(`/football/fixtures/${fixture.apiFixtureId}?${params.toString()}`);
+      router.push(`${buildFixturePath(fixture.homeTeamName, fixture.awayTeamName, fixture.apiFixtureId)}?${params.toString()}`);
     } else {
       setSelectedFixtureId((prev) => (prev === fixture.apiFixtureId ? null : fixture.apiFixtureId));
     }
