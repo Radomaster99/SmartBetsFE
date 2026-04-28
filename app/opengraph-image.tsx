@@ -17,38 +17,55 @@ export default function OgImage() {
           justifyContent: 'center',
           background: '#07101a',
           fontFamily: 'sans-serif',
+          position: 'relative',
         }}
       >
-        {/* Green accent bar at top */}
+        {/* Top accent bar */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, background: '#00e676', display: 'flex' }} />
+
+        {/* Radial glow */}
         <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 6,
-            background: '#00e676',
+            top: -140,
+            left: '50%',
+            width: 700,
+            height: 500,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(0,230,118,0.13) 0%, transparent 70%)',
+            transform: 'translateX(-50%)',
+            display: 'flex',
           }}
         />
 
-        {/* Glow orb */}
-        <div
-          style={{
-            position: 'absolute',
-            top: -120,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 600,
-            height: 400,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(0,230,118,0.12) 0%, transparent 70%)',
-          }}
-        />
+        {/* Mark */}
+        <svg
+          width="96"
+          height="96"
+          viewBox="0 0 52 52"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect x="2"  y="15" width="9"  height="3.5" rx="1.75" fill="#00e676" opacity={0.75} />
+          <rect x="1"  y="21" width="12" height="3.5" rx="1.75" fill="#00e676" opacity={0.55} />
+          <rect x="2"  y="27" width="8"  height="3.5" rx="1.75" fill="#00e676" opacity={0.38} />
+          <circle cx="31" cy="22" r="13" stroke="white" strokeWidth="4" fill="none" />
+          <polyline
+            points="19,22 22,22 24,16 26.5,28 29,17 31.5,25 34,22 42,22"
+            stroke="#00e676"
+            strokeWidth="2.2"
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <line x1="40" y1="31" x2="48" y2="40" stroke="white" strokeWidth="4" strokeLinecap="round" />
+        </svg>
 
         {/* Wordmark */}
         <div
           style={{
-            fontSize: 72,
+            marginTop: 20,
+            fontSize: 80,
             fontWeight: 900,
             letterSpacing: '-0.04em',
             color: '#f4f8ff',
@@ -63,28 +80,30 @@ export default function OgImage() {
         {/* Tagline */}
         <div
           style={{
-            marginTop: 24,
-            fontSize: 26,
+            marginTop: 16,
+            fontSize: 22,
+            fontWeight: 700,
+            letterSpacing: '0.28em',
+            color: '#00e676',
+            textTransform: 'uppercase',
+            display: 'flex',
+          }}
+        >
+          Compare. Detect. Win.
+        </div>
+
+        {/* Subtitle */}
+        <div
+          style={{
+            marginTop: 28,
+            fontSize: 24,
             fontWeight: 400,
-            color: 'rgba(255,255,255,0.45)',
+            color: 'rgba(255,255,255,0.38)',
             letterSpacing: '0.02em',
+            display: 'flex',
           }}
         >
           Football Odds Comparison
-        </div>
-
-        {/* Domain */}
-        <div
-          style={{
-            marginTop: 40,
-            fontSize: 18,
-            fontWeight: 600,
-            color: '#00e676',
-            opacity: 0.7,
-            letterSpacing: '0.08em',
-          }}
-        >
-          oddsdetector.com
         </div>
       </div>
     ),
