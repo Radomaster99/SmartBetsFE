@@ -1,5 +1,6 @@
 'use client';
-import { useFixtures } from './useFixtures';
+import { isActivelyLiveFixture } from '@/lib/fixtures/live-status';
+import { flattenFixturePages, useFixtures } from './useFixtures';
 
 /**
  * Returns the total number of currently live fixtures across all leagues.
@@ -11,9 +12,10 @@ const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
 export function useLiveFixtureCount(): number {
   const { data } = useFixtures({
     state: 'Live',
-    pageSize: 1,
+    pageSize: 100,
     season: DEFAULT_SEASON,
     includeLiveOddsSummary: true,
+    fetchAllPages: true,
   });
-  return data?.pages[0]?.totalItems ?? 0;
+  return flattenFixturePages(data).filter(isActivelyLiveFixture).length;
 }

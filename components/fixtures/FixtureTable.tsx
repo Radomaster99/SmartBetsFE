@@ -24,6 +24,7 @@ import {
 import { writeLiveLeagueIds } from '@/lib/fixture-page-sidebar-context';
 import { buildFixtureSlug, buildLeagueHubPath } from '@/lib/seo/slug';
 import { usePopularLeaguesContent } from '@/lib/hooks/useContentDocuments';
+import { isActivelyLiveFixture } from '@/lib/fixtures/live-status';
 
 const EMPTY_POPULAR_PRESETS: PopularLeaguePreset[] = [];
 
@@ -209,6 +210,22 @@ function getLeagueOddsMetrics(
   }
 
   return { liveCount, prematchCount, noOddsCount };
+}
+
+function getLiveLeaguePriority(metrics: {
+  liveCount: number;
+  prematchCount: number;
+  noOddsCount: number;
+}): number {
+  if (metrics.liveCount > 0) {
+    return 0;
+  }
+
+  if (metrics.prematchCount > 0) {
+    return 1;
+  }
+
+  return 2;
 }
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
@@ -639,21 +656,13 @@ export function FixtureTable({
 
         const aAvailabilityRank =
           viewState === 'Live'
-            ? aMetrics.liveCount > 0
-              ? 0
-              : aMetrics.prematchCount > 0
-                ? 1
-                : 2
+            ? getLiveLeaguePriority(aMetrics)
             : aMetrics.prematchCount > 0
               ? 0
               : 1;
         const bAvailabilityRank =
           viewState === 'Live'
-            ? bMetrics.liveCount > 0
-              ? 0
-              : bMetrics.prematchCount > 0
-                ? 1
-                : 2
+            ? getLiveLeaguePriority(bMetrics)
             : bMetrics.prematchCount > 0
               ? 0
               : 1;
@@ -790,7 +799,7 @@ export function FixtureTable({
     <div ref={containerRef} className="flex-1 overflow-auto">
       {isFetching ? <div className="sticky top-0 z-20"><FetchingBar /></div> : null}
       {sortedLeagueEntries.map(([key, { name, country, items }]) => {
-        const liveFixtureCount = items.filter((f) => f.stateBucket === 'Live').length;
+        const liveFixtureCount = items.filter(isActivelyLiveFixture).length;
         const oddsCount = items.filter((fixture) => {
           const liveSummary = fixture.liveOddsSummary ?? null;
           if (liveSummary?.bestHomeOdd || liveSummary?.bestDrawOdd || liveSummary?.bestAwayOdd) {

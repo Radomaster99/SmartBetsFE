@@ -25,6 +25,7 @@ import { deriveBestOddsFromOdds, mergeLiveSummaryOutcomes } from '@/lib/live-odd
 import { buildTeamHref } from '@/lib/team-links';
 import { buildFixturePath } from '@/lib/seo/slug';
 import { writeTeamPageNavigationContext } from '@/lib/team-page-context';
+import { isActivelyLiveFixture } from '@/lib/fixtures/live-status';
 
 const LAST_MATCHES_HREF_KEY = 'smartbets:last-matches-href';
 const DEFAULT_SEASON = Number(process.env.NEXT_PUBLIC_DEFAULT_SEASON || '2025');
@@ -454,7 +455,15 @@ function FootballPageClient() {
     isFetchingNextPage,
     isPrimingAllPages,
   } = useFixtures(filters);
-  const rawFixtures = flattenFixturePages(data);
+  const rawFixtures = useMemo(() => {
+    const loadedFixtures = flattenFixturePages(data);
+
+    if (state !== 'Live') {
+      return loadedFixtures;
+    }
+
+    return loadedFixtures.filter(isActivelyLiveFixture);
+  }, [data, state]);
   const fixturesReadyForDisplay = !isPrimingAllPages;
   const effectiveVisibleLiveFixtureIds = useMemo(
     () =>
