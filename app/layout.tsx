@@ -15,11 +15,11 @@ import {
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: 'OddsDetector — Compare Football Odds & Live Betting Markets',
+    default: 'OddsDetector - Compare Football Odds & Live Betting Markets',
     template: '%s | OddsDetector',
   },
   description:
-    'Compare football odds across the top bookmakers. Live and pre-match prices, fixtures, standings, and bookmaker bonus codes — all on OddsDetector.',
+    'Compare football odds across the top bookmakers. Live and pre-match prices, fixtures, standings, and bookmaker bonus codes - all on OddsDetector.',
   applicationName: 'OddsDetector',
   keywords: [
     'football odds',
@@ -40,13 +40,20 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: '/',
-    languages: { 'x-default': '/', 'en': '/' },
+    languages: { 'x-default': '/', en: '/' },
   },
   openGraph: {
     type: 'website',
     siteName: 'OddsDetector',
     locale: 'en_US',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'OddsDetector — Compare Football Odds' }],
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'OddsDetector - Compare Football Odds',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -88,7 +95,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body style={{ background: 'var(--t-page-bg)', color: 'var(--t-text-2)', margin: 0, padding: 0 }} suppressHydrationWarning>
+      <body
+        style={{ background: 'var(--t-page-bg)', color: 'var(--t-text-2)', margin: 0, padding: 0 }}
+        suppressHydrationWarning
+      >
         <QueryProvider>
           <ThemeProvider>
             <WidgetsProvider

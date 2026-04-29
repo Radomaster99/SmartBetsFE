@@ -34,7 +34,7 @@ const FOOTBALL_FAQ: FaqEntry[] = [
   {
     question: 'Why do bookmakers offer different odds on the same match?',
     answer:
-      "Each bookmaker prices markets independently based on their own model, betting volume, and risk tolerance. That's why comparing prices across bookmakers — and routing each bet to the one offering the best value — is the single biggest edge a bettor has.",
+      "Each bookmaker prices markets independently based on their own model, betting volume, and risk tolerance. That's why comparing prices across bookmakers - and routing each bet to the one offering the best value - is the single biggest edge a bettor has.",
   },
 ];
 
@@ -58,7 +58,7 @@ export default async function FootballPage() {
   const itemList = buildItemListSchema(
     "Today's football fixtures & odds",
     upcomingItems.slice(0, 50).map((f) => ({
-      name: `${f.homeTeamName} vs ${f.awayTeamName} — ${f.leagueName}`,
+      name: `${f.homeTeamName} vs ${f.awayTeamName} - ${f.leagueName}`,
       path: buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId),
     })),
   );

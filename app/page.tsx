@@ -34,7 +34,7 @@ const HOME_FAQ: FaqEntry[] = [
   {
     question: 'Is OddsDetector free to use?',
     answer:
-      'Yes — browsing odds, fixtures, standings, and bonus codes on OddsDetector is completely free. We earn through affiliate partnerships with bookmakers when you click through to claim an offer.',
+      'Yes - browsing odds, fixtures, standings, and bonus codes on OddsDetector is completely free. We earn through affiliate partnerships with bookmakers when you click through to claim an offer.',
   },
   {
     question: 'How do I find the best odds for a match?',
@@ -63,7 +63,7 @@ export default async function HomePage() {
   const itemList = buildItemListSchema(
     "Today's football fixtures & odds",
     upcomingItems.slice(0, 50).map((f) => ({
-      name: `${f.homeTeamName} vs ${f.awayTeamName} — ${f.leagueName}`,
+      name: `${f.homeTeamName} vs ${f.awayTeamName} - ${f.leagueName}`,
       path: buildFixturePath(f.homeTeamName, f.awayTeamName, f.apiFixtureId),
     })),
   );
